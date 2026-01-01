@@ -54,6 +54,11 @@ button{
   border-radius:12px;
   margin-top:15px;
 }
+
+small{
+  opacity:.7;
+  word-break:break-all;
+}
 </style>
 </head>
 
@@ -64,7 +69,8 @@ button{
 <div class="container">
 
   <div class="card">
-    <h3>Gerar QR da Mesa</h3>
+    <h3>Gerar QR Code da Mesa</h3>
+
     <p id="info"></p>
 
     <input type="number" id="mesa" placeholder="Número da mesa">
@@ -82,19 +88,23 @@ button{
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
 if(!admin || !admin.app_id){
-  alert("Acesso não autorizado");
+  alert("Admin não autenticado");
   location.href = "../auth/login.html";
 }
 
+// ===============================
+// ℹ️ INFO
+// ===============================
 document.getElementById("info").innerHTML = `
 <b>Negócio:</b> ${admin.usuario}<br>
 <b>APP ID:</b> ${admin.app_id}
 `;
 
 // ===============================
-// 🔗 CONFIGURAÇÃO FIXA
+// 🔗 CONFIG REAL DO PROJETO
 // ===============================
 const BASE_URL = "https://anajuliafarias659-cloud.github.io/ffsolucoes";
+const CARDAPIO_PATH = "/bar/public/index.html"; // 👈 CAMINHO REAL
 const APP_ID = admin.app_id;
 
 // ===============================
@@ -108,7 +118,7 @@ function gerarQR(){
     return;
   }
 
-  const url = `${BASE_URL}/index.html?app=${APP_ID}&mesa=${mesa}`;
+  const url = `${BASE_URL}${CARDAPIO_PATH}?app=${APP_ID}&mesa=${mesa}`;
 
   const qrImg =
     "https://api.qrserver.com/v1/create-qr-code/?" +
@@ -116,7 +126,7 @@ function gerarQR(){
 
   document.getElementById("qr").innerHTML = `
     <img src="${qrImg}">
-    <p style="word-break:break-all;font-size:12px">${url}</p>
+    <small>${url}</small>
   `;
 }
 </script>
