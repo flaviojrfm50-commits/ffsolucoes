@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Painel do Bar / Restaurante</title>
+<title>Painel do bares / Restaurante</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -69,7 +69,7 @@ const sb = window.supabase.createClient(
 // 🔐 proteção de acesso
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
-if(!admin || (admin.tipo !== "bar" && admin.tipo !== "restaurante")){
+if(!admin || (admin.tipo !== "bares" && admin.tipo !== "restaurante")){
   alert("Acesso não autorizado");
   window.location.href = "../auth/login.html";
 }
@@ -81,7 +81,7 @@ function logout(){
 </script>
 
 <div class="topo">
-  <h2>🍻 Painel do Bar / Restaurante</h2>
+  <h2>🍻 Painel do bares / Restaurante</h2>
   <button class="sair" onclick="logout()">Sair</button>
 </div>
 
