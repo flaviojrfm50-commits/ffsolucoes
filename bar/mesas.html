@@ -96,11 +96,11 @@ body{
 
 .qr{
   background:#020617;
-  padding:8px;
-  border-radius:12px;
+  border-radius:14px;
+  padding:10px;
+  margin:12px 0;
   display:flex;
   justify-content:center;
-  margin:8px 0;
 }
 
 button{
@@ -151,12 +151,17 @@ if(!admin || !admin.app_id){
 
 <script>
 async function carregarMesas(){
-  const { data } = await sb
+  const { data, error } = await sb
     .from("mesas")
     .select("*")
     .eq("app_id", admin.app_id)
     .eq("ativa", true)
     .order("numero_mesa");
+
+  if(error){
+    console.error(error);
+    return;
+  }
 
   const grid = document.getElementById("listaMesas");
   grid.innerHTML = "";
@@ -180,13 +185,16 @@ async function carregarMesas(){
       ` : ``}
     `;
 
-    // gerar QR pequeno direto no card
+    grid.appendChild(div);
+
+    // 🔥 GERAR QR AUTOMÁTICO NO CARD
+    const canvas = document.getElementById(`qr-${m.id}`);
     const link = `${location.origin}/cardapio/index.html?app=${admin.app_id}&mesa=${m.numero_mesa}`;
-    QRCode.toCanvas(
-      document.getElementById(`qr-${m.id}`),
-      link,
-      { width:120 }
-    );
+
+    QRCode.toCanvas(canvas, link, {
+      width: 120,
+      margin: 1
+    });
 
     // abrir mesa
     div.querySelector(".btn-abrir").onclick = async () => {
@@ -205,8 +213,6 @@ async function carregarMesas(){
         }
       };
     }
-
-    grid.appendChild(div);
   });
 }
 
