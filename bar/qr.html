@@ -2,13 +2,13 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Gerar QR das Mesas</title>
+<title>QR das Mesas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
   margin:0;
-  font-family:Arial, sans-serif;
+  font-family:Arial,sans-serif;
   background:#020617;
   color:#fff;
 }
@@ -32,11 +32,6 @@ body{
   margin-top:12px;
   border-radius:10px;
   border:none;
-  font-size:15px;
-}
-.form input{
-  background:#020617;
-  color:#fff;
 }
 .form button{
   background:#22c55e;
@@ -75,10 +70,9 @@ body{
 
   <div class="form">
     <h3>Gerar QR das Mesas</h3>
+    <p><b>APP ID:</b> <span id="appid"></span></p>
 
-    <input id="app" placeholder="APP ID do cliente">
     <input id="total" type="number" placeholder="Quantidade de mesas" min="1">
-
     <button onclick="gerar()">Gerar QRs</button>
   </div>
 
@@ -86,33 +80,42 @@ body{
 </div>
 
 <script>
-// 🔴 URL FIXA DO PRODUTO (NÃO MEXE MAIS)
+// 🔒 BASE FIXA DO PRODUTO
 const BASE_URL = "https://anajuliafarias659-cloud.github.io/ffsolucoes/bar";
 
+// 🔑 APP VEM DA URL
+const params = new URLSearchParams(location.search);
+const app = params.get("app");
+
+if(!app || app.includes("http")){
+  alert("APP ID inválido");
+  throw new Error("APP inválido");
+}
+
+document.getElementById("appid").innerText = app;
+
 function gerar(){
-  const app = document.getElementById("app").value.trim();
   const total = Number(document.getElementById("total").value);
   const grid = document.getElementById("mesas");
 
-  if(!app || !total){
-    alert("Informe o APP ID e a quantidade de mesas");
+  if(!total){
+    alert("Informe a quantidade de mesas");
     return;
   }
 
   grid.innerHTML = "";
 
-  for(let mesa = 1; mesa <= total; mesa++){
+  for(let mesa=1; mesa<=total; mesa++){
     const url = `${BASE_URL}/index.html?app=${app}&mesa=${mesa}`;
 
-    const qrImg =
+    const qr =
       "https://api.qrserver.com/v1/create-qr-code/?" +
       "size=300x300&data=" + encodeURIComponent(url);
 
     const card = document.createElement("div");
     card.className = "card";
-
     card.innerHTML = `
-      <img src="${qrImg}" alt="QR Mesa ${mesa}">
+      <img src="${qr}">
       <h4>Mesa ${mesa}</h4>
       <small>${url}</small>
     `;
