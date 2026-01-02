@@ -145,25 +145,27 @@ async function carregarMesas(){
 
     grid.appendChild(div);
 
-    // QR correto
+    // QR do cardápio público
     QRCode.toCanvas(
       document.getElementById(`qr-${m.id}`),
-      `https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/public/index.html?mesa=${m.numero_mesa}&app_id=${admin.app_id}`,
+      `https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/public/?mesa=${m.numero_mesa}&app_id=${admin.app_id}`,
       { width:120 }
     );
 
-    // abrir mesa
+    // 👉 ABRIR MESA = MARCA OCUPADA + VAI PRO PEDIDO
     const abrirBtn = div.querySelector(".btn-abrir");
     if(abrirBtn){
       abrirBtn.onclick = async () => {
         await sb.from("mesas")
           .update({ status:"ocupada" })
           .eq("id", m.id);
-        carregarMesas();
+
+        location.href =
+          `mesa.html?mesa=${m.numero_mesa}&app_id=${admin.app_id}`;
       };
     }
 
-    // fechar mesa
+    // FECHAR MESA (liberar)
     const fecharBtn = div.querySelector(".btn-fechar");
     if(fecharBtn){
       fecharBtn.onclick = async () => {
@@ -174,7 +176,7 @@ async function carregarMesas(){
       };
     }
 
-    // remover mesa (DESATIVAR)
+    // REMOVER MESA
     div.querySelector(".btn-remover").onclick = async () => {
       if(status === "ocupada"){
         alert("❌ Mesa ocupada não pode ser removida");
@@ -195,7 +197,7 @@ async function carregarMesas(){
   });
 }
 
-// adicionar mesa
+// adicionar mesa (simples, como estava funcionando)
 async function adicionarMesa(){
   const { data } = await sb
     .from("mesas")
