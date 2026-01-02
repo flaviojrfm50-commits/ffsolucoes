@@ -75,7 +75,7 @@ if(!admin || !admin.app_id){
 document.getElementById("titulo").innerText = `Mesa ${mesa}`;
 
 // ================= URL BASE CORRETA (FIXA) =================
-const CLIENT_URL = "https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/mesa.html";
+const CLIENT_URL = "https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/public/index.html";
 
 // ================= URL FINAL DO QR =================
 const urlFinal = `${CLIENT_URL}?mesa=${mesa}&app=${admin.app_id}`;
@@ -91,3 +91,4 @@ new QRCode(document.getElementById("qrcode"), {
 
 </body>
 </html>
+
