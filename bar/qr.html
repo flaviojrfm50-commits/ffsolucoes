@@ -55,9 +55,11 @@ button{
 </div>
 
 <script>
-const params = new URLSearchParams(location.search);
+// ======= PARAMETROS =======
+const params = new URLSearchParams(window.location.search);
 const mesa = params.get("mesa");
 
+// ======= ADMIN =======
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
 if(!mesa){
@@ -72,12 +74,16 @@ if(!admin || !admin.app_id){
 
 document.getElementById("titulo").innerText = `Mesa ${mesa}`;
 
-// URL do cardápio público
-const CLIENT_URL = "https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/public/index.html";
+// ======= URL PUBLICA (SEM index.html) =======
+const CLIENT_URL =
+  "https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/public/";
 
-// URL FINAL DO QR (PADRÃO CORRETO)
+// ======= URL FINAL DO QR =======
 const urlFinal = `${CLIENT_URL}?app_id=${admin.app_id}&mesa=${mesa}`;
 
+console.log("QR URL:", urlFinal);
+
+// ======= GERAR QR =======
 new QRCode(document.getElementById("qrcode"), {
   text: urlFinal,
   width: 220,
