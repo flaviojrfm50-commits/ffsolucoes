@@ -10,9 +10,18 @@
 
 <style>
 body{margin:0;font-family:Arial;background:#020617;color:#fff}
-.topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
-.voltar{background:#1e293b;color:#fff;border:none;padding:10px 16px;border-radius:10px;cursor:pointer}
+.topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .container{padding:32px;max-width:1200px;margin:auto}
+
+.btn{
+  border:none;
+  padding:10px 16px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:bold;
+}
+.btn-add{background:#22c55e;color:#022c22}
+.btn-voltar{background:#1e293b;color:#fff}
 
 .grid{
   display:grid;
@@ -51,7 +60,7 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   justify-content:center
 }
 
-button{
+.card button{
   width:100%;
   margin-top:6px;
   padding:8px;
@@ -83,7 +92,10 @@ if(!admin?.app_id){
 
 <div class="topo">
   <h2>🪑 Mesas</h2>
-  <button class="voltar" onclick="location.href='admin.html'">Voltar</button>
+  <div>
+    <button class="btn btn-add" onclick="adicionarMesa()">➕ Adicionar Mesa</button>
+    <button class="btn btn-voltar" onclick="location.href='admin.html'">Voltar</button>
+  </div>
 </div>
 
 <div class="container">
@@ -93,20 +105,13 @@ if(!admin?.app_id){
 <script>
 async function carregarMesas(){
 
-  // buscar mesas ativas do negócio
-  const { data: mesas, error } = await sb
+  const { data: mesas } = await sb
     .from("mesas")
     .select("id, numero_mesa")
     .eq("app_id", admin.app_id)
     .eq("ativa", true)
     .order("numero_mesa");
 
-  if(error){
-    alert("Erro ao carregar mesas");
-    return;
-  }
-
-  // pedidos abertos
   const { data: pedidos } = await sb
     .from("pedidos")
     .select("mesa_id")
@@ -134,31 +139,28 @@ async function carregarMesas(){
       </div>
 
       <button class="btn-abrir">Abrir Mesa</button>
-      <button class="btn-remover">🗑️ Remover Mesa</button>
+      <button class="btn-remover">🗑️ Apagar Mesa</button>
     `;
 
     grid.appendChild(div);
 
-    // QR
     QRCode.toCanvas(
       document.getElementById(`qr-${m.id}`),
-      `${location.origin}/cardapio/index.html?app=${admin.app_id}&mesa=${m.numero_mesa}`,
+      `https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/mesa.html?mesa=${m.numero_mesa}&app=${admin.app_id}`,
       { width:120 }
     );
 
-    // abrir mesa
     div.querySelector(".btn-abrir").onclick = () => {
       location.href = `mesa.html?mesa=${m.numero_mesa}`;
     };
 
-    // remover mesa
     div.querySelector(".btn-remover").onclick = async () => {
       if(ocupada){
-        alert("❌ Não é possível remover uma mesa ocupada");
+        alert("❌ Não é possível apagar mesa ocupada");
         return;
       }
 
-      if(!confirm(`Remover a Mesa ${m.numero_mesa}?`)) return;
+      if(!confirm(`Apagar Mesa ${m.numero_mesa}?`)) return;
 
       await sb
         .from("mesas")
@@ -168,6 +170,27 @@ async function carregarMesas(){
       carregarMesas();
     };
   });
+}
+
+// ➕ CRIAR NOVA MESA
+async function adicionarMesa(){
+  const { data } = await sb
+    .from("mesas")
+    .select("numero_mesa")
+    .eq("app_id", admin.app_id)
+    .order("numero_mesa", { ascending:false })
+    .limit(1)
+    .maybeSingle();
+
+  const proximo = (data?.numero_mesa || 0) + 1;
+
+  await sb.from("mesas").insert({
+    app_id: admin.app_id,
+    numero_mesa: proximo,
+    ativa: true
+  });
+
+  carregarMesas();
 }
 
 carregarMesas();
