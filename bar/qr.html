@@ -80,7 +80,8 @@ document.getElementById("titulo").innerText = `Mesa ${mesa}`;
 
 // ================= URL BASE DO CLIENTE =================
 // ⚠️ ESSA URL TEM QUE EXISTIR
-const CLIENT_URL = `${location.origin}/cardapio/index.html?app=${admin.app_id}&mesa=${m.numero_mesa}`
+const CLIENT_URL = `https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/mesa.html?mesa=${m.numero_mesa}`
+
 
 // ================= URL FINAL DO QR =================
 const urlFinal = `${CLIENT_URL}?mesa=${mesa}&app=${admin.app_id}`;
@@ -96,4 +97,5 @@ new QRCode(document.getElementById("qrcode"), {
 
 </body>
 </html>
+
 
