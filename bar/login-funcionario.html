@@ -58,13 +58,13 @@ small{
 <body>
 
 <script>
-// ================= SUPABASE =================
+/* ================= SUPABASE ================= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-// ================= SESSÃO DO BAR =================
+/* ================= SESSÃO DO BAR ================= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
 if(!admin || !admin.app_id){
@@ -87,27 +87,27 @@ if(!admin || !admin.app_id){
 </div>
 
 <script>
+/* ================= PERMISSÃO ================= */
 function exigirPermissao(tiposPermitidos){
   const admin = JSON.parse(localStorage.getItem("admin_logado"));
-  const usuario = JSON.parse(localStorage.getItem("usuario_logado"));
+  const usuario = JSON.parse(localStorage.getItem("usuario_bar"));
 
   // admin do bar sempre pode
   if(admin && admin.tipo === "bar") return;
 
-  // precisa estar logado como funcionário
   if(!usuario){
     alert("Sessão expirada");
     location.href = "login-funcionario.html";
     return;
   }
 
-  // valida tipo
   if(!tiposPermitidos.includes(usuario.tipo)){
     alert("Acesso não autorizado");
     location.href = "login-funcionario.html";
   }
 }
 
+/* ================= LOGIN ================= */
 async function entrar(){
   const nome = document.getElementById("nome").value.trim();
   const pin  = document.getElementById("pin").value.trim();
@@ -126,7 +126,7 @@ async function entrar(){
     .eq("app_id", admin.app_id)
     .eq("nome", nome)
     .eq("ativo", true)
-    .maybeSingle(); // 👈 evita erro 400
+    .maybeSingle();
 
   if(error){
     console.error(error);
@@ -144,14 +144,14 @@ async function entrar(){
     return;
   }
 
-  // ✅ salva sessão do funcionário
+  // ✅ salva sessão do funcionário (PADRÃO ÚNICO)
   localStorage.setItem("usuario_bar", JSON.stringify({
     id: data.id,
     nome: data.nome,
     tipo: data.tipo
   }));
 
-  // 🚦 REDIRECIONA PELO TIPO
+  // 🚦 redireciona pelo tipo
   if(data.tipo === "garcom"){
     location.href = "mesas.html";
   }else if(data.tipo === "caixa"){
@@ -160,6 +160,11 @@ async function entrar(){
     msg.innerText = "Tipo de usuário inválido";
   }
 }
+
+/* Enter para login */
+document.addEventListener("keydown", e=>{
+  if(e.key === "Enter") entrar();
+});
 </script>
 
 </body>
