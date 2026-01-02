@@ -45,24 +45,35 @@ body{
 <div class="container" id="listaMesas"></div>
 
 <script>
+/* ================= CONFIG ================= */
+
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* 🔥 app_id inteligente */
 const params = new URLSearchParams(location.search);
-const app_id = params.get("app_id");
+let app_id = params.get("app_id") || localStorage.getItem("app_id");
 
 if(!app_id){
-  alert("Sessão inválida");
+  document.body.innerHTML = `
+    <h2 style="text-align:center;margin-top:60px">
+      ❌ Sessão inválida<br>
+      <small>Abra pelo painel ou QR Code</small>
+    </h2>`;
   throw new Error("app_id ausente");
 }
 
-/* 🔥 CARREGA MESAS (coluna correta) */
+/* salva pra próximas páginas */
+localStorage.setItem("app_id", app_id);
+
+/* ================= CARREGAR MESAS ================= */
+
 async function carregarMesas(){
   const { data, error } = await sb
     .from("mesas")
-    .select("numero_mesa,status")   // 👈 COLUNA CORRETA
+    .select("numero_mesa,status")
     .eq("app_id", app_id)
     .order("numero_mesa");
 
@@ -78,7 +89,6 @@ async function carregarMesas(){
   data.forEach(m=>{
     const div = document.createElement("div");
     div.className = `mesa ${m.status}`;
-
     div.onclick = () => abrirMesa(m.numero_mesa);
 
     div.innerHTML = `
@@ -90,25 +100,26 @@ async function carregarMesas(){
   });
 }
 
-/* 🔐 REGRA ÚNICA */
+/* ================= REGRA ÚNICA ================= */
+
 async function abrirMesa(numeroMesa){
   const { data, error } = await sb
     .from("mesas")
     .select("status")
     .eq("app_id", app_id)
-    .eq("numero_mesa", numeroMesa)  // 👈 AJUSTADO
+    .eq("numero_mesa", numeroMesa)
     .single();
 
   if(error || !data){
     console.error(error);
-    alert("Mesa não encontrada no banco");
+    alert("Mesa não encontrada");
     return;
   }
 
   if(data.status === "livre"){
-    location.href = `cardapio.html?app_id=${app_id}&mesa=${numeroMesa}`;
+    location.href = `cardapio.html?mesa=${numeroMesa}`;
   }else{
-    location.href = `mesa.html?app_id=${app_id}&mesa=${numeroMesa}`;
+    location.href = `mesa.html?mesa=${numeroMesa}`;
   }
 }
 
