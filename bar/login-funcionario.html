@@ -40,6 +40,10 @@ button{
   font-weight:bold;
   cursor:pointer;
 }
+.btn-sair{
+  background:#1e293b;
+  color:#cbd5f5;
+}
 .msg{
   margin-top:12px;
   text-align:center;
@@ -71,6 +75,9 @@ if(!admin || !admin.app_id){
   alert("Bar não selecionado");
   location.href = "/super-admin.html";
 }
+
+/* ================= USUÁRIO LOGADO ================= */
+const usuarioLogado = JSON.parse(localStorage.getItem("usuario_bar"));
 </script>
 
 <div class="card">
@@ -81,30 +88,21 @@ if(!admin || !admin.app_id){
 
   <button onclick="entrar()">Entrar</button>
 
+  <!-- botão sair (aparece só se tiver funcionário logado) -->
+  <button class="btn-sair" id="btnSair" onclick="sair()" style="display:none">
+    Trocar funcionário
+  </button>
+
   <div class="msg" id="msg"></div>
 
   <small>Acesso interno do bar</small>
 </div>
 
 <script>
-/* ================= PERMISSÃO ================= */
-function exigirPermissao(tiposPermitidos){
-  const admin = JSON.parse(localStorage.getItem("admin_logado"));
-  const usuario = JSON.parse(localStorage.getItem("usuario_bar"));
-
-  // admin do bar sempre pode
-  if(admin && admin.tipo === "bar") return;
-
-  if(!usuario){
-    alert("Sessão expirada");
-    location.href = "login-funcionario.html";
-    return;
-  }
-
-  if(!tiposPermitidos.includes(usuario.tipo)){
-    alert("Acesso não autorizado");
-    location.href = "login-funcionario.html";
-  }
+/* ================= MOSTRAR BOTÃO SAIR ================= */
+if(usuarioLogado){
+  document.getElementById("btnSair").style.display = "block";
+  document.getElementById("nome").value = usuarioLogado.nome;
 }
 
 /* ================= LOGIN ================= */
@@ -144,7 +142,7 @@ async function entrar(){
     return;
   }
 
-  // ✅ salva sessão do funcionário (PADRÃO ÚNICO)
+  // ✅ salva sessão do funcionário
   localStorage.setItem("usuario_bar", JSON.stringify({
     id: data.id,
     nome: data.nome,
@@ -159,6 +157,14 @@ async function entrar(){
   }else{
     msg.innerText = "Tipo de usuário inválido";
   }
+}
+
+/* ================= LOGOUT ================= */
+function sair(){
+  if(!confirm("Deseja trocar o funcionário logado?")) return;
+
+  localStorage.removeItem("usuario_bar");
+  location.reload();
 }
 
 /* Enter para login */
