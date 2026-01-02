@@ -29,13 +29,9 @@ body{
   box-shadow:0 20px 40px rgba(0,0,0,.4);
 }
 
-h2{
-  margin-top:0;
-}
+h2{margin-top:0}
 
-#qrcode{
-  margin:24px auto;
-}
+#qrcode{margin:24px auto}
 
 button{
   padding:12px 20px;
@@ -78,10 +74,8 @@ if(!admin || !admin.app_id){
 
 document.getElementById("titulo").innerText = `Mesa ${mesa}`;
 
-// ================= URL BASE DO CLIENTE =================
-// ⚠️ ESSA URL TEM QUE EXISTIR
-const CLIENT_URL = `https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/mesa.html?mesa=${m.numero_mesa}`
-
+// ================= URL BASE CORRETA (FIXA) =================
+const CLIENT_URL = "https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/mesa.html";
 
 // ================= URL FINAL DO QR =================
 const urlFinal = `${CLIENT_URL}?mesa=${mesa}&app=${admin.app_id}`;
@@ -97,5 +91,3 @@ new QRCode(document.getElementById("qrcode"), {
 
 </body>
 </html>
-
-
