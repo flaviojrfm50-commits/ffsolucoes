@@ -69,7 +69,7 @@ const sb = supabase.createClient(
 /* ================= PARAMS ================= */
 const params = new URLSearchParams(location.search);
 const app_id = params.get("app_id") || localStorage.getItem("app_id");
-const mesa_id = params.get("mesa_id"); // UUID da mesa
+const mesa_id = params.get("mesa_id");
 
 if(!app_id){
   document.body.innerHTML = "Indisponível";
@@ -154,70 +154,48 @@ function abrirCarrinho(){
   });
 }
 
-/* ================= PEDIDO ABERTO ================= */
-async function buscarPedidoAberto(){
-  let q = sb.from("pedidos")
-    .select("id")
-    .eq("app_id", app_id)
-    .eq("status", "aberto")
-    .eq("atendido", false);
-
-  if(mesa_id){
-    q = q.eq("mesa_id", mesa_id);
-  }else{
-    q = q.eq("origem", "web");
-  }
-
-  const { data } = await q.maybeSingle();
-  return data;
-}
-
-/* ================= ENVIAR PEDIDO ================= */
+/* ================= ENVIAR PEDIDO (CORRIGIDO) ================= */
 async function enviarPedido(){
   if(carrinho.length === 0){
     alert("Carrinho vazio");
     return;
   }
 
-  let pedidoId;
-  const existente = await buscarPedidoAberto();
-
-  if(existente){
-    const ok = confirm("Já existe um pedido em andamento.\nDeseja adicionar os itens nele?");
-    if(!ok) return;
-    pedidoId = existente.id;
-  }else{
-    const nomeCli = cliente_nome.value.trim();
-    if(!nomeCli){
-      alert("Informe seu nome");
-      return;
-    }
-
-    const { data: pedido, error } = await sb
-      .from("pedidos")
-      .insert({
-        app_id,
-        mesa_id: mesa_id || null,
-        origem: mesa_id ? "mesa" : "web",
-        cliente_nome: nomeCli,
-        cliente_whatsapp: cliente_whatsapp.value || null,
-        cliente_endereco: cliente_endereco.value || null,
-        status: "aberto",
-        atendido: false
-      })
-      .select("id")
-      .single();
-
-    if(error){
-      alert("Erro ao criar pedido");
-      return;
-    }
-
-    pedidoId = pedido.id;
+  const nomeCli = cliente_nome.value.trim();
+  if(!mesa_id && !nomeCli){
+    alert("Informe seu nome");
+    return;
   }
 
+  const confirmar = confirm("Confirmar envio do pedido?");
+  if(!confirmar) return;
+
+  /* 🔹 CRIA O PEDIDO */
+  const { data: pedido, error: erroPedido } = await sb
+    .from("pedidos")
+    .insert({
+      app_id,
+      mesa_id: mesa_id || null,
+      origem: mesa_id ? "mesa" : "web",
+      cliente_nome: nomeCli || null,
+      cliente_whatsapp: cliente_whatsapp.value || null,
+      cliente_endereco: cliente_endereco.value || null,
+      status: "aberto",
+      atendido: false
+    })
+    .select("id")
+    .single();
+
+  if(erroPedido){
+    alert("Erro ao criar pedido");
+    return;
+  }
+
+  const pedidoId = pedido.id;
+
+  /* 🔹 INSERE OS ITENS */
   for(const i of carrinho){
-    await sb.from("pedido_itens").insert({
+    const { error } = await sb.from("pedido_itens").insert({
       app_id,
       pedido_id: pedidoId,
       mesa_id: mesa_id || null,
@@ -226,6 +204,13 @@ async function enviarPedido(){
       preco: i.preco,
       quantidade: i.qtd
     });
+
+    if(error){
+      /* 🚨 ROLLBACK — apaga pedido */
+      await sb.from("pedidos").delete().eq("id", pedidoId);
+      alert("Erro ao salvar itens. Pedido cancelado.");
+      return;
+    }
   }
 
   alert("Pedido enviado com sucesso ☕");
