@@ -167,10 +167,19 @@ async function carregarPedidos(){
 
 /* ================= AÇÕES ================= */
 async function aceitarPedido(id){
-  await sb.from("pedidos")
-    .update({ status:"aceito" })
-    .eq("id", id);
+  const { error } = await sb
+    .from("pedidos")
+    .update({ status:"aberto" })
+    .eq("id", id)
+    .eq("app_id", app_id);
 
+  if(error){
+    console.error("Erro ao aceitar:", error);
+    alert("Erro ao aceitar pedido");
+    return;
+  }
+
+  alert("Pedido aceito!");
   carregarPedidos();
 }
 
@@ -230,3 +239,4 @@ setInterval(carregarPedidos, 5000);
 
 </body>
 </html>
+
