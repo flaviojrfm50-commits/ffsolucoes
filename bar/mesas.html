@@ -6,21 +6,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <style>
 body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
 .container{padding:32px;max-width:1200px;margin:auto}
-
-.btn{
-  border:none;
-  padding:10px 16px;
-  border-radius:10px;
-  cursor:pointer;
-  font-weight:bold;
-}
-.btn-voltar{background:#1e293b;color:#fff}
 
 .grid{
   display:grid;
@@ -33,54 +23,55 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   padding:16px;
   border-radius:18px;
   text-align:center;
-  border:2px solid transparent;
-  cursor:pointer;
+  border:2px solid #334155;
 }
-.card.livre{border-color:#22c55e}
-.card.ocupada{border-color:#ef4444}
 
-.status{
-  margin:6px 0 10px;
-  padding:4px 10px;
-  border-radius:8px;
-  font-weight:bold;
-  font-size:13px
-}
-.status.livre{background:#22c55e;color:#022c22}
-.status.ocupada{background:#ef4444}
-
-.qr{
-  background:#020617;
-  border-radius:14px;
+.btn{
+  width:100%;
+  margin-top:8px;
   padding:10px;
-  margin:12px 0;
-  display:flex;
-  justify-content:center
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:bold;
 }
+.btn-normal{background:#22c55e;color:#022c22}
+.btn-avulsa{background:#facc15;color:#000}
 </style>
 </head>
 
 <body>
 
 <script>
-/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===== FUNCIONÁRIO (GARÇOM) ===== */
+/* ===== IDENTIFICA QUEM ESTÁ LOGADO ===== */
 const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
-if(!funcionario || funcionario.tipo !== "garcom"){
-  alert("Acesso negado");
-  location.href="login-funcionario.html?app_id=" + funcionario?.app_id;
+let app_id = null;
+let modo = null;
+
+if(funcionario && funcionario.tipo === "garcom"){
+  app_id = funcionario.app_id;
+  modo = "garcom";
+}
+else if(admin && admin.app_id){
+  app_id = admin.app_id;
+  modo = "admin";
+}
+else{
+  alert("Sessão inválida");
+  location.href="login-funcionario.html";
 }
 </script>
 
 <div class="topo">
   <h2>🪑 Mesas</h2>
-  <button class="btn btn-voltar" onclick="location.href='login-funcionario.html?app_id='+funcionario.app_id">Sair</button>
+  <span>Modo: <strong id="modo"></strong></span>
 </div>
 
 <div class="container">
@@ -88,40 +79,46 @@ if(!funcionario || funcionario.tipo !== "garcom"){
 </div>
 
 <script>
+document.getElementById("modo").innerText =
+  modo === "admin" ? "Admin (Venda rápida)" : "Garçom";
+
 async function carregarMesas(){
   const { data: mesas } = await sb
     .from("mesas")
     .select("id, numero_mesa")
-    .eq("app_id", funcionario.app_id)
+    .eq("app_id", app_id)
     .eq("ativa", true)
     .order("numero_mesa");
-
-  const { data: pedidos } = await sb
-    .from("pedidos")
-    .select("mesa_id")
-    .eq("app_id", funcionario.app_id)
-    .eq("status", "aberto");
-
-  const mesasOcupadas = new Set((pedidos||[]).map(p=>p.mesa_id));
 
   const grid = document.getElementById("listaMesas");
   grid.innerHTML = "";
 
   mesas.forEach(m=>{
-    const ocupada = mesasOcupadas.has(m.id);
-    const status = ocupada ? "ocupada" : "livre";
-
     const div = document.createElement("div");
-    div.className = `card ${status}`;
+    div.className = "card";
 
     div.innerHTML = `
       <h3>Mesa ${m.numero_mesa}</h3>
-      <span class="status ${status}">${status.toUpperCase()}</span>
+
+      <button class="btn btn-normal">
+        Atendimento normal
+      </button>
+
+      <button class="btn btn-avulsa">
+        💰 Venda avulsa
+      </button>
     `;
 
-    div.onclick = () => {
+    // Atendimento normal (garçom)
+    div.querySelector(".btn-normal").onclick = () => {
       location.href =
-        `mesa.html?mesa=${m.numero_mesa}&app_id=${funcionario.app_id}`;
+        `mesa.html?mesa=${m.numero_mesa}&app_id=${app_id}`;
+    };
+
+    // Venda avulsa
+    div.querySelector(".btn-avulsa").onclick = () => {
+      location.href =
+        `venda-avulsa.html?mesa=${m.numero_mesa}&app_id=${app_id}`;
     };
 
     grid.appendChild(div);
