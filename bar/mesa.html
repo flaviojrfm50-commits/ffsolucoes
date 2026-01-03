@@ -10,14 +10,10 @@
 body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
 .container{max-width:900px;margin:auto;padding:24px}
-.pedido{background:#0f172a;border-radius:18px;padding:18px;margin-bottom:20px}
-.itens{margin-top:12px}
+.pedido{background:#0f172a;border-radius:18px;padding:18px}
 .item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e293b}
 .total{margin-top:12px;font-size:20px;font-weight:bold}
-.acoes{margin-top:16px;display:flex;gap:10px;flex-wrap:wrap}
-button{padding:12px 18px;border:none;border-radius:12px;font-weight:bold;cursor:pointer}
-.finalizar{background:#22c55e}
-.voltar{background:#1e293b;color:#fff}
+button{padding:12px 18px;border:none;border-radius:12px;font-weight:bold;cursor:pointer;background:#22c55e}
 </style>
 </head>
 
@@ -32,22 +28,19 @@ const sb = supabase.createClient(
 
 /* ================= PARAMS ================= */
 const params = new URLSearchParams(location.search);
-const pedidoId = params.get("pedido") || localStorage.getItem("pedido_atual");
+const mesaId = params.get("mesa");
+const app_id = params.get("app_id");
 
-if(!pedidoId){
-  alert("Pedido não encontrado");
-  location.href = "mesas.html";
+if(!mesaId || !app_id){
+  alert("Mesa inválida");
+  throw "";
 }
 
-localStorage.setItem("pedido_atual", pedidoId);
-
-/* ================= DOM ================= */
-let pedido = null;
+let pedidoId = null;
 </script>
 
 <div class="topo">
   <h2>🪑 Mesa</h2>
-  <button class="voltar" onclick="location.href='mesas.html'">Voltar</button>
 </div>
 
 <div class="container" id="conteudo">
@@ -55,7 +48,7 @@ let pedido = null;
 </div>
 
 <script>
-/* ================= CARREGAR PEDIDO ================= */
+/* ================= BUSCAR PEDIDO DA MESA ================= */
 async function carregarPedido(){
   const { data, error } = await sb
     .from("pedidos")
@@ -69,57 +62,56 @@ async function carregarPedido(){
         preco
       )
     `)
-    .eq("id", pedidoId)
+    .eq("app_id", app_id)
+    .eq("mesa_id", mesaId)
+    .in("status", ["aberto","aceito"])
+    .order("created_at", { ascending:false })
+    .limit(1)
     .single();
 
   if(error || !data){
-    alert("Erro ao carregar pedido");
+    alert("Nenhum pedido ativo para esta mesa");
+    conteudo.innerHTML = "<p>Nenhum pedido aberto</p>";
     return;
   }
 
-  pedido = data;
-  renderPedido();
+  pedidoId = data.id;
+  renderPedido(data);
 }
 
-function renderPedido(){
+function renderPedido(pedido){
   let total = 0;
 
   conteudo.innerHTML = `
     <div class="pedido">
       <h3>${pedido.cliente_nome || "Mesa"}</h3>
-      <div class="itens">
-        ${pedido.pedido_itens.map(i=>{
-          const sub = i.preco * i.quantidade;
-          total += sub;
-          return `
-            <div class="item">
-              <span>${i.quantidade}x ${i.nome_produto}</span>
-              <b>R$ ${sub.toFixed(2)}</b>
-            </div>
-          `;
-        }).join("")}
-      </div>
+
+      ${pedido.pedido_itens.map(i=>{
+        const sub = i.preco * i.quantidade;
+        total += sub;
+        return `
+          <div class="item">
+            <span>${i.quantidade}x ${i.nome_produto}</span>
+            <b>R$ ${sub.toFixed(2)}</b>
+          </div>
+        `;
+      }).join("")}
 
       <div class="total">Total: R$ ${total.toFixed(2)}</div>
 
-      <div class="acoes">
-        <button class="finalizar" onclick="finalizarPedido()">Finalizar / Pagar</button>
-      </div>
+      <button onclick="finalizar()">Finalizar / Pagar</button>
     </div>
   `;
 }
 
-/* ================= FINALIZAR (CORRIGIDO) ================= */
-function finalizarPedido(){
-  // 🔒 NÃO fecha o pedido aqui
-  // salva para a tela de pagamentos
+/* ================= FINALIZAR ================= */
+function finalizar(){
+  // NÃO fecha pedido
   localStorage.setItem("pedido_pagamento", pedidoId);
-
-  // redireciona para pagamentos
   location.href = "pagamentos.html";
 }
 
-/* ================= START ================= */
+/* START */
 carregarPedido();
 </script>
 
