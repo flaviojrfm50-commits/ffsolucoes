@@ -33,36 +33,17 @@ body{
   border-left-color:#22c55e;
   box-shadow:0 0 18px rgba(34,197,94,.6);
 }
-.info{
-  font-weight:bold;
-  margin-bottom:6px;
-}
-.origem{
-  font-size:13px;
-  color:#38bdf8;
-  margin-bottom:6px;
-}
-.tempo{
-  font-size:13px;
-  color:#facc15;
-  margin-bottom:8px;
-}
+.info{font-weight:bold;margin-bottom:6px;}
+.origem{font-size:13px;color:#38bdf8;margin-bottom:6px;}
+.tempo{font-size:13px;color:#facc15;margin-bottom:8px;}
 .item{
   display:flex;
   justify-content:space-between;
   border-bottom:1px solid #1e293b;
   padding:4px 0;
 }
-.total{
-  margin-top:8px;
-  font-weight:bold;
-}
-.acoes{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-top:10px;
-}
+.total{margin-top:8px;font-weight:bold;}
+.acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
 button{
   padding:8px 12px;
   border:none;
@@ -89,13 +70,13 @@ button{
 </div>
 
 <script>
-// ================= SUPABASE =================
+/* ================= SUPABASE ================= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-// ================= ADMIN =================
+/* ================= ADMIN ================= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 if(!admin || !admin.app_id){
   alert("Sessão expirada");
@@ -105,7 +86,7 @@ if(!admin || !admin.app_id){
 const lista = document.getElementById("lista");
 const pedidosNaTela = new Set();
 
-// ================= UTIL =================
+/* ================= UTIL ================= */
 function tempoDecorrido(data){
   const s = Math.floor((Date.now() - new Date(data)) / 1000);
   return Math.floor(s/60) + "m " + (s % 60) + "s";
@@ -119,7 +100,7 @@ function labelOrigem(p){
   return "Origem não identificada";
 }
 
-// ================= CARREGAR PEDIDOS =================
+/* ================= CARREGAR PEDIDOS ================= */
 async function carregarPedidos(){
 
   const { data: pedidos, error } = await sb
@@ -136,7 +117,6 @@ async function carregarPedidos(){
     `)
     .eq("app_id", admin.app_id)
     .eq("status", "aberto")
-    .eq("atendido", false)
     .order("created_at", { ascending:true });
 
   if(error){
@@ -144,7 +124,7 @@ async function carregarPedidos(){
     return;
   }
 
-  if(pedidos.length === 0 && pedidosNaTela.size === 0){
+  if(pedidos.length === 0){
     lista.innerText = "Nenhum pedido aberto";
     return;
   }
@@ -158,7 +138,7 @@ async function carregarPedidos(){
     card.className = "pedido novo";
 
     card.innerHTML = `
-      <div class="info">${p.cliente_nome ?? "Cliente"}</div>
+      <div class="info">${p.cliente_nome || "Cliente"}</div>
       <div class="origem">${labelOrigem(p)}</div>
       <div class="tempo">Tempo: ${tempoDecorrido(p.created_at)}</div>
     `;
@@ -166,17 +146,22 @@ async function carregarPedidos(){
     const { data: itens } = await sb
       .from("pedido_itens")
       .select("nome_produto, quantidade, preco")
-      .eq("pedido_id", p.id);
+      .eq("pedido_id", p.id)
+      .order("created_at", { ascending:true });
 
     let total = 0;
 
     (itens || []).forEach(i=>{
-      total += i.preco * i.quantidade;
+      const qtd = Number(i.quantidade) || 1;
+      const preco = Number(i.preco) || 0;
+
+      total += preco * qtd;
+
       const item = document.createElement("div");
       item.className = "item";
       item.innerHTML = `
-        <span>${i.quantidade}x ${i.nome_produto}</span>
-        <span>R$ ${(i.preco*i.quantidade).toFixed(2)}</span>
+        <span>${qtd}x ${i.nome_produto || "Item"}</span>
+        <span>R$ ${(preco * qtd).toFixed(2)}</span>
       `;
       card.appendChild(item);
     });
@@ -189,26 +174,29 @@ async function carregarPedidos(){
     const acoes = document.createElement("div");
     acoes.className = "acoes";
 
-    // ===== ACEITAR =====
-    const aceitar = document.createElement("button");
-    aceitar.className = "btn-aceitar";
-    aceitar.innerText = "Aceitar";
-    aceitar.onclick = async ()=>{
-      const { error } = await sb
-        .from("pedidos")
-        .update({ status: "aberto" }) // mantém dentro do CHECK
-        .eq("id", p.id);
+    /* ===== ACEITAR ===== */
+    if(!p.atendido){
+      const aceitar = document.createElement("button");
+      aceitar.className = "btn-aceitar";
+      aceitar.innerText = "Aceitar";
+      aceitar.onclick = async ()=>{
+        const { error } = await sb
+          .from("pedidos")
+          .update({ atendido:true })
+          .eq("id", p.id);
 
-      if(error){
-        console.error(error);
-        alert("Erro ao aceitar pedido");
-        return;
-      }
-      aceitar.remove();
-    };
-    acoes.appendChild(aceitar);
+        if(error){
+          console.error(error);
+          alert("Erro ao aceitar pedido");
+          return;
+        }
 
-    // ===== FINALIZAR =====
+        aceitar.remove();
+      };
+      acoes.appendChild(aceitar);
+    }
+
+    /* ===== FINALIZAR ===== */
     const finalizar = document.createElement("button");
     finalizar.className = "btn-finalizar";
     finalizar.innerText = "Finalizar";
@@ -216,8 +204,8 @@ async function carregarPedidos(){
       const { error } = await sb
         .from("pedidos")
         .update({
-          status: "finalizado",
-          atendido: true
+          status:"finalizado",
+          atendido:true
         })
         .eq("id", p.id);
 
@@ -232,14 +220,14 @@ async function carregarPedidos(){
     };
     acoes.appendChild(finalizar);
 
-    // ===== WHATSAPP =====
+    /* ===== WHATSAPP ===== */
     if(p.cliente_whatsapp){
       const zap = document.createElement("button");
       zap.className = "btn-zap";
       zap.innerText = "WhatsApp";
       zap.onclick = ()=>{
         const msg =
-          `Olá ${p.cliente_nome}, recebemos seu pedido.\n` +
+          `Olá ${p.cliente_nome}, seu pedido está em preparo.\n` +
           `Origem: ${labelOrigem(p)}\n` +
           `Total: R$ ${total.toFixed(2)} 😊`;
         window.open(
@@ -250,7 +238,7 @@ async function carregarPedidos(){
       acoes.appendChild(zap);
     }
 
-    // ===== IMPRIMIR =====
+    /* ===== IMPRIMIR ===== */
     const imprimir = document.createElement("button");
     imprimir.className = "btn-print";
     imprimir.innerText = "Imprimir";
@@ -260,8 +248,10 @@ async function carregarPedidos(){
       w.document.write(`<p>${labelOrigem(p)}</p>`);
       w.document.write(`<p>Cliente: ${p.cliente_nome}</p><hr>`);
       (itens || []).forEach(i=>{
+        const qtd = Number(i.quantidade) || 1;
+        const preco = Number(i.preco) || 0;
         w.document.write(
-          `<p>${i.quantidade}x ${i.nome_produto} - R$ ${(i.preco*i.quantidade).toFixed(2)}</p>`
+          `<p>${qtd}x ${i.nome_produto} - R$ ${(preco*qtd).toFixed(2)}</p>`
         );
       });
       w.document.write(`<hr><b>Total: R$ ${total.toFixed(2)}</b>`);
@@ -269,7 +259,7 @@ async function carregarPedidos(){
     };
     acoes.appendChild(imprimir);
 
-    // ===== EXCLUIR =====
+    /* ===== EXCLUIR ===== */
     const excluir = document.createElement("button");
     excluir.className = "btn-excluir";
     excluir.innerText = "Excluir";
@@ -295,12 +285,12 @@ async function carregarPedidos(){
     card.appendChild(acoes);
     lista.appendChild(card);
 
-    setTimeout(()=>card.classList.remove("novo"), 4000);
+    setTimeout(()=>card.classList.remove("novo"),4000);
   }
 }
 
 carregarPedidos();
-setInterval(carregarPedidos, 2000);
+setInterval(carregarPedidos,2000);
 </script>
 
 </body>
