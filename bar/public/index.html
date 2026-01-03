@@ -69,11 +69,7 @@ const sb = supabase.createClient(
 /* ================= PARAMS ================= */
 const params = new URLSearchParams(location.search);
 const app_id = params.get("app_id") || localStorage.getItem("app_id");
-
-if(!app_id){
-  document.body.innerHTML = "Indisponível";
-  throw "";
-}
+if(!app_id){ document.body.innerHTML="Indisponível"; throw ""; }
 localStorage.setItem("app_id", app_id);
 
 /* ================= STATE ================= */
@@ -138,18 +134,32 @@ async function carregarProdutos(){
   });
 }
 
+/* ================= ADD PRODUTO (CONFIRMAÇÃO) ================= */
 function addProduto(id){
   const p = produtos.find(x=>x.id===id);
+
+  if(carrinho.length > 0){
+    const ok = confirm(
+      `Adicionar mais um item ao pedido?\n\n${p.nome}\nR$ ${p.preco.toFixed(2)}`
+    );
+    if(!ok) return;
+  }
+
   const i = carrinho.find(x=>x.id===id);
   i ? i.qtd++ : carrinho.push({ ...p, qtd:1 });
+
   qtd.innerText = carrinho.reduce((s,i)=>s+i.qtd,0);
   salvarCarrinho();
 }
 
+/* ================= MODAL ================= */
 function abrirCarrinho(){
   modal.style.display="flex";
   lista.innerHTML="";
+  let total = 0;
+
   carrinho.forEach(i=>{
+    total += i.preco * i.qtd;
     lista.innerHTML += `
       <div style="display:flex;justify-content:space-between">
         <span>${i.qtd}x ${i.nome}</span>
@@ -157,33 +167,30 @@ function abrirCarrinho(){
       </div>
     `;
   });
+
+  lista.innerHTML += `
+    <hr>
+    <div style="display:flex;justify-content:space-between;font-size:18px">
+      <b>Total</b>
+      <b>R$ ${total.toFixed(2)}</b>
+    </div>
+  `;
 }
 
 /* ================= ENVIAR PEDIDO ================= */
 async function enviarPedido(){
   if(enviando) return;
   enviando = true;
-  carregarCarrinho();
 
   try{
-    if(carrinho.length === 0){
-      alert("Carrinho vazio");
-      return;
-    }
+    if(carrinho.length===0){ alert("Carrinho vazio"); return; }
 
     const nomeCli = cliente_nome.value.trim();
     const celular = cliente_whatsapp.value.trim();
 
-    if(!nomeCli){
-      alert("Informe seu nome");
-      return;
-    }
-    if(!celularValido(celular)){
-      alert("Informe um WhatsApp válido com DDD");
-      return;
-    }
+    if(!nomeCli){ alert("Informe seu nome"); return; }
+    if(!celularValido(celular)){ alert("WhatsApp inválido"); return; }
 
-    // verifica pedido em andamento
     const { data: pedidoAberto } = await sb
       .from("pedidos")
       .select("id")
@@ -195,10 +202,8 @@ async function enviarPedido(){
     let pedidoId = pedidoAberto?.id || null;
 
     if(pedidoId){
-      const cont = confirm(
-        "Você já tem um pedido em andamento.\nDeseja adicionar os itens nele?"
-      );
-      if(!cont) return;
+      const ok = confirm("Você já tem um pedido em andamento.\nDeseja adicionar nele?");
+      if(!ok) return;
     }
 
     if(!pedidoId){
@@ -232,42 +237,55 @@ async function enviarPedido(){
 
     ouvirPedido(pedidoId);
 
-    alert("Pedido enviado com sucesso ☕");
-    carrinho = [];
+    alert("Pedido enviado ☕");
+    carrinho=[];
     localStorage.removeItem("carrinho_"+app_id);
-    qtd.innerText = 0;
+    qtd.innerText=0;
     modal.style.display="none";
 
   } finally {
-    enviando = false;
+    enviando=false;
   }
 }
 
-/* ================= NOTIFICAÇÃO REALTIME ================= */
+/* ================= REALTIME + WHATS ================= */
 function ouvirPedido(pedidoId){
   sb.channel("pedido-"+pedidoId)
-    .on(
-      "postgres_changes",
-      {
-        event:"UPDATE",
-        schema:"public",
-        table:"pedidos",
-        filter:`id=eq.${pedidoId}`
-      },
-      payload=>{
-        if(payload.new.status==="aceito"){
-          alert("✅ Seu pedido foi aceito!");
-        }
-        if(payload.new.status==="finalizado"){
-          alert("🍔 Seu pedido ficou pronto!");
-        }
+    .on("postgres_changes",{
+      event:"UPDATE",
+      schema:"public",
+      table:"pedidos",
+      filter:`id=eq.${pedidoId}`
+    }, async payload=>{
+      if(payload.new.status==="aceito"){
+        const { data: itens } = await sb
+          .from("pedido_itens")
+          .select("nome_produto,quantidade,preco")
+          .eq("pedido_id", pedidoId);
+
+        let msg="✅ Pedido aceito!\n\n🧾 Resumo:\n";
+        let total=0;
+
+        itens.forEach(i=>{
+          const sub=i.preco*i.quantidade;
+          total+=sub;
+          msg+=`• ${i.quantidade}x ${i.nome_produto} — R$ ${sub.toFixed(2)}\n`;
+        });
+
+        msg+=`\n💰 Total: R$ ${total.toFixed(2)}\n\nObrigado pelo pedido ☕`;
+
+        const num = payload.new.cliente_whatsapp.replace(/\D/g,"");
+        window.open(`https://wa.me/55${num}?text=${encodeURIComponent(msg)}`);
       }
-    )
-    .subscribe();
+
+      if(payload.new.status==="finalizado"){
+        alert("🍔 Pedido finalizado!");
+      }
+    }).subscribe();
 }
 
 /* ================= START ================= */
-modal.onclick = e => e.target === modal && (modal.style.display="none");
+modal.onclick = e=> e.target===modal && (modal.style.display="none");
 
 (async()=>{
   await carregarConfig();
