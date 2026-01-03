@@ -25,6 +25,19 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   text-align:center;
   border:2px solid #334155;
 }
+.card.livre{border-color:#22c55e}
+.card.ocupada{border-color:#ef4444}
+
+.status{
+  display:inline-block;
+  margin:6px 0 10px;
+  padding:4px 10px;
+  border-radius:8px;
+  font-weight:bold;
+  font-size:13px
+}
+.status.livre{background:#22c55e;color:#022c22}
+.status.ocupada{background:#ef4444}
 
 .btn{
   width:100%;
@@ -83,6 +96,7 @@ document.getElementById("modo").innerText =
   modo === "admin" ? "Admin (Venda rápida)" : "Garçom";
 
 async function carregarMesas(){
+  /* mesas */
   const { data: mesas } = await sb
     .from("mesas")
     .select("id, numero_mesa")
@@ -90,15 +104,32 @@ async function carregarMesas(){
     .eq("ativa", true)
     .order("numero_mesa");
 
+  /* pedidos ABERTOS com mesa (ignora venda avulsa) */
+  const { data: pedidos } = await sb
+    .from("pedidos")
+    .select("mesa_id")
+    .eq("app_id", app_id)
+    .eq("status", "aberto")
+    .neq("mesa_id", null);
+
+  /* aqui mesa_id é NUMERO da mesa */
+  const mesasOcupadas = new Set(
+    (pedidos || []).map(p => Number(p.mesa_id))
+  );
+
   const grid = document.getElementById("listaMesas");
   grid.innerHTML = "";
 
   mesas.forEach(m=>{
+    const ocupada = mesasOcupadas.has(Number(m.numero_mesa));
+    const status = ocupada ? "ocupada" : "livre";
+
     const div = document.createElement("div");
-    div.className = "card";
+    div.className = `card ${status}`;
 
     div.innerHTML = `
       <h3>Mesa ${m.numero_mesa}</h3>
+      <span class="status ${status}">${status.toUpperCase()}</span>
 
       <button class="btn btn-normal">
         Atendimento normal
@@ -109,13 +140,11 @@ async function carregarMesas(){
       </button>
     `;
 
-    // Atendimento normal (garçom)
     div.querySelector(".btn-normal").onclick = () => {
       location.href =
         `mesa.html?mesa=${m.numero_mesa}&app_id=${app_id}`;
     };
 
-    // Venda avulsa
     div.querySelector(".btn-avulsa").onclick = () => {
       location.href =
         `venda-avulsa.html?mesa=${m.numero_mesa}&app_id=${app_id}`;
