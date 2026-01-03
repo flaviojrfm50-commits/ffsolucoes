@@ -1,87 +1,22 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<title>Mesa</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<style>
-body{margin:0;font-family:Arial;background:#020617;color:#fff}
-.topo{background:#0f172a;padding:16px;display:flex;justify-content:space-between}
-.container{max-width:1200px;margin:auto;padding:24px}
-.box{background:#0f172a;padding:20px;border-radius:14px;margin-bottom:20px}
-input,button{padding:10px;border-radius:8px;border:none}
-button{background:#22c55e;font-weight:bold}
-</style>
-</head>
-
-<body>
-
 <script>
-const sb = supabase.createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-);
+async function garantirPedido(){
+  if(pedidoId) return;
 
-const params = new URLSearchParams(location.search);
-const app_id = params.get("app_id");
-const mesa_id = params.get("mesa");
-
-if(!app_id || !mesa_id){
-  alert("Link inválido");
-  throw new Error("Parâmetros ausentes");
-}
-
-let pedidoId = null;
-</script>
-
-<div class="topo">
-  <h2 id="titulo">Mesa</h2>
-  <button onclick="history.back()">Voltar</button>
-</div>
-
-<div class="container">
-  <div class="box">
-    <button onclick="fecharConta()">Fechar Conta</button>
-  </div>
-</div>
-
-<script>
-async function carregarMesa(){
-  const { data } = await sb
-    .from("mesas")
-    .select("numero_mesa")
-    .eq("id", mesa_id)
+  const { data, error } = await sb
+    .from("pedidos")
+    .insert({
+      app_id,
+      mesa_id,
+      status: "aberto"
+    })
+    .select("id")
     .single();
 
-  document.getElementById("titulo").innerText = `Mesa ${data.numero_mesa}`;
-}
-
-async function carregarPedido(){
-  const { data } = await sb
-    .from("pedidos")
-    .select("id")
-    .eq("app_id", app_id)
-    .eq("mesa_id", mesa_id)
-    .eq("status","aberto")
-    .maybeSingle();
-
-  pedidoId = data?.id || null;
-}
-
-async function fecharConta(){
-  if(!pedidoId){
-    alert("Nenhum consumo");
-    return;
+  if(error){
+    alert("Erro ao criar pedido");
+    throw error;
   }
-  await sb.from("pedidos").update({ status:"fechado" }).eq("id", pedidoId);
-  location.href = "mesas.html";
+
+  pedidoId = data.id;
 }
-
-carregarMesa();
-carregarPedido();
 </script>
-
-</body>
-</html>
