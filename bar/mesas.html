@@ -21,6 +21,7 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   font-weight:bold;
 }
 .btn-add{background:#22c55e;color:#022c22}
+.btn-avulsa{background:#38bdf8;color:#022c22}
 .btn-voltar{background:#1e293b;color:#fff}
 
 .grid{
@@ -98,14 +99,15 @@ if(!app_id){
   location.href="../auth/login.html";
 }
 
-/* ===== SEGREDO PARA REMOVER MESA ===== */
+/* ===== SEGREDO ===== */
 const SEGREDO_REMOVER_MESA = "4321";
 </script>
 
 <div class="topo">
   <h2>🪑 Mesas</h2>
   <div>
-    <button class="btn btn-add" onclick="adicionarMesa()">➕ Adicionar Mesa</button>
+    <button class="btn btn-avulsa" onclick="vendaAvulsa()">💳 Venda Avulsa</button>
+    <button class="btn btn-add" onclick="adicionarMesa()">➕ Mesa</button>
     <button class="btn btn-voltar" onclick="location.href='admin.html'">Voltar</button>
   </div>
 </div>
@@ -116,6 +118,7 @@ const SEGREDO_REMOVER_MESA = "4321";
 
 <script>
 async function carregarMesas(){
+
   const { data: mesas } = await sb
     .from("mesas")
     .select("id, numero_mesa")
@@ -127,18 +130,18 @@ async function carregarMesas(){
     .from("pedidos")
     .select("mesa_id")
     .eq("app_id", app_id)
-    .eq("status", "aberto")
+    .in("status", ["aberto", "aceito", "preparando"])
     .neq("mesa_id", null);
 
-  /* 🔥 CORREÇÃO REAL: UUID x UUID */
   const mesasOcupadas = new Set(
-    (pedidos||[]).map(p => String(p.mesa_id))
+    (pedidos || []).map(p => String(p.mesa_id))
   );
 
   const grid = document.getElementById("listaMesas");
   grid.innerHTML = "";
 
-  mesas.forEach(m=>{
+  mesas.forEach(m => {
+
     const ocupada = mesasOcupadas.has(String(m.id));
     const status = ocupada ? "ocupada" : "livre";
 
@@ -157,11 +160,7 @@ async function carregarMesas(){
     `;
 
     div.onclick = () => {
-      if(modo === "garcom"){
-        location.href = `mesa.html?mesa=${m.id}&app_id=${app_id}`;
-      } else {
-        location.href = `venda-avulsa.html?mesa=${m.id}&app_id=${app_id}`;
-      }
+      location.href = `mesa.html?mesa=${m.id}&app_id=${app_id}`;
     };
 
     grid.appendChild(div);
@@ -189,6 +188,12 @@ async function carregarMesas(){
   });
 }
 
+/* ===== VENDA AVULSA ===== */
+function vendaAvulsa(){
+  location.href = `venda-avulsa.html?app_id=${app_id}`;
+}
+
+/* ===== ADD MESA ===== */
 async function adicionarMesa(){
   const { data } = await sb
     .from("mesas")
@@ -203,7 +208,6 @@ async function adicionarMesa(){
   await sb.from("mesas").insert({
     app_id,
     numero_mesa: proximo,
-    status: "livre",
     ativa: true
   });
 
