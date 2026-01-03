@@ -93,8 +93,8 @@ function tempoDecorrido(data){
 }
 
 function labelOrigem(p){
-  if(p.origem === "garcom") return `Garçom • Mesa ${p.mesa_numero}`;
-  if(p.origem === "mesa") return `Mesa ${p.mesa_numero}`;
+  if(p.origem === "garcom") return `Garçom • Mesa ${p.mesa_numero || ""}`;
+  if(p.origem === "mesa") return `Mesa ${p.mesa_numero || ""}`;
   if(p.origem === "web") return "Pedido Web";
   if(p.origem === "balcao") return "Balcão";
   return "Origem não identificada";
@@ -143,24 +143,29 @@ async function carregarPedidos(){
       <div class="tempo">Tempo: ${tempoDecorrido(p.created_at)}</div>
     `;
 
-    const { data: itens } = await sb
+    /* 🔥 CORREÇÃO PRINCIPAL AQUI 🔥 */
+    const { data: itens, error: erroItens } = await sb
       .from("pedido_itens")
       .select("nome_produto, quantidade, preco")
       .eq("pedido_id", p.id)
+      .eq("app_id", admin.app_id)   // ✅ ESSENCIAL
       .order("created_at", { ascending:true });
+
+    if(erroItens){
+      console.error(erroItens);
+    }
 
     let total = 0;
 
     (itens || []).forEach(i=>{
       const qtd = Number(i.quantidade) || 1;
       const preco = Number(i.preco) || 0;
-
       total += preco * qtd;
 
       const item = document.createElement("div");
       item.className = "item";
       item.innerHTML = `
-        <span>${qtd}x ${i.nome_produto || "Item"}</span>
+        <span>${qtd}x ${i.nome_produto}</span>
         <span>R$ ${(preco * qtd).toFixed(2)}</span>
       `;
       card.appendChild(item);
@@ -174,117 +179,31 @@ async function carregarPedidos(){
     const acoes = document.createElement("div");
     acoes.className = "acoes";
 
-    /* ===== ACEITAR ===== */
     if(!p.atendido){
       const aceitar = document.createElement("button");
       aceitar.className = "btn-aceitar";
       aceitar.innerText = "Aceitar";
       aceitar.onclick = async ()=>{
-        const { error } = await sb
-          .from("pedidos")
-          .update({ atendido:true })
-          .eq("id", p.id);
-
-        if(error){
-          console.error(error);
-          alert("Erro ao aceitar pedido");
-          return;
-        }
-
+        await sb.from("pedidos").update({ atendido:true }).eq("id", p.id);
         aceitar.remove();
       };
       acoes.appendChild(aceitar);
     }
 
-    /* ===== FINALIZAR ===== */
     const finalizar = document.createElement("button");
     finalizar.className = "btn-finalizar";
     finalizar.innerText = "Finalizar";
     finalizar.onclick = async ()=>{
-      const { error } = await sb
-        .from("pedidos")
-        .update({
-          status:"finalizado",
-          atendido:true
-        })
+      await sb.from("pedidos")
+        .update({ status:"finalizado", atendido:true })
         .eq("id", p.id);
-
-      if(error){
-        console.error(error);
-        alert("Erro ao finalizar pedido");
-        return;
-      }
-
       card.remove();
       pedidosNaTela.delete(p.id);
     };
     acoes.appendChild(finalizar);
 
-    /* ===== WHATSAPP ===== */
-    if(p.cliente_whatsapp){
-      const zap = document.createElement("button");
-      zap.className = "btn-zap";
-      zap.innerText = "WhatsApp";
-      zap.onclick = ()=>{
-        const msg =
-          `Olá ${p.cliente_nome}, seu pedido está em preparo.\n` +
-          `Origem: ${labelOrigem(p)}\n` +
-          `Total: R$ ${total.toFixed(2)} 😊`;
-        window.open(
-          `https://wa.me/${p.cliente_whatsapp}?text=${encodeURIComponent(msg)}`,
-          "_blank"
-        );
-      };
-      acoes.appendChild(zap);
-    }
-
-    /* ===== IMPRIMIR ===== */
-    const imprimir = document.createElement("button");
-    imprimir.className = "btn-print";
-    imprimir.innerText = "Imprimir";
-    imprimir.onclick = ()=>{
-      const w = window.open("", "_blank");
-      w.document.write(`<h2>Comanda</h2>`);
-      w.document.write(`<p>${labelOrigem(p)}</p>`);
-      w.document.write(`<p>Cliente: ${p.cliente_nome}</p><hr>`);
-      (itens || []).forEach(i=>{
-        const qtd = Number(i.quantidade) || 1;
-        const preco = Number(i.preco) || 0;
-        w.document.write(
-          `<p>${qtd}x ${i.nome_produto} - R$ ${(preco*qtd).toFixed(2)}</p>`
-        );
-      });
-      w.document.write(`<hr><b>Total: R$ ${total.toFixed(2)}</b>`);
-      w.print();
-    };
-    acoes.appendChild(imprimir);
-
-    /* ===== EXCLUIR ===== */
-    const excluir = document.createElement("button");
-    excluir.className = "btn-excluir";
-    excluir.innerText = "Excluir";
-    excluir.onclick = async ()=>{
-      if(!confirm("Excluir pedido?")) return;
-
-      const { error } = await sb
-        .from("pedidos")
-        .delete()
-        .eq("id", p.id);
-
-      if(error){
-        console.error(error);
-        alert("Erro ao excluir pedido");
-        return;
-      }
-
-      card.remove();
-      pedidosNaTela.delete(p.id);
-    };
-    acoes.appendChild(excluir);
-
     card.appendChild(acoes);
     lista.appendChild(card);
-
     setTimeout(()=>card.classList.remove("novo"),4000);
   }
 }
