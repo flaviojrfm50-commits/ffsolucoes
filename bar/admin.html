@@ -5,8 +5,10 @@
 <title>Painel do bar / Restaurante</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-body{  margin:0;
+body{
+  margin:0;
   font-family:Arial,sans-serif;
   background:#020617;
   color:#fff;
@@ -45,46 +47,21 @@ body{  margin:0;
   cursor:pointer;
   transition:.2s;
 }
-.card:hover{
-  transform:scale(1.03);
-}
-.card h3{
-  margin:0 0 10px;
-}
-.card p{
-  opacity:.8;
-  font-size:14px;
-}
+.card:hover{ transform:scale(1.03) }
+.card h3{ margin:0 0 10px }
+.card p{ opacity:.8; font-size:14px }
 </style>
 </head>
 
 <body>
 
-<script>
-  // ✅ SUPABASE (sem conflito de nome)
-const sb = window.supabase.createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-);
-// 🔐 proteção de acesso
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-
-if(!admin || (admin.tipo !== "bar" && admin.tipo !== "restaurante")){
-  alert("Acesso não autorizado");
-  window.location.href = "../auth/login.html";
-}
-
-function logout(){
-  localStorage.removeItem("admin_logado");
-  window.location.href = "../auth/login.html";
-}
-</script>
-
+<!-- ================= TOPO ================= -->
 <div class="topo">
   <h2>🍻 Painel do bar / Restaurante</h2>
   <button class="sair" onclick="logout()">Sair</button>
 </div>
 
+<!-- ================= CONTEÚDO ================= -->
 <div class="container">
   <p>
     Bem-vindo, <b id="nome"></b><br>
@@ -134,8 +111,50 @@ function logout(){
 </div>
 
 <script>
+/* ================= SUPABASE ================= */
+const sb = supabase.createClient(
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+);
+
+/* ================= SESSÃO ================= */
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+const funcionario = JSON.parse(localStorage.getItem("usuario_bar"));
+
+/* 🚫 BLOQUEIA FUNCIONÁRIO */
+if(funcionario){
+  alert("Acesso restrito ao administrador");
+  location.href = "login-funcionario.html";
+}
+
+/* 🚫 BLOQUEIA SE NÃO FOR ADMIN */
+if(!admin || (admin.tipo !== "bar" && admin.tipo !== "restaurante")){
+  alert("Acesso não autorizado");
+  location.href = "../auth/login.html";
+}
+
+/* 🔐 SALVA app_id GLOBAL (ESSENCIAL) */
+if(admin.app_id){
+  localStorage.setItem("app_id", admin.app_id);
+}else{
+  document.body.innerHTML = `
+    <h2 style="text-align:center;margin-top:60px">
+      ❌ Sessão do admin inválida<br>
+      <small>Faça login novamente</small>
+    </h2>`;
+  throw new Error("admin.app_id ausente");
+}
+
+/* ================= UI ================= */
 document.getElementById("nome").innerText = admin.usuario;
-document.getElementById("appId").innerText = admin.app_id || "não informado";
+document.getElementById("appId").innerText = admin.app_id;
+
+/* ================= LOGOUT ================= */
+function logout(){
+  localStorage.removeItem("admin_logado");
+  localStorage.removeItem("app_id");
+  location.href = "../auth/login.html";
+}
 </script>
 
 </body>
