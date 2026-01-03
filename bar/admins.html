@@ -190,9 +190,10 @@ async function carregarUsuarios(){
 
     div.appendChild(box);
 
+    /* 🔗 LINK CORRETO DO LOGIN DO FUNCIONÁRIO */
     const link =
       location.origin +
-      "/ffsolucoes/bar/login-funcionario.html?uid=" +
+      "/ffsolucoes/bar/login-funcionario.html?app_id=" +
       admin.app_id;
 
     QRCode.toCanvas(
@@ -225,4 +226,3 @@ carregarUsuarios();
 
 </body>
 </html>
-
