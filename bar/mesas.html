@@ -6,11 +6,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
 <style>
 body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
 .container{padding:32px;max-width:1200px;margin:auto}
+
+.btn{
+  border:none;
+  padding:10px 16px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:bold;
+}
+.btn-add{background:#22c55e;color:#022c22}
+.btn-voltar{background:#1e293b;color:#fff}
 
 .grid{
   display:grid;
@@ -23,13 +34,16 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   padding:16px;
   border-radius:18px;
   text-align:center;
-  border:2px solid #334155;
+  border:2px solid transparent;
+  cursor:pointer;
+  transition:.15s;
 }
+.card:hover{transform:scale(1.02)}
+
 .card.livre{border-color:#22c55e}
 .card.ocupada{border-color:#ef4444}
 
 .status{
-  display:inline-block;
   margin:6px 0 10px;
   padding:4px 10px;
   border-radius:8px;
@@ -39,52 +53,61 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .status.livre{background:#22c55e;color:#022c22}
 .status.ocupada{background:#ef4444}
 
-.btn{
-  width:100%;
-  margin-top:8px;
+.qr{
+  background:#020617;
+  border-radius:14px;
   padding:10px;
-  border:none;
-  border-radius:10px;
-  cursor:pointer;
-  font-weight:bold;
+  margin:12px 0;
+  display:flex;
+  justify-content:center
 }
-.btn-normal{background:#22c55e;color:#022c22}
-.btn-avulsa{background:#facc15;color:#000}
+
+.btn-remover{
+  margin-top:8px;
+  width:100%;
+  background:#1e293b;
+  color:#94a3b8;
+  border:1px solid #334155;
+  padding:8px;
+  border-radius:8px;
+  font-weight:600;
+  cursor:pointer;
+  font-size:13px;
+}
 </style>
 </head>
 
 <body>
 
 <script>
+/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===== IDENTIFICA QUEM ESTÁ LOGADO ===== */
-const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
+/* ===== SESSÃO (ADMIN OU GARÇOM) ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
+const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
 
-let app_id = null;
-let modo = null;
+const app_id = funcionario?.app_id || admin?.app_id;
+const modo = funcionario ? "garcom" : "admin";
 
-if(funcionario && funcionario.tipo === "garcom"){
-  app_id = funcionario.app_id;
-  modo = "garcom";
-}
-else if(admin && admin.app_id){
-  app_id = admin.app_id;
-  modo = "admin";
-}
-else{
+if(!app_id){
   alert("Sessão inválida");
-  location.href="login-funcionario.html";
+  location.href = "../auth/login.html";
 }
+
+/* ===== SEGREDO PARA REMOVER MESA ===== */
+const SEGREDO_REMOVER_MESA = "4321";
 </script>
 
 <div class="topo">
   <h2>🪑 Mesas</h2>
-  <span>Modo: <strong id="modo"></strong></span>
+  <div>
+    <button class="btn btn-add" onclick="adicionarMesa()">➕ Adicionar Mesa</button>
+    <button class="btn btn-voltar" onclick="location.href='admin.html'">Voltar</button>
+  </div>
 </div>
 
 <div class="container">
@@ -92,11 +115,7 @@ else{
 </div>
 
 <script>
-document.getElementById("modo").innerText =
-  modo === "admin" ? "Admin (Venda rápida)" : "Garçom";
-
 async function carregarMesas(){
-  /* mesas */
   const { data: mesas } = await sb
     .from("mesas")
     .select("id, numero_mesa")
@@ -104,24 +123,21 @@ async function carregarMesas(){
     .eq("ativa", true)
     .order("numero_mesa");
 
-  /* pedidos ABERTOS com mesa (ignora venda avulsa) */
   const { data: pedidos } = await sb
     .from("pedidos")
     .select("mesa_id")
     .eq("app_id", app_id)
-    .eq("status", "aberto")
-    .neq("mesa_id", null);
+    .eq("status", "aberto");
 
-  /* aqui mesa_id é NUMERO da mesa */
   const mesasOcupadas = new Set(
-    (pedidos || []).map(p => Number(p.mesa_id))
+    (pedidos||[]).map(p => String(p.mesa_id))
   );
 
   const grid = document.getElementById("listaMesas");
   grid.innerHTML = "";
 
   mesas.forEach(m=>{
-    const ocupada = mesasOcupadas.has(Number(m.numero_mesa));
+    const ocupada = mesasOcupadas.has(String(m.numero_mesa));
     const status = ocupada ? "ocupada" : "livre";
 
     const div = document.createElement("div");
@@ -131,27 +147,67 @@ async function carregarMesas(){
       <h3>Mesa ${m.numero_mesa}</h3>
       <span class="status ${status}">${status.toUpperCase()}</span>
 
-      <button class="btn btn-normal">
-        Atendimento normal
-      </button>
+      <div class="qr">
+        <canvas id="qr-${m.id}"></canvas>
+      </div>
 
-      <button class="btn btn-avulsa">
-        💰 Venda avulsa
-      </button>
+      ${!ocupada ? `<button class="btn-remover">Remover mesa</button>` : ``}
     `;
 
-    div.querySelector(".btn-normal").onclick = () => {
-      location.href =
-        `mesa.html?mesa=${m.numero_mesa}&app_id=${app_id}`;
-    };
-
-    div.querySelector(".btn-avulsa").onclick = () => {
-      location.href =
-        `venda-avulsa.html?mesa=${m.numero_mesa}&app_id=${app_id}`;
+    // clique no card
+    div.onclick = () => {
+      if(modo === "garcom"){
+        location.href = `mesa.html?mesa=${m.numero_mesa}&app_id=${app_id}`;
+      } else {
+        location.href = `venda-avulsa.html?mesa=${m.numero_mesa}&app_id=${app_id}`;
+      }
     };
 
     grid.appendChild(div);
+
+    // QR público (intocado)
+    QRCode.toCanvas(
+      document.getElementById(`qr-${m.id}`),
+      `https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/public/?mesa=${m.numero_mesa}&app_id=${app_id}`,
+      { width:120 }
+    );
+
+    const removerBtn = div.querySelector(".btn-remover");
+    if(removerBtn){
+      removerBtn.onclick = async (e) => {
+        e.stopPropagation();
+        const senha = prompt("🔒 Código para remover a mesa:");
+        if(senha !== SEGREDO_REMOVER_MESA) return;
+
+        await sb.from("mesas")
+          .update({ ativa:false })
+          .eq("id", m.id);
+
+        carregarMesas();
+      };
+    }
   });
+}
+
+async function adicionarMesa(){
+  const { data } = await sb
+    .from("mesas")
+    .select("numero_mesa")
+    .eq("app_id", app_id)
+    .order("numero_mesa",{ascending:false})
+    .limit(1)
+    .maybeSingle();
+
+  const proximo = (data?.numero_mesa || 0) + 1;
+
+  await sb.from("mesas").insert({
+    app_id,
+    numero_mesa: proximo,
+    status: "livre",
+    ativa: true
+  });
+
+  carregarMesas();
 }
 
 carregarMesas();
