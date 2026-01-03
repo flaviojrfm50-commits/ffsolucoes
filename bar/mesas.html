@@ -12,30 +12,59 @@
 body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
 .container{padding:32px;max-width:1200px;margin:auto}
+
 .btn{border:none;padding:10px 16px;border-radius:10px;font-weight:bold;cursor:pointer}
 .btn-add{background:#22c55e}
 .btn-avulsa{background:#38bdf8}
 .btn-voltar{background:#1e293b;color:#fff}
 
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px}
-.card{background:#0f172a;padding:16px;border-radius:18px;text-align:center;border:2px solid transparent;cursor:pointer}
+
+.card{
+  background:#0f172a;
+  padding:16px;
+  border-radius:18px;
+  text-align:center;
+  border:2px solid transparent;
+  cursor:pointer;
+  transition:.15s;
+}
+.card:hover{transform:scale(1.03)}
+
 .card.livre{border-color:#22c55e}
 .card.ocupada{border-color:#ef4444}
-.status{padding:4px 10px;border-radius:8px;font-weight:bold;font-size:13px}
+
+.status{
+  margin:6px 0 10px;
+  padding:4px 10px;
+  border-radius:8px;
+  font-weight:bold;
+  font-size:13px
+}
 .status.livre{background:#22c55e;color:#022c22}
 .status.ocupada{background:#ef4444}
-.qr{background:#020617;border-radius:14px;padding:10px;margin:12px 0}
+
+.qr{
+  background:#020617;
+  border-radius:14px;
+  padding:10px;
+  margin:12px 0;
+  display:flex;
+  justify-content:center
+}
 </style>
 </head>
 
 <body>
 
 <script>
+/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* ===== SESSÃO ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
 const app_id = funcionario?.app_id || admin?.app_id;
@@ -61,38 +90,63 @@ if(!app_id){
 
 <script>
 async function carregarMesas(){
-  const { data: mesas } = await sb
+
+  /* ===== MESAS ===== */
+  const { data: mesas, error: erroMesas } = await sb
     .from("mesas")
     .select("id,numero_mesa")
     .eq("app_id", app_id)
     .eq("ativa", true)
     .order("numero_mesa");
 
-  const { data: pedidos } = await sb
+  if(erroMesas){
+    console.error(erroMesas);
+    alert("Erro ao carregar mesas");
+    return;
+  }
+
+  /* ===== PEDIDOS ABERTOS (SINTAXE CERTA) ===== */
+  const { data: pedidos, error: erroPedidos } = await sb
     .from("pedidos")
     .select("mesa_id")
     .eq("app_id", app_id)
     .eq("status", "aberto")
-    .neq("mesa_id", null);
+    .not("mesa_id", "is", null); // 🔥 AQUI É O SEGREDO
 
-  const ocupadas = new Set((pedidos||[]).map(p=>String(p.mesa_id)));
+  if(erroPedidos){
+    console.error(erroPedidos);
+    alert("Erro ao verificar pedidos");
+    return;
+  }
+
+  const mesasOcupadas = new Set(
+    (pedidos || []).map(p => String(p.mesa_id))
+  );
+
   const grid = document.getElementById("listaMesas");
   grid.innerHTML = "";
 
-  mesas.forEach(m=>{
-    const ocupada = ocupadas.has(String(m.id));
+  mesas.forEach(m => {
+
+    const ocupada = mesasOcupadas.has(String(m.id));
     const status = ocupada ? "ocupada" : "livre";
 
     const div = document.createElement("div");
     div.className = `card ${status}`;
+
     div.innerHTML = `
       <h3>Mesa ${m.numero_mesa}</h3>
       <span class="status ${status}">${status.toUpperCase()}</span>
-      <div class="qr"><canvas id="qr-${m.id}"></canvas></div>
+
+      <div class="qr">
+        <canvas id="qr-${m.id}"></canvas>
+      </div>
     `;
+
     div.onclick = () => {
       location.href = `mesa.html?mesa=${m.id}&app_id=${app_id}`;
     };
+
     grid.appendChild(div);
 
     QRCode.toCanvas(
@@ -103,6 +157,7 @@ async function carregarMesas(){
   });
 }
 
+/* ===== ADD MESA ===== */
 async function adicionarMesa(){
   const { data } = await sb
     .from("mesas")
@@ -113,14 +168,22 @@ async function adicionarMesa(){
     .maybeSingle();
 
   const proximo = (data?.numero_mesa || 0) + 1;
-  await sb.from("mesas").insert({ app_id, numero_mesa: proximo, ativa:true });
+
+  await sb.from("mesas").insert({
+    app_id,
+    numero_mesa: proximo,
+    ativa: true
+  });
+
   carregarMesas();
 }
 
+/* ===== VENDA AVULSA ===== */
 function vendaAvulsa(){
   location.href = `venda-avulsa.html?app_id=${app_id}`;
 }
 
+/* START */
 carregarMesas();
 </script>
 
