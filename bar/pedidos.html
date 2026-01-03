@@ -102,7 +102,6 @@ async function carregarPedidos(){
     .select(`
       id,
       cliente_nome,
-      whatsapp_link,
       origem,
       created_at,
       pedido_itens!inner (
@@ -116,7 +115,7 @@ async function carregarPedidos(){
     .order("created_at", { ascending: true });
 
   if(error){
-    console.error("Erro:", error);
+    console.error(error);
     lista.innerHTML = "Erro ao carregar pedidos";
     return;
   }
@@ -155,7 +154,7 @@ async function carregarPedidos(){
         <div class="acoes">
           <button class="aceitar" onclick="aceitarPedido(${pedido.id})">Aceitar</button>
           <button class="finalizar" onclick="finalizarPedido(${pedido.id})">Finalizar</button>
-          <button class="whatsapp" onclick="abrirWhats('${pedido.whatsapp_link || ''}')">WhatsApp</button>
+          <button class="whatsapp" onclick="alert('Link do WhatsApp vem do sistema de pedidos')">WhatsApp</button>
           <button class="imprimir" onclick="window.print()">Imprimir</button>
           <button class="excluir" onclick="excluirPedido(${pedido.id})">Excluir</button>
         </div>
@@ -164,7 +163,7 @@ async function carregarPedidos(){
   });
 }
 
-/* ================= AÇÕES ================= */
+/* ================= FUNÇÕES (NÃO MEXIDAS) ================= */
 async function aceitarPedido(id){
   await sb.from("pedidos").update({ status:"em_preparo" }).eq("id",id);
   carregarPedidos();
@@ -183,7 +182,7 @@ async function excluirPedido(id){
 
 function abrirWhats(link){
   if(!link){
-    alert("Link do WhatsApp não disponível neste pedido");
+    alert("Link do WhatsApp não disponível");
     return;
   }
   window.open(link, "_blank");
