@@ -66,6 +66,13 @@ button{
 .whatsapp{ background:#16a34a }
 .imprimir{ background:#64748b }
 .excluir{ background:#ef4444 }
+
+.aceito-tag{
+  background:#16a34a;
+  padding:10px 16px;
+  border-radius:10px;
+  font-weight:bold;
+}
 </style>
 </head>
 
@@ -154,7 +161,11 @@ async function carregarPedidos(){
         <div class="total">Total: R$ ${total.toFixed(2)}</div>
 
         <div class="acoes">
-          <button class="aceitar" onclick="aceitarPedido('${pedido.id}')">Aceitar</button>
+          ${
+            pedido.status === "aberto"
+            ? `<button class="aceitar" onclick="aceitarPedido('${pedido.id}')">Aceitar</button>`
+            : `<div class="aceito-tag">✔ Pedido aceito</div>`
+          }
           <button class="finalizar" onclick="finalizarPedido('${pedido.id}')">Finalizar</button>
           <button class="whatsapp" onclick="whatsCliente('${pedido.id}')">WhatsApp</button>
           <button class="imprimir" onclick="window.print()">Imprimir</button>
@@ -169,7 +180,7 @@ async function carregarPedidos(){
 async function aceitarPedido(id){
   const { error } = await sb
     .from("pedidos")
-    .update({ status:"aberto" })
+    .update({ status:"aceito" })
     .eq("id", id)
     .eq("app_id", app_id);
 
@@ -239,4 +250,3 @@ setInterval(carregarPedidos, 5000);
 
 </body>
 </html>
-
