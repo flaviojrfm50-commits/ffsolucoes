@@ -134,7 +134,7 @@ async function carregarProdutos(){
   });
 }
 
-/* ================= ADD PRODUTO (CONFIRMAÇÃO) ================= */
+/* ================= ADD PRODUTO ================= */
 function addProduto(id){
   const p = produtos.find(x=>x.id===id);
 
@@ -191,18 +191,21 @@ async function enviarPedido(){
     if(!nomeCli){ alert("Informe seu nome"); return; }
     if(!celularValido(celular)){ alert("WhatsApp inválido"); return; }
 
+    // 🔥 AJUSTE PRINCIPAL AQUI
     const { data: pedidoAberto } = await sb
       .from("pedidos")
       .select("id")
       .eq("app_id", app_id)
       .eq("cliente_whatsapp", celular)
-      .eq("status", "aberto")
+      .in("status", ["aberto","aceito"])
       .maybeSingle();
 
     let pedidoId = pedidoAberto?.id || null;
 
     if(pedidoId){
-      const ok = confirm("Você já tem um pedido em andamento.\nDeseja adicionar nele?");
+      const ok = confirm(
+        "Você já tem um pedido em andamento.\nDeseja adicionar mais itens nele?"
+      );
       if(!ok) return;
     }
 
