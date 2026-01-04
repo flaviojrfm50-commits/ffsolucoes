@@ -245,12 +245,16 @@ async function alterarQtd(itemId, delta){
 async function fecharConta(){
   if (!pedidoAtual) return;
 
+  const ok = confirm('Confirmar pagamento e fechar a conta?');
+  if (!ok) return;
+
   await supabaseClient
     .from('pedidos')
-    .update({ status:'pagando' })
+    .update({ status:'fechado' })
     .eq('id', pedidoAtual.id);
 
-  alert('Conta enviada para pagamento');
+  alert('Conta paga. Mesa liberada.');
+  location.reload();
 }
 
 /* 🚀 START */
@@ -267,3 +271,4 @@ async function fecharConta(){
 
 </body>
 </html>
+
