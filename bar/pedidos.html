@@ -90,7 +90,7 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ================= PARAMS ================= */
+/* ================= APP ================= */
 const params = new URLSearchParams(location.search);
 const app_id = params.get("app_id") || localStorage.getItem("app_id");
 
@@ -141,6 +141,7 @@ async function carregarPedidos(){
       (s,i)=>s + (i.preco * i.quantidade), 0
     );
 
+    // 🔥 IDENTIFICAÇÃO CORRETA DA MESA
     const mesaNome = pedido.pedido_itens?.[0]?.mesa_nome || null;
 
     lista.innerHTML += `
@@ -178,70 +179,32 @@ async function carregarPedidos(){
   });
 }
 
-    lista.innerHTML += `
-      <div class="pedido">
-        <span class="tag ${pedido.origem === 'mesa' ? 'mesa' : 'web'}">
-          ${pedido.origem === 'mesa' ? 'Mesa' : 'Delivery'}
-        </span>
-
-        <div><b>${pedido.cliente_nome || 'Cliente'}</b></div>
-
-        <div class="itens">
-          ${pedido.pedido_itens.map(i=>`
-            <div class="item">
-              <span>${i.quantidade}x ${i.nome_produto}</span>
-              <b>R$ ${(i.preco * i.quantidade).toFixed(2)}</b>
-            </div>
-          `).join("")}
-        </div>
-
-        <div class="total">Total: R$ ${total.toFixed(2)}</div>
-
-        <div class="acoes">
-          ${
-            pedido.status === "aberto"
-            ? `<button class="aceitar" onclick="aceitarPedido('${pedido.id}')">Aceitar</button>`
-            : `<div class="aceito-tag">✔ Pedido aceito</div>`
-          }
-          <button class="finalizar" onclick="finalizarPedido('${pedido.id}')">Finalizar</button>
-          <button class="whatsapp" onclick="whatsCliente('${pedido.id}')">WhatsApp</button>
-          <button class="imprimir" onclick="window.print()">Imprimir</button>
-          <button class="excluir" onclick="excluirPedido('${pedido.id}')">Excluir</button>
-        </div>
-      </div>
-    `;
-  });
-}
-
 /* ================= AÇÕES ================= */
 async function aceitarPedido(id){
-  const { error } = await sb
-    .from("pedidos")
+  await sb.from("pedidos")
     .update({ status:"aceito" })
     .eq("id", id)
     .eq("app_id", app_id);
 
-  if(error){
-    console.error("Erro ao aceitar:", error);
-    alert("Erro ao aceitar pedido");
-    return;
-  }
-
-  alert("Pedido aceito!");
   carregarPedidos();
 }
 
 async function finalizarPedido(id){
   await sb.from("pedidos")
     .update({ status:"finalizado" })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("app_id", app_id);
 
   carregarPedidos();
 }
 
 async function excluirPedido(id){
   if(!confirm("Excluir pedido?")) return;
-  await sb.from("pedidos").delete().eq("id",id);
+  await sb.from("pedidos")
+    .delete()
+    .eq("id",id)
+    .eq("app_id", app_id);
+
   carregarPedidos();
 }
 
@@ -287,4 +250,3 @@ setInterval(carregarPedidos, 5000);
 
 </body>
 </html>
-
