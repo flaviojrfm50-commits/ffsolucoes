@@ -47,7 +47,9 @@ const sb = supabase.createClient(
 
 /* ================= CONTEXTO ================= */
 const params = new URLSearchParams(location.search);
-const mesaId = params.get("mesa");
+
+/* 🔥 AGORA É NÚMERO, NÃO UUID */
+const mesaNumero = params.get("mesa"); // 1, 2, 3...
 
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
@@ -57,22 +59,22 @@ const appId =
   funcionario?.app_id ||
   admin?.app_id;
 
-if(!mesaId || !appId){
+if(!mesaNumero || !appId){
   alert("Sessão inválida");
   location.href = "mesas.html";
 }
 
-document.getElementById("tituloMesa").innerText = `🍽️ Mesa ${mesaId}`;
+document.getElementById("tituloMesa").innerText = `🍽️ Mesa ${mesaNumero}`;
 
 let pedidoAtual = null;
 let produtosCache = [];
 
-/* ================= GARANTIR PEDIDO (SEM COLUNA INEXISTENTE) ================= */
+/* ================= GARANTIR PEDIDO ================= */
 async function garantirPedido(){
   const { data } = await sb
     .from("pedidos")
     .select("*")
-    .eq("mesa_id", mesaId)
+    .eq("mesa_id", mesaNumero)
     .eq("app_id", appId)
     .eq("status", "aberto")
     .maybeSingle();
@@ -82,7 +84,7 @@ async function garantirPedido(){
   const { data: novo, error } = await sb
     .from("pedidos")
     .insert({
-      mesa_id: mesaId,
+      mesa_id: mesaNumero,      // 🔥 agora é número
       app_id: appId,
       status: "aberto"
     })
@@ -163,7 +165,7 @@ async function carregarPedido(){
   });
 }
 
-/* ================= ADD PRODUTO (MESA IDENTIFICADA NOS ITENS) ================= */
+/* ================= ADD PRODUTO ================= */
 async function addProduto(p){
   if(!pedidoAtual) return;
 
@@ -182,7 +184,7 @@ async function addProduto(p){
       .eq("id", data.id)
       .eq("app_id", appId);
   } else {
-    const { error } = await sb
+    await sb
       .from("pedido_itens")
       .insert({
         app_id: appId,
@@ -191,14 +193,9 @@ async function addProduto(p){
         nome_produto: p.nome,
         preco: p.preco,
         quantidade: 1,
-        mesa_nome: `Mesa ${mesaId}`, // 🔥 AQUI FICA A IDENTIFICAÇÃO
+        mesa_nome: `Mesa ${mesaNumero}`, // ✅ número correto
         status: "novo"
       });
-
-    if(error){
-      console.error("ERRO AO INSERIR ITEM:", error);
-      alert(error.message);
-    }
   }
 
   carregarPedido();
@@ -232,7 +229,7 @@ async function alterarQtd(id, delta){
 
 /* ================= PAGAMENTO ================= */
 function irPagamento(){
-  location.href = `pagamento.html?pedido=${pedidoAtual.id}&mesa=${mesaId}&app_id=${appId}`;
+  location.href = `pagamento.html?pedido=${pedidoAtual.id}&mesa=${mesaNumero}&app_id=${appId}`;
 }
 
 /* ================= START ================= */
