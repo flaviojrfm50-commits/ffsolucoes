@@ -136,15 +136,6 @@ function filtrarProdutos(txt){
 }
 
 /* ================= ITENS DO PEDIDO (ISOLADOS) ================= */
-async function carregarPedido(){
-  if(!pedidoAtual) return;
-
-  const { data } = await sb
-    .from("pedido_itens")
-    .select("id,nome_produto,quantidade")
-    .eq("app_id", appId)
-    .eq("pedido_id", pedidoAtual.id);
-
   const div = document.getElementById("pedido");
   div.innerHTML = "";
 
@@ -246,3 +237,4 @@ function irPagamento(){
 
 </body>
 </html>
+
