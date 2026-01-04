@@ -8,65 +8,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#020617;
-  color:#fff;
-}
-.topo{
-  background:#0f172a;
-  padding:16px;
-  font-size:20px;
-  font-weight:bold;
-}
-.container{
-  max-width:900px;
-  margin:auto;
-  padding:20px;
-}
-input{
-  width:100%;
-  padding:12px;
-  border-radius:10px;
-  border:none;
-  margin-bottom:16px;
-}
-.produto, .item{
-  background:#0f172a;
-  border-radius:14px;
-  padding:14px;
-  margin-bottom:12px;
-}
-.produto{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-.controls{
-  display:flex;
-  gap:8px;
-  margin-top:8px;
-}
-button{
-  padding:6px 12px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-}
-.footer{
-  margin-top:24px;
-}
-.pay{
-  width:100%;
-  padding:16px;
-  border:none;
-  border-radius:12px;
-  font-size:16px;
-  font-weight:bold;
-  background:#2563eb;
-  color:#fff;
-}
+body{margin:0;font-family:Arial;background:#020617;color:#fff}
+.topo{background:#0f172a;padding:16px;font-size:20px;font-weight:bold}
+.container{max-width:900px;margin:auto;padding:20px}
+input{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:16px}
+.produto,.item{background:#0f172a;border-radius:14px;padding:14px;margin-bottom:12px}
+.produto{display:flex;justify-content:space-between;align-items:center}
+.controls{display:flex;gap:8px;margin-top:8px}
+button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
+.pay{width:100%;padding:16px;border:none;border-radius:12px;font-size:16px;font-weight:bold;background:#2563eb;color:#fff}
 </style>
 </head>
 
@@ -75,120 +25,138 @@ button{
 <div class="topo" id="tituloMesa">🍽️ Mesa</div>
 
 <div class="container">
-
-  <input id="buscarProduto" placeholder="🔍 Buscar produto..." oninput="filtrarProdutos()">
-
+  <input placeholder="🔍 Buscar produto..." oninput="filtrarProdutos(this.value)">
   <h3>Produtos</h3>
   <div id="listaProdutos"></div>
 
   <h3>Pedido</h3>
   <div id="pedido"></div>
 
-  <div class="footer">
-    <button class="pay" onclick="irPagamento()">💳 Fechar conta</button>
-  </div>
-
+  <button class="pay" onclick="irPagamento()">💳 Fechar conta</button>
 </div>
 
 <script>
-/* 🔑 SUPABASE */
-const supabaseClient = supabase.createClient(
+/* ================= SUPABASE ================= */
+const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* 🌐 PARAMS */
-const params = new URLSearchParams(window.location.search);
-const mesaId = params.get('mesa');
-const appId  = params.get('app_id');
+/* ================= CONTEXTO BLINDADO ================= */
+const params = new URLSearchParams(location.search);
+const mesaId = params.get("mesa");
 
-document.getElementById('tituloMesa').innerText =
-  mesaId ? `🍽️ Mesa ${mesaId}` : '🍽️ Mesa';
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
+
+const appId =
+  params.get("app_id") ||
+  funcionario?.app_id ||
+  admin?.app_id;
+
+// FAIL FAST (sem isso não roda)
+if(!appId || !mesaId){
+  alert("Sessão inválida");
+  location.href = "mesas.html";
+}
+
+document.getElementById("tituloMesa").innerText = `🍽️ Mesa ${mesaId}`;
 
 let pedidoAtual = null;
-let produtos = [];
+let produtosCache = [];
 
-/* 🧠 GARANTE PEDIDO (NÃO FECHA, NÃO LIBERA) */
+/* ================= PEDIDO (ISOLADO POR APP) ================= */
 async function garantirPedido(){
-  const { data } = await supabaseClient
-    .from('pedidos')
-    .select('id')
-    .eq('mesa_id', mesaId)
-    .eq('app_id', appId)
-    .eq('status', 'aberto')
+  const { data } = await sb
+    .from("pedidos")
+    .select("*")
+    .eq("app_id", appId)
+    .eq("mesa_id", mesaId)
+    .eq("status", "aberto")
     .maybeSingle();
 
-  if (data) return data;
+  if(data) return data;
 
-  const { data: novo } = await supabaseClient
-    .from('pedidos')
+  const { data: novo, error } = await sb
+    .from("pedidos")
     .insert({
-      mesa_id: mesaId,
       app_id: appId,
-      status: 'aberto'
+      mesa_id: mesaId,
+      tipo: "mesa",
+      status: "aberto"
     })
     .select()
     .single();
 
+  if(error){
+    console.error(error);
+    alert("Erro ao criar pedido da mesa");
+    return null;
+  }
+
   return novo;
 }
 
-/* 📦 PRODUTOS */
+/* ================= PRODUTOS (ISOLADOS) ================= */
 async function carregarProdutos(){
-  const { data } = await supabaseClient
-    .from('produtos')
-    .select('id,nome')
-    .eq('app_id', appId)
-    .order('nome');
+  const { data, error } = await sb
+    .from("produtos")
+    .select("id,nome,preco")
+    .eq("app_id", appId)
+    .eq("ativo", true)
+    .order("nome");
 
-  produtos = data || [];
-  renderProdutos(produtos);
+  if(error){
+    console.error(error);
+    alert("Erro ao carregar produtos");
+    return;
+  }
+
+  produtosCache = data || [];
+  renderProdutos(produtosCache);
 }
 
 function renderProdutos(lista){
-  const div = document.getElementById('listaProdutos');
-  div.innerHTML = '';
+  const div = document.getElementById("listaProdutos");
+  div.innerHTML = "";
 
   lista.forEach(p=>{
     div.innerHTML += `
       <div class="produto">
-        <span>${p.nome}</span>
-        <button onclick="addProduto('${p.id}')">➕</button>
+        <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
+        <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
       </div>
     `;
   });
 }
 
-function filtrarProdutos(){
-  const termo = document.getElementById('buscarProduto').value.toLowerCase();
-  renderProdutos(produtos.filter(p=>p.nome.toLowerCase().includes(termo)));
+function filtrarProdutos(txt){
+  txt = (txt || "").toLowerCase();
+  renderProdutos(produtosCache.filter(p => p.nome.toLowerCase().includes(txt)));
 }
 
-/* 🧾 PEDIDO */
+/* ================= ITENS DO PEDIDO (ISOLADOS) ================= */
 async function carregarPedido(){
-  if (!pedidoAtual) return;
+  if(!pedidoAtual) return;
 
-  const { data } = await supabaseClient
-    .from('pedido_itens')
-    .select(`
-      id,
-      quantidade,
-      produtos!pedido_itens_produto_fk (nome)
-    `)
-    .eq('pedido_id', pedidoAtual.id);
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("id,nome_produto,quantidade")
+    .eq("app_id", appId)
+    .eq("pedido_id", pedidoAtual.id);
 
-  const div = document.getElementById('pedido');
-  div.innerHTML = '';
+  const div = document.getElementById("pedido");
+  div.innerHTML = "";
 
-  if (!data || data.length === 0){
-    div.innerHTML = '<p>Nenhum item ainda</p>';
+  if(!data || data.length === 0){
+    div.innerHTML = "<p>Nenhum item</p>";
     return;
   }
 
   data.forEach(i=>{
     div.innerHTML += `
       <div class="item">
-        <strong>${i.produtos.nome}</strong>
+        <strong>${i.nome_produto}</strong>
         <div class="controls">
           <button onclick="alterarQtd('${i.id}',-1)">➖</button>
           <span>${i.quantidade}</span>
@@ -199,76 +167,78 @@ async function carregarPedido(){
   });
 }
 
-/* ➕ ADD PRODUTO */
-async function addProduto(produtoId){
-  if (!pedidoAtual) return;
+/* ================= ADD PRODUTO (BLINDADO) ================= */
+async function addProduto(p){
+  if(!pedidoAtual) return;
 
-  const { data } = await supabaseClient
-    .from('pedido_itens')
-    .select('id,quantidade')
-    .eq('pedido_id', pedidoAtual.id)
-    .eq('produto_id', produtoId)
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("id,quantidade")
+    .eq("app_id", appId)
+    .eq("pedido_id", pedidoAtual.id)
+    .eq("produto_id", p.id)
     .maybeSingle();
 
-  if (data){
-    await supabaseClient
-      .from('pedido_itens')
+  if(data){
+    await sb
+      .from("pedido_itens")
       .update({ quantidade: data.quantidade + 1 })
-      .eq('id', data.id);
+      .eq("id", data.id)
+      .eq("app_id", appId);
   } else {
-    await supabaseClient
-      .from('pedido_itens')
+    await sb
+      .from("pedido_itens")
       .insert({
+        app_id: appId,
         pedido_id: pedidoAtual.id,
-        produto_id: produtoId,
-        quantidade: 1,
-        app_id: appId   // ⚠️ IMPORTANTE
+        mesa_id: mesaId,
+        produto_id: p.id,
+        nome_produto: p.nome,
+        preco: p.preco,
+        quantidade: 1
       });
   }
 
   carregarPedido();
 }
 
-/* ➕➖ */
-async function alterarQtd(itemId, delta){
-  const { data } = await supabaseClient
-    .from('pedido_itens')
-    .select('quantidade')
-    .eq('id', itemId)
+/* ================= QTD (BLINDADO) ================= */
+async function alterarQtd(id, delta){
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("quantidade")
+    .eq("id", id)
+    .eq("app_id", appId)
     .single();
 
   const nova = data.quantidade + delta;
 
-  if (nova <= 0){
-    await supabaseClient
-      .from('pedido_itens')
+  if(nova <= 0){
+    await sb
+      .from("pedido_itens")
       .delete()
-      .eq('id', itemId);
+      .eq("id", id)
+      .eq("app_id", appId);
   } else {
-    await supabaseClient
-      .from('pedido_itens')
+    await sb
+      .from("pedido_itens")
       .update({ quantidade: nova })
-      .eq('id', itemId);
+      .eq("id", id)
+      .eq("app_id", appId);
   }
 
   carregarPedido();
 }
 
-/* 💳 PAGAMENTO — SÓ REDIRECIONA */
+/* ================= PAGAMENTO ================= */
 function irPagamento(){
-  if (!pedidoAtual) return;
-
-  window.location.href =
-    `pagamento.html?pedido=${pedidoAtual.id}&mesa=${mesaId}&app_id=${appId}`;
+  location.href = `pagamento.html?pedido=${pedidoAtual.id}&mesa=${mesaId}&app_id=${appId}`;
 }
 
-/* 🚀 START */
+/* ================= START ================= */
 (async ()=>{
   pedidoAtual = await garantirPedido();
-  if (!pedidoAtual){
-    alert('Erro ao carregar pedido da mesa');
-    return;
-  }
+  if(!pedidoAtual) return;
   await carregarProdutos();
   await carregarPedido();
 })();
