@@ -110,13 +110,13 @@ async function carregarPedidos(){
       id,
       cliente_nome,
       cliente_whatsapp,
-      origem,
       status,
       created_at,
       pedido_itens (
         nome_produto,
         quantidade,
-        preco
+        preco,
+        mesa_nome
       )
     `)
     .eq("app_id", app_id)
@@ -140,6 +140,43 @@ async function carregarPedidos(){
     const total = pedido.pedido_itens.reduce(
       (s,i)=>s + (i.preco * i.quantidade), 0
     );
+
+    const mesaNome = pedido.pedido_itens?.[0]?.mesa_nome || null;
+
+    lista.innerHTML += `
+      <div class="pedido">
+        <span class="tag ${mesaNome ? 'mesa' : 'web'}">
+          ${mesaNome ? 'Mesa' : 'Delivery'}
+        </span>
+
+        <div><b>${mesaNome || pedido.cliente_nome || 'Cliente'}</b></div>
+
+        <div class="itens">
+          ${pedido.pedido_itens.map(i=>`
+            <div class="item">
+              <span>${i.quantidade}x ${i.nome_produto}</span>
+              <b>R$ ${(i.preco * i.quantidade).toFixed(2)}</b>
+            </div>
+          `).join("")}
+        </div>
+
+        <div class="total">Total: R$ ${total.toFixed(2)}</div>
+
+        <div class="acoes">
+          ${
+            pedido.status === "aberto"
+            ? `<button class="aceitar" onclick="aceitarPedido('${pedido.id}')">Aceitar</button>`
+            : `<div class="aceito-tag">✔ Pedido aceito</div>`
+          }
+          <button class="finalizar" onclick="finalizarPedido('${pedido.id}')">Finalizar</button>
+          <button class="whatsapp" onclick="whatsCliente('${pedido.id}')">WhatsApp</button>
+          <button class="imprimir" onclick="window.print()">Imprimir</button>
+          <button class="excluir" onclick="excluirPedido('${pedido.id}')">Excluir</button>
+        </div>
+      </div>
+    `;
+  });
+}
 
     lista.innerHTML += `
       <div class="pedido">
@@ -250,3 +287,4 @@ setInterval(carregarPedidos, 5000);
 
 </body>
 </html>
+
