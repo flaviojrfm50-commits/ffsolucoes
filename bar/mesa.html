@@ -77,16 +77,23 @@ async function garantirPedido(){
 
   if(data) return data;
 
-  const { data: novo, error } = await sb
-    .from("pedidos")
-    .insert({
-      app_id: appId,
-      mesa_id: mesaId,
-      tipo: "mesa",
-      status: "aberto"
-    })
-    .select()
-    .single();
+  const { error } = await sb
+  .from("pedido_itens")
+  .insert({
+    app_id: appId,
+    pedido_id: pedidoAtual.id,
+    mesa_id: mesaId,
+    produto_id: p.id,
+    nome_produto: p.nome,
+    preco: p.preco,
+    quantidade: 1
+  });
+
+if(error){
+  console.error("ERRO REAL:", error);
+  alert(error.message);
+}
+
 
   if(error){
     console.error(error);
@@ -159,7 +166,15 @@ function filtrarProdutos(txt){
 }
 
 /* ================= ADD PRODUTO (BLINDADO) ================= */
-async function addProduto(p){
+async function carregarPedido(){
+  if(!pedidoAtual) return;
+
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("id,nome_produto,quantidade")
+    .eq("app_id", appId)
+    .eq("pedido_id", pedidoAtual.id);
+  async function addProduto(p){
   if(!pedidoAtual) return;
 
   const { data } = await sb
@@ -237,4 +252,5 @@ function irPagamento(){
 
 </body>
 </html>
+
 
