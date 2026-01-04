@@ -102,19 +102,6 @@ if(!app_id){
 localStorage.setItem("app_id", app_id);
 const lista = document.getElementById("lista");
 
-/* ================= FORMATAR MESA ================= */
-function formatarMesa(mesaNome){
-  if(!mesaNome) return null;
-
-  if(/^Mesa \d+$/.test(mesaNome)) return mesaNome;
-
-  const partes = mesaNome.split(" ");
-  const id = partes[1] || "";
-
-  const numero = parseInt(id.slice(-2), 16) % 100;
-  return `Mesa ${numero}`;
-}
-
 /* ================= CARREGAR PEDIDOS ================= */
 async function carregarPedidos(){
   const { data, error } = await sb
@@ -154,8 +141,8 @@ async function carregarPedidos(){
       (s,i)=>s + (i.preco * i.quantidade), 0
     );
 
-    const mesaRaw = pedido.pedido_itens?.[0]?.mesa_nome || null;
-    const mesaNome = mesaRaw ? formatarMesa(mesaRaw) : null;
+    // 🔒 FONTE ÚNICA DA VERDADE (SEM CONVERSÃO)
+    const mesaNome = pedido.pedido_itens?.[0]?.mesa_nome || null;
 
     lista.innerHTML += `
       <div class="pedido">
