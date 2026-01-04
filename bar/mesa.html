@@ -72,11 +72,11 @@ button{
 
 <body>
 
-<div class="topo">🍽️ Mesa</div>
+<div class="topo" id="tituloMesa">🍽️ Mesa</div>
 
 <div class="container">
 
-  <input id="buscarProduto" placeholder="🔍 Buscar produto..." oninput="filtrar()">
+  <input id="buscarProduto" placeholder="🔍 Buscar produto..." oninput="filtrarProdutos()">
 
   <h3>Produtos</h3>
   <div id="listaProdutos"></div>
@@ -91,18 +91,24 @@ button{
 </div>
 
 <script>
+/* 🔑 SUPABASE */
 const supabaseClient = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* 🌐 PARAMS */
 const params = new URLSearchParams(window.location.search);
 const mesaId = params.get('mesa');
 const appId  = params.get('app_id');
 
+document.getElementById('tituloMesa').innerText =
+  `🍽️ Mesa ${mesaId ? mesaId.slice(0,4) : ''}`;
+
 let pedidoAtual = null;
 let produtos = [];
 
+/* 🧠 GARANTE PEDIDO (NUNCA SOME) */
 async function garantirPedido(){
   const { data } = await supabaseClient
     .from('pedidos')
@@ -124,6 +130,7 @@ async function garantirPedido(){
   return novo;
 }
 
+/* 📦 PRODUTOS */
 async function carregarProdutos(){
   const { data } = await supabaseClient
     .from('produtos')
@@ -149,13 +156,14 @@ function renderProdutos(lista){
   });
 }
 
-function filtrar(){
-  const t = document.getElementById('buscarProduto').value.toLowerCase();
-  renderProdutos(produtos.filter(p=>p.nome.toLowerCase().includes(t)));
+function filtrarProdutos(){
+  const termo = document.getElementById('buscarProduto').value.toLowerCase();
+  renderProdutos(produtos.filter(p=>p.nome.toLowerCase().includes(termo)));
 }
 
+/* 🧾 PEDIDO */
 async function carregarPedido(){
-  pedidoAtual = await garantirPedido();
+  if (!pedidoAtual) return;
 
   const { data } = await supabaseClient
     .from('pedido_itens')
@@ -178,9 +186,9 @@ async function carregarPedido(){
       <div class="item">
         <strong>${i.produtos.nome}</strong>
         <div class="controls">
-          <button onclick="alterar('${i.id}',-1)">➖</button>
+          <button onclick="alterarQtd('${i.id}',-1)">➖</button>
           <span>${i.quantidade}</span>
-          <button onclick="alterar('${i.id}',1)">➕</button>
+          <button onclick="alterarQtd('${i.id}',1)">➕</button>
         </div>
       </div>
     `;
@@ -188,6 +196,8 @@ async function carregarPedido(){
 }
 
 async function addProduto(produtoId){
+  if (!pedidoAtual) return;
+
   const { data } = await supabaseClient
     .from('pedido_itens')
     .select('id,quantidade')
@@ -213,7 +223,7 @@ async function addProduto(produtoId){
   carregarPedido();
 }
 
-async function alterar(itemId, delta){
+async function alterarQtd(itemId, delta){
   const { data } = await supabaseClient
     .from('pedido_itens')
     .select('quantidade')
@@ -231,17 +241,25 @@ async function alterar(itemId, delta){
   carregarPedido();
 }
 
+/* 💳 FECHAR CONTA */
 async function fecharConta(){
+  if (!pedidoAtual) return;
+
   await supabaseClient
     .from('pedidos')
     .update({ status:'pagando' })
     .eq('id', pedidoAtual.id);
 
-  alert('Conta fechada para pagamento');
+  alert('Conta enviada para pagamento');
 }
 
+/* 🚀 START */
 (async ()=>{
   pedidoAtual = await garantirPedido();
+  if (!pedidoAtual) {
+    alert('Erro ao carregar pedido da mesa');
+    return;
+  }
   await carregarProdutos();
   await carregarPedido();
 })();
