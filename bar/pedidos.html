@@ -102,6 +102,15 @@ if(!app_id){
 localStorage.setItem("app_id", app_id);
 const lista = document.getElementById("lista");
 
+/* ================= WHATSAPP HELPER ================= */
+function enviarWhats(numero, mensagem){
+  const num = numero.replace(/\D/g,"");
+  window.open(
+    `https://wa.me/55${num}?text=${encodeURIComponent(mensagem)}`,
+    "_blank"
+  );
+}
+
 /* ================= CARREGAR PEDIDOS ================= */
 async function carregarPedidos(){
   const { data, error } = await sb
@@ -113,9 +122,7 @@ async function carregarPedidos(){
       status,
       created_at,
       mesa_id,
-      mesas (
-        numero_mesa
-      ),
+      mesas ( numero_mesa ),
       pedido_itens (
         nome_produto,
         quantidade,
@@ -176,7 +183,6 @@ async function carregarPedidos(){
             : `<div class="aceito-tag">✔ Pedido aceito</div>`
           }
           <button class="finalizar" onclick="finalizarPedido('${pedido.id}')">Finalizar</button>
-          <button class="whatsapp" onclick="whatsCliente('${pedido.id}')">WhatsApp</button>
           <button class="imprimir" onclick="window.print()">Imprimir</button>
           <button class="excluir" onclick="excluirPedido('${pedido.id}')">Excluir</button>
         </div>
@@ -187,19 +193,54 @@ async function carregarPedidos(){
 
 /* ================= AÇÕES ================= */
 async function aceitarPedido(id){
+  const { data:pedido } = await sb
+    .from("pedidos")
+    .select("mesa_id, cliente_whatsapp")
+    .eq("id", id)
+    .single();
+
   await sb.from("pedidos")
     .update({ status:"aceito" })
     .eq("id", id)
     .eq("app_id", app_id);
 
+  // DELIVERY → avisa cliente
+  if(!pedido.mesa_id && pedido.cliente_whatsapp){
+    enviarWhats(
+      pedido.cliente_whatsapp,
+      "🍳 Seu pedido está sendo preparado!"
+    );
+  }
+
   carregarPedidos();
 }
 
 async function finalizarPedido(id){
+  const { data:pedido } = await sb
+    .from("pedidos")
+    .select("mesa_id, cliente_whatsapp, mesas(numero_mesa)")
+    .eq("id", id)
+    .single();
+
   await sb.from("pedidos")
     .update({ status:"finalizado" })
     .eq("id", id)
     .eq("app_id", app_id);
+
+  // DELIVERY → pedido a caminho
+  if(!pedido.mesa_id && pedido.cliente_whatsapp){
+    enviarWhats(
+      pedido.cliente_whatsapp,
+      "🛵 Seu pedido está a caminho!"
+    );
+  }
+
+  // MESA → apenas aviso interno (garçom)
+  if(pedido.mesa_id){
+    console.log(
+      `🍽️ Pedido da Mesa ${pedido.mesas.numero_mesa} pronto — avisar garçom`
+    );
+  }
 
   carregarPedidos();
 }
@@ -212,41 +253,6 @@ async function excluirPedido(id){
     .eq("app_id", app_id);
 
   carregarPedidos();
-}
-
-/* ================= WHATSAPP ================= */
-async function whatsCliente(pedidoId){
-  const { data } = await sb
-    .from("pedidos")
-    .select(`
-      cliente_whatsapp,
-      pedido_itens (
-        nome_produto,
-        quantidade,
-        preco
-      )
-    `)
-    .eq("id", pedidoId)
-    .single();
-
-  if(!data?.cliente_whatsapp){
-    alert("WhatsApp do cliente não informado");
-    return;
-  }
-
-  let msg = "🍔 *Pedido aceito!*\n\n";
-  let total = 0;
-
-  data.pedido_itens.forEach(i=>{
-    const sub = i.preco * i.quantidade;
-    total += sub;
-    msg += `• ${i.quantidade}x ${i.nome_produto} — R$ ${sub.toFixed(2)}\n`;
-  });
-
-  msg += `\n💰 Total: R$ ${total.toFixed(2)}\n\nObrigado pelo pedido!`;
-
-  const num = data.cliente_whatsapp.replace(/\D/g,"");
-  window.open(`https://wa.me/55${num}?text=${encodeURIComponent(msg)}`, "_blank");
 }
 
 /* ================= AUTO REFRESH ================= */
