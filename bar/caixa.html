@@ -13,7 +13,7 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   padding:16px 24px;
   display:flex;
   justify-content:space-between;
-  align-items:center;
+  align-items:center
 }
 .container{max-width:1200px;margin:auto;padding:24px}
 .box{background:#0f172a;padding:20px;border-radius:16px;margin-bottom:20px}
@@ -31,7 +31,7 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   padding:14px
 }
 
-.valor{font-size:22px;font-weight:bold;margin-top:6px}
+.valor{font-size:22px;font-weight:bold}
 .tipo{font-size:13px;color:#94a3b8}
 .total{font-size:26px;font-weight:bold}
 
@@ -53,16 +53,16 @@ button{
 button.sec{background:#1e293b;color:#fff}
 button.alerta{background:#eab308;color:#000}
 
-.obs{color:#fbbf24;font-size:13px}
-
 .badge{
   background:#ef4444;
   color:#fff;
   border-radius:999px;
   padding:2px 8px;
   font-size:12px;
-  margin-left:6px;
+  margin-left:6px
 }
+
+small{color:#94a3b8}
 </style>
 </head>
 
@@ -79,10 +79,6 @@ if(!admin?.app_id){
   alert("Sessão expirada");
   location.href="../auth/login.html";
 }
-
-let pagamentos = [];
-let pedidosMap = {};
-let total = { dinheiro:0, pix:0, debito:0, credito:0, fiado:0 };
 </script>
 
 <div class="topo">
@@ -109,6 +105,7 @@ let total = { dinheiro:0, pix:0, debito:0, credito:0, fiado:0 };
       <tr>
         <th>Mesa</th>
         <th>Total</th>
+        <th>Forma sugerida</th>
         <th>Ação</th>
       </tr>
     </thead>
@@ -137,7 +134,7 @@ let total = { dinheiro:0, pix:0, debito:0, credito:0, fiado:0 };
         <th>Obs</th>
       </tr>
     </thead>
-    <tbody id="lista"></tbody>
+    <tbody id="listaMov"></tbody>
   </table>
 </div>
 
@@ -151,16 +148,18 @@ let total = { dinheiro:0, pix:0, debito:0, credito:0, fiado:0 };
 </div>
 
 <script>
+/* ===== CONTAS PENDENTES ===== */
 async function verificarContas(){
   const { data } = await sb
     .from("pedidos")
     .select(`
       id,
+      forma_pagamento_sugerida,
       mesas(numero_mesa),
       pedido_itens(preco,quantidade)
     `)
     .eq("app_id", admin.app_id)
-    .eq("status","conta_solicitada");
+    .in("status", ["conta_solicitada","aguardando_pagamento"]);
 
   const btn = document.getElementById("btnContas");
   const qtd = document.getElementById("qtdContas");
@@ -169,7 +168,7 @@ async function verificarContas(){
 
   lista.innerHTML = "";
 
-  if(data && data.length > 0){
+  if(data && data.length){
     btn.style.display = "inline-block";
     qtd.innerText = data.length;
     box.style.display = "block";
@@ -184,6 +183,7 @@ async function verificarContas(){
         <tr>
           <td>Mesa ${p.mesas.numero_mesa}</td>
           <td>R$ ${total.toFixed(2)}</td>
+          <td>${p.forma_pagamento_sugerida?.toUpperCase() || "-"}</td>
           <td>
             <button onclick="irPagamento('${p.id}')">
               💳 Ir para pagamento
@@ -192,7 +192,6 @@ async function verificarContas(){
         </tr>
       `;
     });
-
   } else {
     btn.style.display = "none";
     box.style.display = "none";
@@ -208,9 +207,12 @@ function mostrarContas(){
     .scrollIntoView({ behavior:"smooth" });
 }
 
-/* ===== CAIXA FINANCEIRO (SEU ORIGINAL) ===== */
-async function carregarCaixa(){
+/* ===== CAIXA FINANCEIRO ===== */
+let pagamentos = [];
+let pedidosMap = {};
+let total = { dinheiro:0, pix:0, debito:0, credito:0, fiado:0 };
 
+async function carregarCaixa(){
   const { data: pags } = await sb
     .from("pagamentos")
     .select("tipo,valor,pedido_id")
@@ -237,7 +239,7 @@ async function carregarCaixa(){
 
 function renderCaixa(){
   total = { dinheiro:0, pix:0, debito:0, credito:0, fiado:0 };
-  const tbody = document.getElementById("lista");
+  const tbody = document.getElementById("listaMov");
   tbody.innerHTML = "";
 
   pagamentos.forEach(p=>{
@@ -257,7 +259,7 @@ function renderCaixa(){
         <td>${p.tipo.toUpperCase()}</td>
         <td>R$ ${valor.toFixed(2)}</td>
         <td>${p.pedido_id ? "#" + p.pedido_id.slice(0,6) : "-"}</td>
-        <td class="obs">${pedidosMap[p.pedido_id]?.obs || "-"}</td>
+        <td>${pedidosMap[p.pedido_id]?.obs || "-"}</td>
       </tr>
     `;
   });
