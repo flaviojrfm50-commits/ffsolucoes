@@ -248,10 +248,12 @@ async function fecharConta(){
   const ok = confirm('Confirmar pagamento e fechar a conta?');
   if (!ok) return;
 
-  await supabaseClient
-    .from('pedidos')
-    .update({ status:'fechado' })
-    .eq('id', pedidoAtual.id);
+  function fecharConta(){
+  if (!pedidoAtual) return;
+
+  window.location.href =
+    `pagamento.html?pedido=${pedidoAtual.id}&mesa=${mesaId}&app_id=${appId}`;
+}
 
   alert('Conta paga. Mesa liberada.');
   location.reload();
@@ -271,4 +273,5 @@ async function fecharConta(){
 
 </body>
 </html>
+
 
