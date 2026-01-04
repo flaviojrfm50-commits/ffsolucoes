@@ -11,63 +11,70 @@ body{
   margin:0;
   font-family:Arial,sans-serif;
   background:#020617;
-  color:#fff
+  color:#fff;
 }
 .topo{
   background:#0f172a;
   padding:16px;
   font-size:20px;
-  font-weight:bold
+  font-weight:bold;
 }
 .container{
   max-width:900px;
   margin:auto;
-  padding:20px
+  padding:20px;
 }
 input{
   width:100%;
   padding:12px;
   border-radius:10px;
   border:none;
-  margin-bottom:16px
+  margin-bottom:16px;
 }
 .produto,.item{
   background:#0f172a;
   border-radius:14px;
   padding:14px;
-  margin-bottom:12px
+  margin-bottom:12px;
 }
 .produto{
   display:flex;
   justify-content:space-between;
-  align-items:center
+  align-items:center;
 }
 .controls{
   display:flex;
   gap:8px;
-  margin-top:8px
+  margin-top:8px;
+  align-items:center;
 }
 button{
   padding:6px 12px;
   border:none;
   border-radius:8px;
-  cursor:pointer
+  cursor:pointer;
+}
+.total{
+  font-size:18px;
+  font-weight:900;
+  margin-top:10px;
+  text-align:right;
 }
 .pay{
   width:100%;
   padding:16px;
-  border:none;
   border-radius:12px;
   font-size:16px;
   font-weight:bold;
   background:#2563eb;
   color:#fff;
-  margin-top:10px
+  margin-top:10px;
 }
 .conta{
   background:#eab308;
-  color:#000
+  color:#000;
 }
+small{color:#94a3b8}
 </style>
 </head>
 
@@ -83,8 +90,8 @@ button{
 
   <h3>Pedido</h3>
   <div id="pedido"></div>
+  <div class="total" id="totalPedido">Total: R$ 0,00</div>
 
-  <button class="pay" onclick="irPagamento()">💳 Ver pagamento</button>
   <button class="pay conta" onclick="pedirConta()">🧾 Pedir a conta</button>
 </div>
 
@@ -105,7 +112,6 @@ if(!mesaId || !appId){
   location.href = "mesas.html";
 }
 
-let mesaNumero = null;
 let pedidoAtual = null;
 let produtosCache = [];
 
@@ -119,9 +125,8 @@ async function carregarMesa(){
     .single();
 
   if(data){
-    mesaNumero = data.numero_mesa;
     document.getElementById("tituloMesa").innerText =
-      `🍽️ Mesa ${mesaNumero}`;
+      `🍽️ Mesa ${data.numero_mesa}`;
   }
 }
 
@@ -132,14 +137,14 @@ async function garantirPedido(){
     .select("*")
     .eq("mesa_id", mesaId)
     .eq("app_id", appId)
-    .in("status", [
+    .in("status",[
       "aberto",
       "aceito",
       "finalizado",
       "entregue",
       "conta_solicitada"
     ])
-    .order("created_at", { ascending:false })
+    .order("created_at",{ ascending:false })
     .limit(1)
     .maybeSingle();
 
@@ -179,7 +184,7 @@ function renderProdutos(lista){
   lista.forEach(p=>{
     div.innerHTML += `
       <div class="produto">
-        <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
+        <span>${p.nome}<br><small>R$ ${p.preco.toFixed(2)}</small></span>
         <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
       </div>
     `;
@@ -187,35 +192,47 @@ function renderProdutos(lista){
 }
 
 function filtrarProdutos(txt){
-  txt = (txt || "").toLowerCase();
-  renderProdutos(produtosCache.filter(p =>
-    p.nome.toLowerCase().includes(txt)
-  ));
+  txt = (txt||"").toLowerCase();
+  renderProdutos(
+    produtosCache.filter(p=>p.nome.toLowerCase().includes(txt))
+  );
 }
 
-/* ================= ITENS ================= */
+/* ================= PEDIDO ITENS ================= */
 async function carregarPedido(){
   if(!pedidoAtual) return;
 
   const { data } = await sb
     .from("pedido_itens")
-    .select("id,nome_produto,quantidade")
+    .select("id,nome_produto,quantidade,preco")
     .eq("pedido_id", pedidoAtual.id)
     .eq("app_id", appId);
 
   const div = document.getElementById("pedido");
   div.innerHTML = "";
 
+  let total = 0;
+
   if(!data || data.length === 0){
     div.innerHTML = "<p>Nenhum item</p>";
+    document.getElementById("totalPedido").innerText =
+      "Total: R$ 0,00";
     return;
   }
 
   data.forEach(i=>{
+    const subtotal = i.quantidade * i.preco;
+    total += subtotal;
+
     div.innerHTML += `
       <div class="item">
-        <strong>${i.nome_produto}</strong>
+        <div>
+          <strong>${i.nome_produto}</strong><br>
+          <small>${i.quantidade} x R$ ${i.preco.toFixed(2)}</small>
+        </div>
+
         <div class="controls">
+          <b>R$ ${subtotal.toFixed(2)}</b>
           <button onclick="alterarQtd('${i.id}',-1)">➖</button>
           <span>${i.quantidade}</span>
           <button onclick="alterarQtd('${i.id}',1)">➕</button>
@@ -223,6 +240,9 @@ async function carregarPedido(){
       </div>
     `;
   });
+
+  document.getElementById("totalPedido").innerText =
+    `Total: R$ ${total.toFixed(2)}`;
 }
 
 /* ================= AÇÕES ================= */
@@ -273,19 +293,12 @@ async function alterarQtd(id, delta){
 
 /* ================= PEDIR CONTA ================= */
 async function pedirConta(){
-  if(!pedidoAtual) return;
-
   await sb.from("pedidos")
-    .update({ status: "conta_solicitada" })
+    .update({ status:"conta_solicitada" })
     .eq("id", pedidoAtual.id)
     .eq("app_id", appId);
 
-  alert("🧾 Conta solicitada! Aguarde o garçom 🙂");
-}
-
-/* ================= PAGAMENTO (VISUAL) ================= */
-function irPagamento(){
-  alert("O garçom irá até a mesa para finalizar o pagamento.");
+  alert("🧾 Conta solicitada! Aguarde o garçom.");
 }
 
 /* ================= START ================= */
