@@ -5,35 +5,36 @@
 <title>Mesa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- SUPABASE (UMA ÚNICA VEZ) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body{
   margin:0;
-  font-family:Arial, sans-serif;
+  font-family:Arial,sans-serif;
   background:#020617;
   color:#fff;
 }
-
 .topo{
   background:#0f172a;
   padding:16px;
   font-size:20px;
   font-weight:bold;
 }
-
 .container{
   max-width:900px;
   margin:auto;
   padding:20px;
 }
-
 .status{
-  margin-bottom:20px;
-  font-weight:bold;
+  margin-bottom:12px;
 }
-
+input{
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:none;
+  margin-bottom:16px;
+}
 .item{
   background:#0f172a;
   border-radius:14px;
@@ -41,6 +42,36 @@ body{
   margin-bottom:12px;
   border-left:5px solid #22c55e;
 }
+.controls{
+  display:flex;
+  gap:8px;
+  margin-top:8px;
+}
+.controls button{
+  padding:6px 12px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+.controls span{
+  padding:6px 12px;
+}
+.footer{
+  display:flex;
+  gap:12px;
+  margin-top:24px;
+}
+.footer button{
+  flex:1;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  font-size:16px;
+  font-weight:bold;
+  cursor:pointer;
+}
+.add{ background:#22c55e; color:#000; }
+.pay{ background:#2563eb; color:#fff; }
 </style>
 </head>
 
@@ -50,113 +81,174 @@ body{
 
 <div class="container">
   <div id="status" class="status">Carregando...</div>
-  <div id="pedidos"></div>
-  <div class="container">
-  <div id="status"></div>
+
+  <input id="buscarProduto" placeholder="🔍 Buscar produto..." oninput="filtrarProdutos()">
+
   <div id="pedidos"></div>
 
-  <!-- 🔥 BOTÕES DA MESA -->
-  <div style="margin-top:24px; display:flex; gap:12px;">
-    <button onclick="irCardapio()">➕ Adicionar produto</button>
-    <button onclick="fecharConta()">💳 Fechar conta</button>
+  <div class="footer">
+    <button class="add" onclick="irCardapio()">➕ Adicionar produto</button>
+    <button class="pay" onclick="fecharConta()">💳 Fechar conta</button>
   </div>
 </div>
 
-</div>
-
 <script>
-/* ===========================
-   🔑 CONFIG SUPABASE (ÚNICA)
-=========================== */
+/* 🔑 SUPABASE */
 const supabaseClient = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===========================
-   🔎 PARAMETROS DA URL
-=========================== */
+/* 🌐 PARAMS */
 const params = new URLSearchParams(window.location.search);
 const mesaId = params.get('mesa');
 const appId  = params.get('app_id');
 
+let pedidoAtual = null;
+
 const statusDiv  = document.getElementById('status');
 const pedidosDiv = document.getElementById('pedidos');
 
-/* ===========================
-   🛑 VALIDAÇÕES CRÍTICAS
-=========================== */
 if (!mesaId || !appId) {
-  statusDiv.innerText = 'Mesa ou App inválido';
-  console.error('URL inválida', { mesaId, appId });
-  throw new Error('Parâmetros obrigatórios ausentes');
+  statusDiv.innerText = 'Mesa inválida';
+  throw new Error('Parâmetros ausentes');
 }
 
-/* ===========================
-   🔥 BUSCAR PEDIDO ABERTO
-=========================== */
-async function carregarPedido() {
-  statusDiv.innerText = 'Buscando pedido...';
-
-  const { data, error } = await supabaseClient
+/* 🧠 CRIA PEDIDO SE NÃO EXISTIR */
+async function garantirPedido() {
+  const { data } = await supabaseClient
     .from('pedidos')
-    .select(`
-      id,
-      status,
-      pedido_itens (
-        id,
-        quantidade,
-        produtos (
-          nome,
-          preco
-        )
-      )
-    `)
+    .select('id,status')
     .eq('mesa_id', mesaId)
     .eq('app_id', appId)
     .eq('status', 'aberto')
     .maybeSingle();
 
+  if (data) return data;
+
+  const { data: novo } = await supabaseClient
+    .from('pedidos')
+    .insert({ mesa_id: mesaId, app_id: appId, status:'aberto' })
+    .select()
+    .single();
+
+  return novo;
+}
+
+/* 🔄 CARREGAR PEDIDO */
+async function carregarPedido() {
+  pedidoAtual = await garantirPedido();
+
+  const { data, error } = await supabaseClient
+    .from('pedidos')
+    .select(`
+      id,
+      pedido_itens (
+        id,
+        quantidade,
+        produtos!pedido_itens_produto_fk (
+          nome
+        )
+      )
+    `)
+    .eq('id', pedidoAtual.id)
+    .maybeSingle();
+
   if (error) {
-    console.error(error);
     statusDiv.innerText = 'Erro ao carregar pedido';
     return;
   }
 
-  if (!data) {
-    statusDiv.innerText = 'Nenhum pedido aberto';
-    pedidosDiv.innerHTML = '';
+  statusDiv.innerText = 'Pedido ativo';
+  renderItens(data.pedido_itens || []);
+}
+
+/* 🧾 RENDER */
+function renderItens(itens) {
+  pedidosDiv.innerHTML = '';
+
+  if (itens.length === 0) {
+    pedidosDiv.innerHTML = '<p>Nenhum produto adicionado</p>';
     return;
   }
 
-  statusDiv.innerText = 'Pedido ativo';
-  renderPedido(data);
-}
-
-/* ===========================
-   🧾 RENDERIZAR ITENS
-=========================== */
-function renderPedido(pedido) {
-  pedidosDiv.innerHTML = '';
-
-  pedido.pedido_itens.forEach(item => {
+  itens.forEach(item => {
     const div = document.createElement('div');
     div.className = 'item';
     div.innerHTML = `
-      <strong>${item.produtos.nome}</strong><br>
-      Quantidade: ${item.quantidade}
+      <strong>${item.produtos.nome}</strong>
+      <div class="controls">
+        <button onclick="alterarQtd('${item.id}', -1)">➖</button>
+        <span>${item.quantidade}</span>
+        <button onclick="alterarQtd('${item.id}', 1)">➕</button>
+        <button onclick="removerItem('${item.id}')">🗑️</button>
+      </div>
     `;
     pedidosDiv.appendChild(div);
   });
 }
 
-/* ===========================
-   🚀 START
-=========================== */
+/* ➕➖ QTD */
+async function alterarQtd(itemId, delta) {
+  const { data } = await supabaseClient
+    .from('pedido_itens')
+    .select('quantidade')
+    .eq('id', itemId)
+    .single();
+
+  const nova = data.quantidade + delta;
+
+  if (nova <= 0) {
+    removerItem(itemId);
+    return;
+  }
+
+  await supabaseClient
+    .from('pedido_itens')
+    .update({ quantidade: nova })
+    .eq('id', itemId);
+
+  carregarPedido();
+}
+
+/* 🗑️ */
+async function removerItem(itemId) {
+  await supabaseClient
+    .from('pedido_itens')
+    .delete()
+    .eq('id', itemId);
+
+  carregarPedido();
+}
+
+/* 🔍 BUSCA */
+function filtrarProdutos() {
+  const termo = document.getElementById('buscarProduto').value.toLowerCase();
+  document.querySelectorAll('.item').forEach(el=>{
+    el.style.display = el.innerText.toLowerCase().includes(termo) ? 'block':'none';
+  });
+}
+
+/* ➕ CARDÁPIO */
+function irCardapio() {
+  window.location.href =
+    `cardapio.html?pedido=${pedidoAtual.id}&mesa=${mesaId}&app_id=${appId}`;
+}
+
+/* 💳 FECHAR CONTA */
+async function fecharConta() {
+  await supabaseClient
+    .from('pedidos')
+    .update({ status:'pagando' })
+    .eq('id', pedidoAtual.id);
+
+  window.location.href =
+    `pagamento.html?pedido=${pedidoAtual.id}&app_id=${appId}`;
+}
+
+/* 🚀 START */
 carregarPedido();
 </script>
 
 </body>
 </html>
-
-
