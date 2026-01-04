@@ -14,11 +14,8 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .container{padding:32px;max-width:1200px;margin:auto}
 
 .btn{
-  border:none;
-  padding:10px 16px;
-  border-radius:10px;
-  font-weight:bold;
-  cursor:pointer
+  border:none;padding:10px 16px;border-radius:10px;
+  font-weight:bold;cursor:pointer
 }
 .btn-add{background:#22c55e}
 .btn-avulsa{background:#38bdf8}
@@ -47,7 +44,10 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   border-color:#22c55e;
   box-shadow:0 0 14px rgba(34,197,94,.8);
 }
-.card.ocupada{border-color:#ef4444}
+.card.conta{
+  border-color:#fde047;
+  box-shadow:0 0 14px rgba(253,224,71,.8);
+}
 
 .status{
   margin:6px 0 10px;
@@ -57,7 +57,9 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   font-size:13px
 }
 .status.livre{background:#22c55e;color:#022c22}
-.status.ocupada{background:#ef4444}
+.status.preparando{background:#eab308;color:#000}
+.status.pronto{background:#22c55e;color:#000}
+.status.conta{background:#fde047;color:#000}
 
 .qr{
   background:#020617;
@@ -69,16 +71,11 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 }
 
 .btn-remover{
-  margin-top:8px;
-  width:100%;
-  background:#1e293b;
-  color:#94a3b8;
+  margin-top:8px;width:100%;
+  background:#1e293b;color:#94a3b8;
   border:1px solid #334155;
-  padding:8px;
-  border-radius:8px;
-  font-weight:600;
-  cursor:pointer;
-  font-size:13px
+  padding:8px;border-radius:8px;
+  font-weight:600;cursor:pointer;font-size:13px
 }
 </style>
 </head>
@@ -98,17 +95,11 @@ const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
 const app_id = funcionario?.app_id || admin?.app_id;
 
 if(!app_id){
-  alert("Sessão inválida. Faça login novamente.");
+  alert("Sessão inválida");
   location.href="../auth/login.html";
 }
 
-/* ===== PIN GARÇOM ===== */
-const PIN_GARCOM = "123";
-
-/* ===== SEGREDO REMOVER ===== */
 const SEGREDO_REMOVER_MESA = "4321";
-
-/* ===== TRAVA ===== */
 let criandoMesa = false;
 </script>
 
@@ -126,7 +117,6 @@ let criandoMesa = false;
 </div>
 
 <script>
-/* ===== CARREGAR MESAS ===== */
 async function carregarMesas(){
 
   const { data: mesas } = await sb
@@ -138,60 +128,58 @@ async function carregarMesas(){
 
   const { data: pedidos } = await sb
     .from("pedidos")
-    .select("id,mesa_id,status")
+    .select("mesa_id,status,created_at")
     .eq("app_id", app_id)
-    .in("status", ["aberto","aceito","finalizado","entregue"])
-    .not("mesa_id", "is", null);
+    .not("mesa_id","is",null)
+    .in("status",[
+      "aberto",
+      "aceito",
+      "finalizado",
+      "entregue",
+      "conta_solicitada"
+    ])
+    .order("created_at",{ ascending:false });
 
   const pedidosPorMesa = {};
-  (pedidos || []).forEach(p=>{
-    pedidosPorMesa[String(p.mesa_id)] = p;
+  (pedidos||[]).forEach(p=>{
+    if(!pedidosPorMesa[p.mesa_id]){
+      pedidosPorMesa[p.mesa_id] = p;
+    }
   });
 
   const grid = document.getElementById("listaMesas");
-  grid.innerHTML = "";
+  grid.innerHTML="";
 
-  mesas.forEach(m => {
-
-    const pedidoAtivo = pedidosPorMesa[String(m.id)];
-    const statusPedido = pedidoAtivo?.status;
-
+  mesas.forEach(m=>{
+    const pedido = pedidosPorMesa[m.id];
     let classe = "livre";
-    if(statusPedido === "aberto" || statusPedido === "aceito"){
-      classe = "preparando";
-    }
-    else if(statusPedido === "finalizado"){
-      classe = "pronto";
-    }
-    else if(statusPedido === "entregue"){
-      classe = "ocupada";
-    }
+    let texto  = "LIVRE";
 
-    const ocupada = !!pedidoAtivo;
-    const textoStatus = ocupada ? "OCUPADA" : "LIVRE";
+    if(pedido){
+      if(pedido.status === "conta_solicitada"){
+        classe="conta"; texto="PEDIU A CONTA";
+      }else if(pedido.status === "finalizado"){
+        classe="pronto"; texto="PRONTO";
+      }else{
+        classe="preparando"; texto="OCUPADA";
+      }
+    }
 
     const div = document.createElement("div");
-    div.className = `card ${classe}`;
-
-    div.innerHTML = `
+    div.className=`card ${classe}`;
+    div.innerHTML=`
       <h3>Mesa ${m.numero_mesa}</h3>
-      <span class="status ${ocupada ? "ocupada" : "livre"}">${textoStatus}</span>
+      <span class="status ${classe}">${texto}</span>
 
       <div class="qr">
         <canvas id="qr-${m.id}"></canvas>
       </div>
 
-      ${ocupada ? `
-        <button class="btn-remover" onclick="abrirPainelGarcom(event)">
-          Garçom
-        </button>
-      ` : `
-        <button class="btn-remover">Remover mesa</button>
-      `}
+      ${!pedido ? `<button class="btn-remover">Remover mesa</button>` : ``}
     `;
 
-    div.onclick = () => {
-      location.href = `mesa.html?mesa=${m.id}&app_id=${app_id}`;
+    div.onclick=()=>{
+      location.href=`mesa.html?mesa=${m.id}&app_id=${app_id}`;
     };
 
     grid.appendChild(div);
@@ -202,69 +190,43 @@ async function carregarMesas(){
       { width:120 }
     );
 
-    const removerBtn = div.querySelector(".btn-remover");
-    if(removerBtn && !ocupada){
-      removerBtn.onclick = async (e)=>{
+    const btn=div.querySelector(".btn-remover");
+    if(btn){
+      btn.onclick=async(e)=>{
         e.stopPropagation();
-        const senha = prompt("Código para remover a mesa:");
-        if(senha !== SEGREDO_REMOVER_MESA) return;
-
-        await sb.from("mesas")
-          .update({ ativa:false })
-          .eq("id", m.id);
-
+        const senha=prompt("Código para remover a mesa:");
+        if(senha!==SEGREDO_REMOVER_MESA) return;
+        await sb.from("mesas").update({ativa:false}).eq("id",m.id);
         carregarMesas();
       };
     }
   });
 }
 
-/* ===== BOTÃO GARÇOM ===== */
-function abrirPainelGarcom(e){
-  e.stopPropagation();
-
-  const pin = prompt("PIN do garçom:");
-  if(pin !== PIN_GARCOM){
-    alert("PIN incorreto");
-    return;
-  }
-
-  window.location.href = `garcom.html?app_id=${app_id}`;
-}
-
-/* ===== ADICIONAR MESA ===== */
 async function adicionarMesa(){
   if(criandoMesa) return;
-  criandoMesa = true;
+  criandoMesa=true;
 
-  const { data: ultima } = await sb
+  const { data } = await sb
     .from("mesas")
     .select("numero_mesa")
-    .eq("app_id", app_id)
-    .order("numero_mesa", { ascending:false })
+    .eq("app_id",app_id)
+    .order("numero_mesa",{ascending:false})
     .limit(1)
     .maybeSingle();
 
-  const proximo = (ultima?.numero_mesa || 0) + 1;
-
-  await sb.from("mesas").insert({
-    app_id,
-    numero_mesa: proximo,
-    ativa: true
-  });
-
-  criandoMesa = false;
+  const prox=(data?.numero_mesa||0)+1;
+  await sb.from("mesas").insert({app_id,numero_mesa:prox,ativa:true});
+  criandoMesa=false;
   carregarMesas();
 }
 
-/* ===== VENDA AVULSA ===== */
 function vendaAvulsa(){
-  location.href = `venda-avulsa.html?app_id=${app_id}`;
+  location.href=`venda-avulsa.html?app_id=${app_id}`;
 }
 
-/* START */
 carregarMesas();
-setInterval(carregarMesas, 4000);
+setInterval(carregarMesas,4000);
 </script>
 
 </body>
