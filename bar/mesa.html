@@ -27,8 +27,10 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
   <input placeholder="🔍 Buscar produto..." oninput="filtrarProdutos(this.value)">
   <h3>Produtos</h3>
   <div id="listaProdutos"></div>
+
   <h3>Pedido</h3>
   <div id="pedido"></div>
+
   <button class="pay" onclick="irPagamento()">💳 Fechar conta</button>
 </div>
 
@@ -41,8 +43,8 @@ const sb = supabase.createClient(
 
 /* ================= CONTEXTO ================= */
 const params = new URLSearchParams(location.search);
-const mesaId = params.get("mesa"); // UUID
-const appId  = params.get("app_id");
+const mesaId = params.get("mesa");     // UUID da mesa
+const appId  = params.get("app_id");   // negócio
 
 if(!mesaId || !appId){
   alert("Sessão inválida");
@@ -53,7 +55,7 @@ let mesaNumero = null;
 let pedidoAtual = null;
 let produtosCache = [];
 
-/* ================= CARREGAR NÚMERO DA MESA ================= */
+/* ================= BUSCAR NÚMERO DA MESA ================= */
 async function carregarMesa(){
   const { data, error } = await sb
     .from("mesas")
@@ -72,7 +74,7 @@ async function carregarMesa(){
   document.getElementById("tituloMesa").innerText = `🍽️ Mesa ${mesaNumero}`;
 }
 
-/* ================= GARANTIR PEDIDO ================= */
+/* ================= GARANTIR PEDIDO (MESA) ================= */
 async function garantirPedido(){
   const { data } = await sb
     .from("pedidos")
@@ -87,10 +89,12 @@ async function garantirPedido(){
   const { data: novo, error } = await sb
     .from("pedidos")
     .insert({
-      mesa_id: mesaId,
       app_id: appId,
-      origem: "mesa",
-      status: "aberto"
+      mesa_id: mesaId,
+      origem: "mesa",          // 🔥 DEFINE QUE É MESA
+      status: "aberto",
+      cliente_nome: null,      // 🔥 NÃO PEDE DADOS
+      cliente_whatsapp: null
     })
     .select()
     .single();
@@ -110,6 +114,7 @@ async function carregarProdutos(){
     .from("produtos")
     .select("id,nome,preco")
     .eq("app_id", appId)
+    .eq("ativo", true)
     .order("nome");
 
   produtosCache = data || [];
@@ -139,6 +144,8 @@ function filtrarProdutos(txt){
 
 /* ================= PEDIDO ================= */
 async function carregarPedido(){
+  if(!pedidoAtual) return;
+
   const { data } = await sb
     .from("pedido_itens")
     .select("id,nome_produto,quantidade")
@@ -178,21 +185,18 @@ async function addProduto(p){
     .maybeSingle();
 
   if(data){
-    await sb
-      .from("pedido_itens")
+    await sb.from("pedido_itens")
       .update({ quantidade: data.quantidade + 1 })
       .eq("id", data.id);
   } else {
-    await sb
-      .from("pedido_itens")
-      .insert({
-        app_id: appId,
-        pedido_id: pedidoAtual.id,
-        produto_id: p.id,
-        nome_produto: p.nome,
-        preco: p.preco,
-        quantidade: 1
-      });
+    await sb.from("pedido_itens").insert({
+      app_id: appId,
+      pedido_id: pedidoAtual.id,
+      produto_id: p.id,
+      nome_produto: p.nome,
+      preco: p.preco,
+      quantidade: 1
+    });
   }
 
   carregarPedido();
@@ -219,7 +223,8 @@ async function alterarQtd(id, delta){
 
 /* ================= PAGAMENTO ================= */
 function irPagamento(){
-  location.href = `pagamento.html?pedido=${pedidoAtual.id}&mesa=${mesaId}&app_id=${appId}`;
+  location.href =
+    `pagamento.html?pedido=${pedidoAtual.id}&mesa=${mesaId}&app_id=${appId}`;
 }
 
 /* ================= START ================= */
@@ -234,4 +239,3 @@ function irPagamento(){
 
 </body>
 </html>
-
