@@ -14,6 +14,7 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e293b}
 .total{margin-top:12px;font-size:20px;font-weight:bold}
 button{padding:12px 18px;border:none;border-radius:12px;font-weight:bold;cursor:pointer;background:#22c55e}
+.muted{color:#94a3b8}
 </style>
 </head>
 
@@ -44,7 +45,7 @@ let pedidoId = null;
 </div>
 
 <div class="container" id="conteudo">
-  Carregando pedido...
+  <span class="muted">Carregando pedido…</span>
 </div>
 
 <script>
@@ -67,11 +68,16 @@ async function carregarPedido(){
     .in("status", ["aberto","aceito"])
     .order("created_at", { ascending:false })
     .limit(1)
-    .single();
+    .maybeSingle(); // 👈 evita erro 406
 
-  if(error || !data){
-    alert("Nenhum pedido ativo para esta mesa");
-    conteudo.innerHTML = "<p>Nenhum pedido aberto</p>";
+  if(error){
+    console.error(error);
+    conteudo.innerHTML = "<p class='muted'>Erro ao carregar pedido</p>";
+    return;
+  }
+
+  if(!data){
+    conteudo.innerHTML = "<p class='muted'>Nenhum pedido ativo para esta mesa</p>";
     return;
   }
 
@@ -87,7 +93,7 @@ function renderPedido(pedido){
       <h3>${pedido.cliente_nome || "Mesa"}</h3>
 
       ${pedido.pedido_itens.map(i=>{
-        const sub = i.preco * i.quantidade;
+        const sub = Number(i.preco) * Number(i.quantidade);
         total += sub;
         return `
           <div class="item">
@@ -106,7 +112,11 @@ function renderPedido(pedido){
 
 /* ================= FINALIZAR ================= */
 function finalizar(){
-  // NÃO fecha pedido
+  if(!pedidoId){
+    alert("Pedido não encontrado");
+    return;
+  }
+  // NÃO fecha pedido aqui
   localStorage.setItem("pedido_pagamento", pedidoId);
   location.href = "pagamentos.html";
 }
