@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <title>Mesa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -25,17 +24,12 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 <div class="topo" id="tituloMesa">🍽️ Mesa</div>
 
 <div class="container">
-
   <input placeholder="🔍 Buscar produto..." oninput="filtrarProdutos(this.value)">
-
   <h3>Produtos</h3>
   <div id="listaProdutos"></div>
-
   <h3>Pedido</h3>
   <div id="pedido"></div>
-
   <button class="pay" onclick="irPagamento()">💳 Fechar conta</button>
-
 </div>
 
 <script>
@@ -47,34 +41,43 @@ const sb = supabase.createClient(
 
 /* ================= CONTEXTO ================= */
 const params = new URLSearchParams(location.search);
+const mesaId = params.get("mesa"); // UUID
+const appId  = params.get("app_id");
 
-/* 🔥 AGORA É NÚMERO, NÃO UUID */
-const mesaNumero = params.get("mesa"); // 1, 2, 3...
-
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
-
-const appId =
-  params.get("app_id") ||
-  funcionario?.app_id ||
-  admin?.app_id;
-
-if(!mesaNumero || !appId){
+if(!mesaId || !appId){
   alert("Sessão inválida");
   location.href = "mesas.html";
 }
 
-document.getElementById("tituloMesa").innerText = `🍽️ Mesa ${mesaNumero}`;
-
+let mesaNumero = null;
 let pedidoAtual = null;
 let produtosCache = [];
+
+/* ================= BUSCAR NÚMERO DA MESA ================= */
+async function carregarMesa(){
+  const { data, error } = await sb
+    .from("mesas")
+    .select("numero")
+    .eq("id", mesaId)
+    .eq("app_id", appId)
+    .single();
+
+  if(error || !data){
+    console.error("Erro ao carregar mesa", error);
+    document.getElementById("tituloMesa").innerText = "🍽️ Mesa";
+    return;
+  }
+
+  mesaNumero = data.numero;
+  document.getElementById("tituloMesa").innerText = `🍽️ Mesa ${mesaNumero}`;
+}
 
 /* ================= GARANTIR PEDIDO ================= */
 async function garantirPedido(){
   const { data } = await sb
     .from("pedidos")
     .select("*")
-    .eq("mesa_id", mesaNumero)
+    .eq("mesa_id", mesaId)
     .eq("app_id", appId)
     .eq("status", "aberto")
     .maybeSingle();
@@ -84,16 +87,17 @@ async function garantirPedido(){
   const { data: novo, error } = await sb
     .from("pedidos")
     .insert({
-      mesa_id: mesaNumero,      // 🔥 agora é número
+      mesa_id: mesaId,
       app_id: appId,
+      origem: "mesa",
       status: "aberto"
     })
     .select()
     .single();
 
   if(error){
-    console.error("ERRO AO CRIAR PEDIDO:", error);
-    alert("Erro ao criar pedido da mesa");
+    console.error(error);
+    alert("Erro ao criar pedido");
     return null;
   }
 
@@ -115,28 +119,22 @@ async function carregarProdutos(){
 function renderProdutos(lista){
   const div = document.getElementById("listaProdutos");
   div.innerHTML = "";
-
   lista.forEach(p=>{
     div.innerHTML += `
       <div class="produto">
         <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
         <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
-      </div>
-    `;
+      </div>`;
   });
 }
 
 function filtrarProdutos(txt){
-  txt = (txt || "").toLowerCase();
-  renderProdutos(produtosCache.filter(p =>
-    p.nome.toLowerCase().includes(txt)
-  ));
+  txt = (txt||"").toLowerCase();
+  renderProdutos(produtosCache.filter(p=>p.nome.toLowerCase().includes(txt)));
 }
 
 /* ================= PEDIDO ================= */
 async function carregarPedido(){
-  if(!pedidoAtual) return;
-
   const { data } = await sb
     .from("pedido_itens")
     .select("id,nome_produto,quantidade")
@@ -146,7 +144,7 @@ async function carregarPedido(){
   const div = document.getElementById("pedido");
   div.innerHTML = "";
 
-  if(!data || data.length === 0){
+  if(!data?.length){
     div.innerHTML = "<p>Nenhum item</p>";
     return;
   }
@@ -160,15 +158,12 @@ async function carregarPedido(){
           <span>${i.quantidade}</span>
           <button onclick="alterarQtd('${i.id}',1)">➕</button>
         </div>
-      </div>
-    `;
+      </div>`;
   });
 }
 
 /* ================= ADD PRODUTO ================= */
 async function addProduto(p){
-  if(!pedidoAtual) return;
-
   const { data } = await sb
     .from("pedido_itens")
     .select("id,quantidade")
@@ -178,24 +173,18 @@ async function addProduto(p){
     .maybeSingle();
 
   if(data){
-    await sb
-      .from("pedido_itens")
+    await sb.from("pedido_itens")
       .update({ quantidade: data.quantidade + 1 })
-      .eq("id", data.id)
-      .eq("app_id", appId);
+      .eq("id", data.id);
   } else {
-    await sb
-      .from("pedido_itens")
-      .insert({
-        app_id: appId,
-        pedido_id: pedidoAtual.id,
-        produto_id: p.id,
-        nome_produto: p.nome,
-        preco: p.preco,
-        quantidade: 1,
-        mesa_nome: `Mesa ${mesaNumero}`, // ✅ número correto
-        status: "novo"
-      });
+    await sb.from("pedido_itens").insert({
+      app_id: appId,
+      pedido_id: pedidoAtual.id,
+      produto_id: p.id,
+      nome_produto: p.nome,
+      preco: p.preco,
+      quantidade: 1
+    });
   }
 
   carregarPedido();
@@ -207,21 +196,14 @@ async function alterarQtd(id, delta){
     .from("pedido_itens")
     .select("quantidade")
     .eq("id", id)
-    .eq("app_id", appId)
     .single();
 
   const nova = data.quantidade + delta;
 
   if(nova <= 0){
-    await sb.from("pedido_itens")
-      .delete()
-      .eq("id", id)
-      .eq("app_id", appId);
+    await sb.from("pedido_itens").delete().eq("id", id);
   } else {
-    await sb.from("pedido_itens")
-      .update({ quantidade: nova })
-      .eq("id", id)
-      .eq("app_id", appId);
+    await sb.from("pedido_itens").update({ quantidade: nova }).eq("id", id);
   }
 
   carregarPedido();
@@ -229,11 +211,12 @@ async function alterarQtd(id, delta){
 
 /* ================= PAGAMENTO ================= */
 function irPagamento(){
-  location.href = `pagamento.html?pedido=${pedidoAtual.id}&mesa=${mesaNumero}&app_id=${appId}`;
+  location.href = `pagamento.html?pedido=${pedidoAtual.id}&mesa=${mesaId}&app_id=${appId}`;
 }
 
 /* ================= START ================= */
 (async ()=>{
+  await carregarMesa();
   pedidoAtual = await garantirPedido();
   if(!pedidoAtual) return;
   await carregarProdutos();
