@@ -4,124 +4,128 @@
 <meta charset="UTF-8">
 <title>Mesa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#020617;color:#fff}
-.topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
-.container{max-width:900px;margin:auto;padding:24px}
-.pedido{background:#0f172a;border-radius:18px;padding:18px}
-.item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e293b}
-.total{margin-top:12px;font-size:20px;font-weight:bold}
-button{padding:12px 18px;border:none;border-radius:12px;font-weight:bold;cursor:pointer;background:#22c55e}
-.muted{color:#94a3b8}
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#020617;
+  color:#fff;
+}
+
+.topo{
+  background:#0f172a;
+  padding:16px;
+  font-size:20px;
+  font-weight:bold;
+}
+
+.container{
+  max-width:900px;
+  margin:auto;
+  padding:20px;
+}
+
+.status{
+  margin-bottom:20px;
+  font-weight:bold;
+}
+
+.item{
+  background:#0f172a;
+  border-radius:14px;
+  padding:14px;
+  margin-bottom:12px;
+  border-left:5px solid #22c55e;
+}
 </style>
 </head>
 
 <body>
 
+<div class="topo">🍽️ Mesa</div>
+
+<div class="container">
+  <div id="status" class="status">Carregando...</div>
+  <div id="pedidos"></div>
+</div>
+
 <script>
-/* ================= SUPABASE ================= */
-const sb = supabase.createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+/* 🔑 CONFIGURAÇÃO SUPABASE */
+const supabase = supabase.createClient(
+  'https://SEU_PROJETO.supabase.co',
+  'SUA_PUBLIC_ANON_KEY'
 );
 
-/* ================= PARAMS ================= */
-const params = new URLSearchParams(location.search);
-const mesaId = params.get("mesa");
-const app_id = params.get("app_id");
+/* 🔎 PEGAR MESA DA URL */
+const params = new URLSearchParams(window.location.search);
+const mesaId = params.get('mesa');
 
-if(!mesaId || !app_id){
-  alert("Mesa inválida");
-  throw "";
+const statusDiv = document.getElementById('status');
+const pedidosDiv = document.getElementById('pedidos');
+
+/* 🛑 VALIDAÇÃO CRÍTICA */
+if (!mesaId) {
+  statusDiv.innerText = 'Mesa inválida';
+  throw new Error('Mesa não informada na URL');
 }
 
-let pedidoId = null;
-</script>
+/* 🔥 BUSCAR PEDIDO */
+async function carregarPedido() {
+  statusDiv.innerText = 'Buscando pedido...';
 
-<div class="topo">
-  <h2>🪑 Mesa</h2>
-</div>
-
-<div class="container" id="conteudo">
-  <span class="muted">Carregando pedido…</span>
-</div>
-
-<script>
-/* ================= BUSCAR PEDIDO DA MESA ================= */
-async function carregarPedido(){
-  const { data, error } = await sb
-    .from("pedidos")
+  const { data, error } = await supabase
+    .from('pedidos')
     .select(`
       id,
-      cliente_nome,
       status,
       pedido_itens (
-        nome_produto,
+        id,
         quantidade,
-        preco
+        produtos (
+          nome,
+          preco
+        )
       )
     `)
-    .eq("app_id", app_id)
-    .eq("mesa_id", mesaId)
-    .in("status", ["aberto","aceito"])
-    .order("created_at", { ascending:false })
-    .limit(1)
-    .maybeSingle(); // 👈 evita erro 406
+    .eq('mesa_id', mesaId)
+    .eq('status', 'aberto')
+    .maybeSingle();
 
-  if(error){
+  if (error) {
     console.error(error);
-    conteudo.innerHTML = "<p class='muted'>Erro ao carregar pedido</p>";
+    statusDiv.innerText = 'Erro ao carregar pedido';
     return;
   }
 
-  if(!data){
-    conteudo.innerHTML = "<p class='muted'>Nenhum pedido ativo para esta mesa</p>";
+  if (!data) {
+    statusDiv.innerText = 'Nenhum pedido aberto';
+    pedidosDiv.innerHTML = '';
     return;
   }
 
-  pedidoId = data.id;
+  statusDiv.innerText = 'Pedido ativo';
   renderPedido(data);
 }
 
-function renderPedido(pedido){
-  let total = 0;
+/* 🧾 RENDERIZA ITENS */
+function renderPedido(pedido) {
+  pedidosDiv.innerHTML = '';
 
-  conteudo.innerHTML = `
-    <div class="pedido">
-      <h3>${pedido.cliente_nome || "Mesa"}</h3>
-
-      ${pedido.pedido_itens.map(i=>{
-        const sub = Number(i.preco) * Number(i.quantidade);
-        total += sub;
-        return `
-          <div class="item">
-            <span>${i.quantidade}x ${i.nome_produto}</span>
-            <b>R$ ${sub.toFixed(2)}</b>
-          </div>
-        `;
-      }).join("")}
-
-      <div class="total">Total: R$ ${total.toFixed(2)}</div>
-
-      <button onclick="finalizar()">Finalizar / Pagar</button>
-    </div>
-  `;
+  pedido.pedido_itens.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = `
+      <strong>${item.produtos.nome}</strong><br>
+      Quantidade: ${item.quantidade}
+    `;
+    pedidosDiv.appendChild(div);
+  });
 }
 
-/* ================= FINALIZAR ================= */
-function finalizar(){
-  if(!pedidoId){
-    alert("Pedido não encontrado");
-    return;
-  }
-  // NÃO fecha pedido aqui
-  localStorage.setItem("pedido_pagamento", pedidoId);
-  location.href = "pagamentos.html";
-}
-
-/* START */
+/* 🚀 INICIAR */
 carregarPedido();
 </script>
 
