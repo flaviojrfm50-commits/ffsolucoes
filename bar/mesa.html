@@ -7,63 +7,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#020617;color:#fff}
+body{margin:0;font-family:Arial,sans-serif;background:#020617;color:#fff}
 .topo{background:#0f172a;padding:16px;font-size:20px;font-weight:bold}
 .container{max-width:900px;margin:auto;padding:20px}
-
-input{
-  width:100%;
-  padding:12px;
-  border-radius:10px;
-  border:none;
-  margin-bottom:14px
-}
-
-.tabs{display:flex;gap:10px;margin-bottom:16px}
-.tab{
-  flex:1;
-  padding:10px;
-  border-radius:10px;
-  background:#1e293b;
-  text-align:center;
-  cursor:pointer;
-  font-weight:bold
-}
-.tab.ativa{background:#22c55e;color:#000}
-
-.produto,.item{
-  background:#0f172a;
-  border-radius:14px;
-  padding:14px;
-  margin-bottom:12px
-}
+input{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:16px}
+.produto,.item{background:#0f172a;border-radius:14px;padding:14px;margin-bottom:12px}
 .produto{display:flex;justify-content:space-between;align-items:center}
-
-button{
-  padding:6px 12px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer
-}
-
-.btn-enviar{
-  width:100%;
-  padding:16px;
-  background:#22c55e;
-  font-weight:bold;
-  border-radius:12px;
-  margin-top:20px
-}
-
-.btn-conta{
-  width:100%;
-  padding:16px;
-  background:#eab308;
-  color:#000;
-  font-weight:bold;
-  border-radius:12px;
-  margin-top:12px
-}
+.controls{display:flex;gap:8px;margin-top:8px}
+button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
+.pay{width:100%;padding:16px;border:none;border-radius:12px;font-size:16px;font-weight:bold;background:#2563eb;color:#fff}
 </style>
 </head>
 
@@ -72,22 +24,14 @@ button{
 <div class="topo" id="tituloMesa">🍽️ Mesa</div>
 
 <div class="container">
-
   <input placeholder="🔍 Buscar produto..." oninput="filtrarProdutos(this.value)">
-
-  <div class="tabs">
-    <div class="tab ativa" onclick="mudarDestino('cozinha',this)">🍳 Cozinha</div>
-    <div class="tab" onclick="mudarDestino('bar',this)">🍺 Bar</div>
-  </div>
-
+  <h3>Produtos</h3>
   <div id="listaProdutos"></div>
 
   <h3>Pedido</h3>
   <div id="pedido"></div>
 
-  <button class="btn-enviar" onclick="enviarPedido()">📤 Enviar pedido</button>
-  <button class="btn-conta" onclick="pedirConta()">🧾 Pedir a conta</button>
-
+  <button class="pay" onclick="irPagamento()">💳 Fechar conta</button>
 </div>
 
 <script>
@@ -97,170 +41,197 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* ================= CONTEXTO ================= */
 const params = new URLSearchParams(location.search);
-const mesaId = params.get("mesa");
-const appId  = params.get("app_id");
+const mesaId = params.get("mesa");     // UUID da mesa
+const appId  = params.get("app_id");   // negócio
 
-let pedidoAtual=null;
-let produtos=[];
-let destinoAtual="cozinha";
+if(!mesaId || !appId){
+  alert("Sessão inválida");
+  location.href = "mesas.html";
+}
 
-/* ================= GARANTIR VENDA ================= */
+let mesaNumero = null;
+let pedidoAtual = null;
+let produtosCache = [];
+
+/* ================= BUSCAR NÚMERO DA MESA ================= */
+async function carregarMesa(){
+  const { data, error } = await sb
+    .from("mesas")
+    .select("numero_mesa")
+    .eq("id", mesaId)
+    .eq("app_id", appId)
+    .single();
+
+  if(error || !data){
+    console.error("Erro ao carregar mesa:", error);
+    document.getElementById("tituloMesa").innerText = "🍽️ Mesa";
+    return;
+  }
+
+  mesaNumero = data.numero_mesa;
+  document.getElementById("tituloMesa").innerText = `🍽️ Mesa ${mesaNumero}`;
+}
+
+/* ================= GARANTIR PEDIDO (MESA) ================= */
 async function garantirPedido(){
-
   const { data } = await sb
-    .from("vendas")
+    .from("pedidos")
     .select("*")
     .eq("mesa_id", mesaId)
     .eq("app_id", appId)
-    .not("status","in",'("pago","cancelado")')
-    .order("created_at",{ascending:false})
-    .limit(1)
+    .eq("status", "aberto")
     .maybeSingle();
 
   if(data) return data;
 
-  const { data:nova } = await sb
-    .from("vendas")
+  const { data: novo, error } = await sb
+    .from("pedidos")
     .insert({
       app_id: appId,
       mesa_id: mesaId,
-      status: "aberto"
+      origem: "mesa",          // 🔥 DEFINE QUE É MESA
+      status: "aberto",
+      cliente_nome: null,      // 🔥 NÃO PEDE DADOS
+      cliente_whatsapp: null
     })
     .select()
     .single();
 
-  return nova;
+  if(error){
+    console.error("Erro ao criar pedido:", error);
+    alert("Erro ao criar pedido da mesa");
+    return null;
+  }
+
+  return novo;
 }
 
 /* ================= PRODUTOS ================= */
 async function carregarProdutos(){
   const { data } = await sb
     .from("produtos")
-    .select("id,nome,preco,destino")
-    .eq("app_id",appId)
-    .eq("ativo",true);
+    .select("id,nome,preco")
+    .eq("app_id", appId)
+    .eq("ativo", true)
+    .order("nome");
 
-  produtos=data||[];
-  renderProdutos();
+  produtosCache = data || [];
+  renderProdutos(produtosCache);
 }
 
-function mudarDestino(d,el){
-  destinoAtual=d;
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("ativa"));
-  el.classList.add("ativa");
-  renderProdutos();
+function renderProdutos(lista){
+  const div = document.getElementById("listaProdutos");
+  div.innerHTML = "";
+
+  lista.forEach(p=>{
+    div.innerHTML += `
+      <div class="produto">
+        <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
+        <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
+      </div>
+    `;
+  });
 }
 
 function filtrarProdutos(txt){
-  renderProdutos(txt.toLowerCase());
+  txt = (txt || "").toLowerCase();
+  renderProdutos(produtosCache.filter(p =>
+    p.nome.toLowerCase().includes(txt)
+  ));
 }
 
-function renderProdutos(filtro=""){
-  const div=document.getElementById("listaProdutos");
-  div.innerHTML="";
-  produtos
-    .filter(p=>p.destino===destinoAtual && p.nome.toLowerCase().includes(filtro))
-    .forEach(p=>{
-      div.innerHTML+=`
-        <div class="produto">
-          <span>${p.nome} — R$ ${p.preco.toFixed(2)}</span>
-          <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
-        </div>`;
-    });
-}
+/* ================= PEDIDO ================= */
+async function carregarPedido(){
+  if(!pedidoAtual) return;
 
-/* ================= ADD ITEM ================= */
-async function addProduto(p){
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("id,nome_produto,quantidade")
+    .eq("pedido_id", pedidoAtual.id)
+    .eq("app_id", appId);
 
-  if(pedidoAtual.status==="enviado"){
-    alert("Pedido já enviado 😉");
+  const div = document.getElementById("pedido");
+  div.innerHTML = "";
+
+  if(!data || data.length === 0){
+    div.innerHTML = "<p>Nenhum item</p>";
     return;
   }
 
+  data.forEach(i=>{
+    div.innerHTML += `
+      <div class="item">
+        <strong>${i.nome_produto}</strong>
+        <div class="controls">
+          <button onclick="alterarQtd('${i.id}',-1)">➖</button>
+          <span>${i.quantidade}</span>
+          <button onclick="alterarQtd('${i.id}',1)">➕</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+/* ================= ADD PRODUTO ================= */
+async function addProduto(p){
   const { data } = await sb
-    .from("itens_pedido")
+    .from("pedido_itens")
     .select("id,quantidade")
-    .eq("venda_id",pedidoAtual.id)
-    .eq("produto_id",p.id)
+    .eq("pedido_id", pedidoAtual.id)
+    .eq("produto_id", p.id)
+    .eq("app_id", appId)
     .maybeSingle();
 
   if(data){
-    await sb.from("itens_pedido")
-      .update({quantidade:data.quantidade+1})
-      .eq("id",data.id);
-  }else{
-    await sb.from("itens_pedido").insert({
-      app_id:appId,
-      venda_id:pedidoAtual.id,
-      produto_id:p.id,
-      nome_produto:p.nome,
-      preco:p.preco,
-      quantidade:1,
-      destino:p.destino
+    await sb.from("pedido_itens")
+      .update({ quantidade: data.quantidade + 1 })
+      .eq("id", data.id);
+  } else {
+    await sb.from("pedido_itens").insert({
+      app_id: appId,
+      pedido_id: pedidoAtual.id,
+      produto_id: p.id,
+      nome_produto: p.nome,
+      preco: p.preco,
+      quantidade: 1
     });
   }
 
   carregarPedido();
 }
 
-/* ================= CARREGAR PEDIDO ================= */
-async function carregarPedido(){
+/* ================= QTD ================= */
+async function alterarQtd(id, delta){
   const { data } = await sb
-    .from("itens_pedido")
-    .select("nome_produto,quantidade")
-    .eq("venda_id",pedidoAtual.id);
+    .from("pedido_itens")
+    .select("quantidade")
+    .eq("id", id)
+    .single();
 
-  const div=document.getElementById("pedido");
-  div.innerHTML=data?.length
-    ? data.map(i=>`<div class="item">${i.quantidade}x ${i.nome_produto}</div>`).join("")
-    : "<p>Nenhum item</p>";
-}
+  const nova = data.quantidade + delta;
 
-/* ================= ENVIAR PEDIDO (TRAVADO) ================= */
-async function enviarPedido(){
-
-  if(pedidoAtual.status==="enviado"){
-    alert("Pedido já foi enviado!");
-    return;
+  if(nova <= 0){
+    await sb.from("pedido_itens").delete().eq("id", id);
+  } else {
+    await sb.from("pedido_itens").update({ quantidade: nova }).eq("id", id);
   }
 
-  const { data:itens } = await sb
-    .from("itens_pedido")
-    .select("id")
-    .eq("venda_id",pedidoAtual.id);
-
-  if(!itens?.length){
-    alert("Adicione itens ao pedido");
-    return;
-  }
-
-  await sb.from("mesas")
-    .update({status:"ocupada"})
-    .eq("id",mesaId);
-
-  await sb.from("vendas")
-    .update({status:"enviado"})
-    .eq("id",pedidoAtual.id);
-
-  pedidoAtual.status="enviado";
-  alert("✅ Pedido enviado!");
+  carregarPedido();
 }
 
-/* ================= PEDIR CONTA ================= */
-async function pedirConta(){
-
-  await sb.from("vendas")
-    .update({status:"conta_solicitada"})
-    .eq("id",pedidoAtual.id);
-
-  alert("🧾 Conta solicitada!");
+/* ================= PAGAMENTO ================= */
+function irPagamento(){
+  location.href =
+    `pagamento.html?pedido=${pedidoAtual.id}&mesa=${mesaId}&app_id=${appId}`;
 }
 
 /* ================= START ================= */
-(async()=>{
-  pedidoAtual=await garantirPedido();
-  document.getElementById("tituloMesa").innerText=`🍽️ Mesa ${mesaId}`;
+(async ()=>{
+  await carregarMesa();
+  pedidoAtual = await garantirPedido();
+  if(!pedidoAtual) return;
   await carregarProdutos();
   await carregarPedido();
 })();
@@ -268,3 +239,4 @@ async function pedirConta(){
 
 </body>
 </html>
+
