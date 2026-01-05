@@ -44,7 +44,7 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
   font-weight:bold
 }
 
-/* STATUS VISUAL */
+/* STATUS */
 .status{
   padding:10px;
   border-radius:10px;
@@ -118,7 +118,7 @@ async function carregarMesa(){
   }
 }
 
-/* ================= STATUS VISUAL ================= */
+/* ================= STATUS ================= */
 function renderStatus(status){
   const div = document.getElementById("statusPedido");
   div.innerHTML = "";
@@ -140,7 +140,8 @@ function renderStatus(status){
 async function garantirPedido(){
   if(pedidoAtual) return pedidoAtual;
 
-  const { data } = await sb
+  // 1️⃣ procura pedido ativo
+  const { data: existente } = await sb
     .from("pedidos")
     .select("*")
     .eq("app_id", appId)
@@ -156,20 +157,38 @@ async function garantirPedido(){
     .limit(1)
     .maybeSingle();
 
-  if(data){
-    pedidoAtual = data;
+  if(existente){
+    pedidoAtual = existente;
 
-    /* 🔒 MARCA MESA COMO OCUPADA */
     await sb.from("mesas")
       .update({ status: "ocupada" })
       .eq("id", mesaId)
       .eq("app_id", appId);
 
-    renderStatus(data.status);
+    renderStatus(existente.status);
     return pedidoAtual;
   }
 
-  return null;
+  // 2️⃣ não existe → cria (lógica original)
+  const { data: novo } = await sb
+    .from("pedidos")
+    .insert({
+      app_id: appId,
+      mesa_id: mesaId,
+      origem: "mesa",
+      status: "aberto"
+    })
+    .select()
+    .single();
+
+  pedidoAtual = novo;
+
+  await sb.from("mesas")
+    .update({ status: "ocupada" })
+    .eq("id", mesaId)
+    .eq("app_id", appId);
+
+  return pedidoAtual;
 }
 
 /* ================= PRODUTOS ================= */
@@ -213,10 +232,6 @@ function filtrarProdutos(txt){
 /* ================= ADD PRODUTO ================= */
 async function addProduto(p){
   const pedido = await garantirPedido();
-  if(!pedido){
-    alert("Chame o garçom para iniciar o pedido");
-    return;
-  }
 
   const { data } = await sb
     .from("pedido_itens")
@@ -249,12 +264,7 @@ async function addProduto(p){
 async function carregarPedido(){
   const pedido = await garantirPedido();
 
-  if(!pedido){
-    document.getElementById("pedido").innerHTML = "<p>Nenhum item</p>";
-    return;
-  }
-
-  /* 🔓 LIBERA MESA SOMENTE SE PAGO/FINALIZADO */
+  // 🔓 libera mesa SOMENTE quando pago/finalizado
   if(pedido.status === "pago" || pedido.status === "finalizado"){
     pedidoAtual = null;
 
@@ -306,8 +316,6 @@ async function alterarQtd(id, delta){
     .eq("id", id)
     .single();
 
-  if(!data) return;
-
   const nova = data.quantidade + delta;
 
   if(nova <= 0){
@@ -322,7 +330,6 @@ async function alterarQtd(id, delta){
 /* ================= AÇÕES ================= */
 async function enviarPedido(){
   const pedido = await garantirPedido();
-  if(!pedido) return;
 
   await sb.from("pedidos")
     .update({ status: "enviado" })
@@ -333,7 +340,6 @@ async function enviarPedido(){
 
 async function pedirConta(){
   const pedido = await garantirPedido();
-  if(!pedido) return;
 
   await sb.from("pedidos")
     .update({ status: "conta_solicitada" })
