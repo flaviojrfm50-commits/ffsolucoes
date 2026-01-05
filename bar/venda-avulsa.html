@@ -92,6 +92,13 @@ button{
   </select>
 
   <input id="valorRecebido" type="number" step="0.01" placeholder="Valor recebido">
+<input
+  id="valorRecebido"
+  type="number"
+  step="0.01"
+  placeholder="Valor recebido"
+  oninput="calcularTroco()"
+>
 
   <div id="troco" class="troco"></div>
 
@@ -245,3 +252,4 @@ carregarProdutos();
 
 </body>
 </html>
+
