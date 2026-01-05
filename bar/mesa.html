@@ -3,263 +3,127 @@
 <head>
 <meta charset="UTF-8">
 <title>Mesa</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#020617;color:#fff}
-.topo{background:#0f172a;padding:16px;font-size:20px;font-weight:bold}
-.container{max-width:900px;margin:auto;padding:20px}
-input{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:12px}
-
-.section{margin-bottom:24px}
-.section h3{margin-bottom:10px}
-
-.produto,.item{
-  background:#0f172a;
-  border-radius:14px;
-  padding:14px;
-  margin-bottom:10px;
-}
-
-.produto{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-.controls{
-  display:flex;
-  gap:8px;
-  margin-top:8px;
-}
-
-button{
-  padding:6px 12px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-}
-
-button[disabled]{
-  opacity:.4;
-  cursor:not-allowed;
-}
-
-.send{
-  width:100%;
-  padding:14px;
-  border:none;
-  border-radius:12px;
-  font-size:15px;
-  font-weight:bold;
-  background:#16a34a;
-  color:#fff;
-  margin-bottom:12px;
-}
-
-.pay{
-  width:100%;
-  padding:16px;
-  border:none;
-  border-radius:12px;
-  font-size:16px;
-  font-weight:bold;
-  background:#2563eb;
-  color:#fff;
-}
-
-.total{
-  font-size:18px;
-  font-weight:bold;
-  margin-top:10px;
-}
+body{background:#020617;color:#fff;font-family:Arial}
+button{padding:6px 10px;border-radius:8px;border:none}
+.produto,.item{background:#0f172a;padding:12px;border-radius:12px;margin-bottom:8px}
+.controls{display:flex;gap:8px}
+.total{font-size:18px;font-weight:bold;margin-top:10px}
 </style>
 </head>
-
 <body>
 
-<div class="topo" id="tituloMesa">🍽️ Mesa</div>
+<h2 id="titulo">Mesa</h2>
 
-<div class="container">
+<h3>Produtos</h3>
+<div id="produtos"></div>
 
-  <!-- BAR -->
-  <div class="section">
-    <h3>🍺 Bar</h3>
-    <input placeholder="🔍 Buscar produto do bar..." oninput="filtrarBar(this.value)">
-    <div id="listaBar"></div>
-  </div>
+<h3>Pedido</h3>
+<div id="pedido"></div>
+<div class="total" id="total"></div>
 
-  <!-- COZINHA -->
-  <div class="section">
-    <h3>🍳 Cozinha</h3>
-    <input placeholder="🔍 Buscar produto da cozinha..." oninput="filtrarCozinha(this.value)">
-    <div id="listaCozinha"></div>
-  </div>
-
-  <!-- PEDIDO -->
-  <div class="section">
-    <h3>🧾 Pedido</h3>
-    <div id="pedido">Carregando...</div>
-    <div class="total" id="totalPedido"></div>
-  </div>
-
-  <button class="send" id="btnEnviar" onclick="enviarPedido()">📨 Enviar pedido</button>
-  <button class="pay" onclick="pedirConta()">💳 Fechar conta</button>
-
-</div>
+<button onclick="enviarPedido()">📨 Enviar pedido</button>
+<button onclick="pedirConta()">💳 Pedir conta</button>
 
 <script>
-/* ================= SUPABASE ================= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ================= CONTEXTO ================= */
 const params = new URLSearchParams(location.search);
 const mesaId = params.get("mesa");
 const appId  = params.get("app_id");
 
-if(!mesaId || !appId){
-  alert("Sessão inválida");
-  location.href = "mesas.html";
-}
-
 let pedidoAtual = null;
-let produtosBar = [];
-let produtosCozinha = [];
 
-/* ================= UTIL ================= */
+/* ===== REGRA ÚNICA ===== */
 function pedidoBloqueado(){
   return pedidoAtual && pedidoAtual.status !== "aberto";
 }
 
-/* ================= MESA ================= */
-async function carregarMesa(){
-  const { data } = await sb
-    .from("mesas")
-    .select("numero_mesa")
-    .eq("id", mesaId)
-    .single();
-
-  document.getElementById("tituloMesa").innerText =
-    data ? `🍽️ Mesa ${data.numero_mesa}` : "🍽️ Mesa";
-}
-
-/* ================= GARANTIR PEDIDO ================= */
+/* ===== GARANTIR PEDIDO ===== */
 async function garantirPedido(){
   const { data } = await sb
     .from("pedidos")
     .select("*")
     .eq("mesa_id", mesaId)
     .eq("app_id", appId)
-    .not("status", "in", '("pago","finalizado")')
-    .order("created_at",{ascending:false})
+    .not("status","in",'("pago","finalizado")')
     .maybeSingle();
 
   if(data) return data;
 
-  const { data: novo, error } = await sb
+  const { data: novo } = await sb
     .from("pedidos")
     .insert({
       app_id: appId,
       mesa_id: mesaId,
-      origem: "mesa",
       status: "aberto"
     })
     .select()
     .single();
 
-  if(error){
-    console.error(error);
-    return null;
-  }
-
   return novo;
 }
 
-/* ================= PRODUTOS ================= */
+/* ===== PRODUTOS ===== */
 async function carregarProdutos(){
   const { data } = await sb
     .from("produtos")
-    .select("id,nome,preco,destino")
+    .select("id,nome,preco")
     .eq("app_id", appId)
-    .eq("ativo", true)
-    .order("nome");
+    .eq("ativo", true);
 
-  produtosBar = data.filter(p=>p.destino==="bar");
-  produtosCozinha = data.filter(p=>p.destino==="cozinha");
+  const div = document.getElementById("produtos");
+  div.innerHTML = "";
 
-  renderBar(produtosBar);
-  renderCozinha(produtosCozinha);
-}
-
-function renderBar(lista){
-  const div = document.getElementById("listaBar");
-  div.innerHTML="";
-  lista.forEach(p=>{
-    div.innerHTML+=`
+  data.forEach(p=>{
+    div.innerHTML += `
       <div class="produto">
-        <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
-        <button onclick='addProduto(${JSON.stringify(p)})' ${pedidoBloqueado()?"disabled":""}>➕</button>
-      </div>`;
+        ${p.nome} - R$ ${p.preco.toFixed(2)}
+        <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
+      </div>
+    `;
   });
 }
-function renderCozinha(lista){
-  const div = document.getElementById("listaCozinha");
-  div.innerHTML="";
-  lista.forEach(p=>{
-    div.innerHTML+=`
-      <div class="produto">
-        <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
-        <button onclick='addProduto(${JSON.stringify(p)})' ${pedidoBloqueado()?"disabled":""}>➕</button>
-      </div>`;
-  });
-}
-function filtrarBar(t){renderBar(produtosBar.filter(p=>p.nome.toLowerCase().includes(t.toLowerCase())))}
-function filtrarCozinha(t){renderCozinha(produtosCozinha.filter(p=>p.nome.toLowerCase().includes(t.toLowerCase())))}
 
-/* ================= PEDIDO ================= */
+/* ===== PEDIDO ===== */
 async function carregarPedido(){
-  if(!pedidoAtual) return;
-
   const { data } = await sb
     .from("pedido_itens")
     .select("id,nome_produto,quantidade,preco")
     .eq("pedido_id", pedidoAtual.id);
 
   const div = document.getElementById("pedido");
-  div.innerHTML="";
+  div.innerHTML = "";
   let total = 0;
 
-  if(!data || !data.length){
-    div.innerHTML="<p>Nenhum item</p>";
-  } else {
-    data.forEach(i=>{
-      total += i.preco * i.quantidade;
-      div.innerHTML+=`
-        <div class="item">
-          <strong>${i.nome_produto}</strong>
-          <div class="controls">
-            <button onclick="alterarQtd('${i.id}',-1)" ${pedidoBloqueado()?"disabled":""}>➖</button>
-            <span>${i.quantidade}</span>
-            <button onclick="alterarQtd('${i.id}',1)" ${pedidoBloqueado()?"disabled":""}>➕</button>
-          </div>
-        </div>`;
-    });
+  if(!data.length){
+    div.innerHTML = "<p>Nenhum item</p>";
   }
 
-  document.getElementById("totalPedido").innerText =
-    total>0 ? `💰 Total: R$ ${total.toFixed(2)}` : "";
+  data.forEach(i=>{
+    total += i.preco * i.quantidade;
+    div.innerHTML += `
+      <div class="item">
+        ${i.nome_produto}
+        <div class="controls">
+          <button onclick="alterarQtd('${i.id}',-1)">➖</button>
+          <span>${i.quantidade}</span>
+          <button onclick="alterarQtd('${i.id}',1)">➕</button>
+        </div>
+      </div>
+    `;
+  });
 
-  document.getElementById("btnEnviar").style.display =
-    pedidoAtual.status==="aberto" ? "block" : "none";
+  document.getElementById("total").innerText =
+    total ? `Total: R$ ${total.toFixed(2)}` : "";
 }
 
-/* ================= ADD / QTD ================= */
+/* ===== ADD / REMOVE ===== */
 async function addProduto(p){
-  if(!pedidoAtual) return;
   if(pedidoBloqueado()) return;
 
   const { data } = await sb
@@ -280,50 +144,52 @@ async function addProduto(p){
       produto_id: p.id,
       nome_produto: p.nome,
       preco: p.preco,
-      quantidade: 1,
-      destino: p.destino
+      quantidade: 1
     });
   }
   carregarPedido();
 }
 
 async function alterarQtd(id,delta){
-  if(!pedidoAtual) return;
   if(pedidoBloqueado()) return;
 
-  const { data } = await sb.from("pedido_itens").select("quantidade").eq("id",id).single();
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("quantidade")
+    .eq("id",id)
+    .single();
+
   const nova = data.quantidade + delta;
 
-  if(nova<=0) await sb.from("pedido_itens").delete().eq("id",id);
-  else await sb.from("pedido_itens").update({quantidade:nova}).eq("id",id);
-
+  if(nova <= 0){
+    await sb.from("pedido_itens").delete().eq("id",id);
+  } else {
+    await sb.from("pedido_itens").update({quantidade:nova}).eq("id",id);
+  }
   carregarPedido();
 }
 
-/* ================= ENVIAR / CONTA ================= */
+/* ===== STATUS ===== */
 async function enviarPedido(){
-  await sb.from("pedidos").update({status:"enviado"}).eq("id",pedidoAtual.id);
-  pedidoAtual.status="enviado";
-  carregarPedido();
+  await sb.from("pedidos")
+    .update({status:"enviado"})
+    .eq("id",pedidoAtual.id);
+  pedidoAtual.status = "enviado";
 }
 
 async function pedirConta(){
-  await sb.from("pedidos").update({status:"conta_solicitada"}).eq("id",pedidoAtual.id);
-  alert("Conta solicitada. Aguarde o garçom.");
+  await sb.from("pedidos")
+    .update({status:"conta_solicitada"})
+    .eq("id",pedidoAtual.id);
+  alert("Conta solicitada");
 }
 
-/* ================= START ================= */
+/* ===== START ===== */
 (async()=>{
-  await carregarMesa();
   pedidoAtual = await garantirPedido();
-  if(!pedidoAtual){
-    alert("Erro ao criar pedido");
-    return;
-  }
   await carregarProdutos();
   await carregarPedido();
 })();
 </script>
-
 </body>
 </html>
