@@ -19,6 +19,7 @@ body{
   padding:24px;
 }
 h2{ margin-top:0; }
+
 .pedido{
   background:#0f172a;
   border-radius:18px;
@@ -26,6 +27,7 @@ h2{ margin-top:0; }
   margin-bottom:20px;
   border-left:6px solid #22c55e;
 }
+
 .tag{
   display:inline-block;
   padding:4px 12px;
@@ -34,25 +36,31 @@ h2{ margin-top:0; }
   font-weight:bold;
   margin-bottom:6px;
 }
+
 .mesa{ background:#2563eb }
+
 .itens{ margin-top:10px; }
+
 .item{
   display:flex;
   justify-content:space-between;
   padding:6px 0;
   border-bottom:1px solid #1e293b;
 }
+
 .total{
   margin-top:12px;
   font-size:18px;
   font-weight:900;
 }
+
 .acoes{
   margin-top:14px;
   display:flex;
   gap:10px;
   flex-wrap:wrap;
 }
+
 button{
   padding:10px 16px;
   border-radius:10px;
@@ -60,9 +68,11 @@ button{
   font-weight:bold;
   cursor:pointer;
 }
+
 .aceitar{ background:#22c55e }
-.finalizar{ background:#3b82f6 }
+.pronto{ background:#3b82f6 }
 .excluir{ background:#ef4444 }
+
 .aceito-tag{
   background:#16a34a;
   padding:10px 16px;
@@ -98,10 +108,9 @@ if(!app_id){
 localStorage.setItem("app_id", app_id);
 const lista = document.getElementById("lista");
 
-/* ================= CARREGAR PEDIDOS (COZINHA) ================= */
+/* ================= CARREGAR PEDIDOS ================= */
 async function carregarPedidos(){
 
-  // 🔥 pega pedidos que têm ITEM de cozinha
   const { data, error } = await sb
     .from("pedidos")
     .select(`
@@ -129,7 +138,6 @@ async function carregarPedidos(){
 
   lista.innerHTML = "";
 
-  // 🔥 filtra só pedidos com itens de cozinha
   const pedidosCozinha = (data || []).filter(p =>
     p.pedido_itens.some(i => i.destino === "cozinha")
   );
@@ -144,18 +152,14 @@ async function carregarPedidos(){
     const itens = pedido.pedido_itens.filter(i => i.destino === "cozinha");
 
     const total = itens.reduce(
-      (s,i)=>s + (i.preco * i.quantidade), 0
+      (s,i)=> s + (i.preco * i.quantidade), 0
     );
 
-    const numeroMesa = pedido.mesas?.numero_mesa ?? null;
+    const numeroMesa = pedido.mesas?.numero_mesa ?? "-";
 
     lista.innerHTML += `
       <div class="pedido">
-        <span class="tag mesa">Mesa</span>
-
-        <div>
-          <b>Mesa ${numeroMesa}</b>
-        </div>
+        <span class="tag mesa">Mesa ${numeroMesa}</span>
 
         <div class="itens">
           ${itens.map(i=>`
@@ -172,10 +176,16 @@ async function carregarPedidos(){
           ${
             pedido.status === "aberto" || pedido.status === "enviado"
             ? `<button class="aceitar" onclick="aceitarPedido('${pedido.id}')">Aceitar</button>`
-            : `<div class="aceito-tag">✔ Pedido aceito</div>`
+            : `<div class="aceito-tag">✔ Em preparo</div>`
           }
-          <button class="finalizar" onclick="finalizarPedido('${pedido.id}')">Finalizar</button>
-          <button class="excluir" onclick="excluirPedido('${pedido.id}')">Excluir</button>
+
+          <button class="pronto" onclick="marcarPronto('${pedido.id}')">
+            Pedido pronto
+          </button>
+
+          <button class="excluir" onclick="excluirPedido('${pedido.id}')">
+            Excluir
+          </button>
         </div>
       </div>
     `;
@@ -192,9 +202,9 @@ async function aceitarPedido(id){
   carregarPedidos();
 }
 
-async function finalizarPedido(id){
+async function marcarPronto(id){
   await sb.from("pedidos")
-    .update({ status:"finalizado" })
+    .update({ status:"pronto" })
     .eq("id", id)
     .eq("app_id", app_id);
 
@@ -203,9 +213,10 @@ async function finalizarPedido(id){
 
 async function excluirPedido(id){
   if(!confirm("Excluir pedido?")) return;
+
   await sb.from("pedidos")
     .delete()
-    .eq("id",id)
+    .eq("id", id)
     .eq("app_id", app_id);
 
   carregarPedidos();
