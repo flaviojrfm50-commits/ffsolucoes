@@ -15,8 +15,7 @@ input{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:16px}
 .produto{display:flex;justify-content:space-between;align-items:center}
 .controls{display:flex;gap:8px;margin-top:8px}
 button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
-.send{width:100%;padding:16px;border-radius:12px;background:#22c55e;font-weight:bold;margin-bottom:10px}
-.bill{width:100%;padding:16px;border-radius:12px;background:#eab308;color:#000;font-weight:bold}
+.pay{width:100%;padding:16px;border:none;border-radius:12px;font-size:16px;font-weight:bold;background:#2563eb;color:#fff}
 </style>
 </head>
 
@@ -26,91 +25,94 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 
 <div class="container">
   <input placeholder="🔍 Buscar produto..." oninput="filtrarProdutos(this.value)">
-
   <h3>Produtos</h3>
   <div id="listaProdutos"></div>
 
   <h3>Pedido</h3>
   <div id="pedido"></div>
 
-  <button class="send" onclick="enviarPedido()">📤 Enviar pedido</button>
-  <button class="bill" onclick="pedirConta()">🧾 Pedir conta</button>
+  <button class="pay" onclick="irPagamento()">💳 Fechar conta</button>
 </div>
 
 <script>
+/* ================= SUPABASE ================= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* ================= CONTEXTO ================= */
 const params = new URLSearchParams(location.search);
-const mesaId = params.get("mesa");
-const appId  = params.get("app_id");
+const mesaId = params.get("mesa");     // UUID da mesa
+const appId  = params.get("app_id");   // negócio
 
 if(!mesaId || !appId){
   alert("Sessão inválida");
-  throw new Error("mesa/app não informados");
+  location.href = "mesas.html";
 }
 
-let mesaNumero = "";
+let mesaNumero = null;
 let pedidoAtual = null;
 let produtosCache = [];
 
-/* ===== MESA ===== */
+/* ================= BUSCAR NÚMERO DA MESA ================= */
 async function carregarMesa(){
-  const { data } = await sb
+  const { data, error } = await sb
     .from("mesas")
     .select("numero_mesa")
     .eq("id", mesaId)
     .eq("app_id", appId)
     .single();
 
-  mesaNumero = data?.numero_mesa ?? "";
-  document.getElementById("tituloMesa").innerText =
-    mesaNumero ? `🍽️ Mesa ${mesaNumero}` : "🍽️ Mesa";
+  if(error || !data){
+    console.error("Erro ao carregar mesa:", error);
+    document.getElementById("tituloMesa").innerText = "🍽️ Mesa";
+    return;
+  }
+
+  mesaNumero = data.numero_mesa;
+  document.getElementById("tituloMesa").innerText = `🍽️ Mesa ${mesaNumero}`;
 }
 
-/* ===== GARANTIR PEDIDO ===== */
+/* ================= GARANTIR PEDIDO (MESA) ================= */
 async function garantirPedido(){
   const { data } = await sb
     .from("pedidos")
     .select("*")
     .eq("mesa_id", mesaId)
     .eq("app_id", appId)
-    .not("status","in",'("pago","cancelado")')
-    .order("created_at",{ascending:false})
-    .limit(1)
+    .eq("status", "aberto")
     .maybeSingle();
 
-  // 🔧 AJUSTE: garante mesa ocupada se já existir pedido ativo
-  if(data){
-    await sb.from("mesas")
-      .update({ ocupada: true })
-      .eq("id", mesaId)
-      .eq("app_id", appId);
+  if(data) return data;
 
-    return data;
-  }
-
-  const { data: novo } = await sb
+  const { data: novo, error } = await sb
     .from("pedidos")
     .insert({
       app_id: appId,
       mesa_id: mesaId,
-      origem: "mesa",
-      status: "aberto"
+      origem: "mesa",          // 🔥 DEFINE QUE É MESA
+      status: "aberto",
+      cliente_nome: null,      // 🔥 NÃO PEDE DADOS
+      cliente_whatsapp: null
     })
     .select()
     .single();
 
+  if(error){
+    console.error("Erro ao criar pedido:", error);
+    alert("Erro ao criar pedido da mesa");
+    return null;
+  }
+
   return novo;
 }
 
-/* ===== PRODUTOS ===== */
+/* ================= PRODUTOS ================= */
 async function carregarProdutos(){
   const { data } = await sb
     .from("produtos")
-    .select("id,nome,preco,destino")
+    .select("id,nome,preco")
     .eq("app_id", appId)
     .eq("ativo", true)
     .order("nome");
@@ -122,12 +124,14 @@ async function carregarProdutos(){
 function renderProdutos(lista){
   const div = document.getElementById("listaProdutos");
   div.innerHTML = "";
+
   lista.forEach(p=>{
     div.innerHTML += `
       <div class="produto">
         <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
         <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
-      </div>`;
+      </div>
+    `;
   });
 }
 
@@ -138,7 +142,7 @@ function filtrarProdutos(txt){
   ));
 }
 
-/* ===== PEDIDO ===== */
+/* ================= PEDIDO ================= */
 async function carregarPedido(){
   if(!pedidoAtual) return;
 
@@ -151,7 +155,7 @@ async function carregarPedido(){
   const div = document.getElementById("pedido");
   div.innerHTML = "";
 
-  if(!data?.length){
+  if(!data || data.length === 0){
     div.innerHTML = "<p>Nenhum item</p>";
     return;
   }
@@ -165,11 +169,12 @@ async function carregarPedido(){
           <span>${i.quantidade}</span>
           <button onclick="alterarQtd('${i.id}',1)">➕</button>
         </div>
-      </div>`;
+      </div>
+    `;
   });
 }
 
-/* ===== ADD PRODUTO ===== */
+/* ================= ADD PRODUTO ================= */
 async function addProduto(p){
   const { data } = await sb
     .from("pedido_itens")
@@ -183,99 +188,55 @@ async function addProduto(p){
     await sb.from("pedido_itens")
       .update({ quantidade: data.quantidade + 1 })
       .eq("id", data.id);
-  }else{
+  } else {
     await sb.from("pedido_itens").insert({
       app_id: appId,
       pedido_id: pedidoAtual.id,
       produto_id: p.id,
       nome_produto: p.nome,
       preco: p.preco,
-      quantidade: 1,
-      destino: p.destino
+      quantidade: 1
     });
   }
 
   carregarPedido();
 }
 
-/* ===== ENVIAR PEDIDO ===== */
-async function enviarPedido(){
-  if(!pedidoAtual) return;
-
-  const { data: itens } = await sb
+/* ================= QTD ================= */
+async function alterarQtd(id, delta){
+  const { data } = await sb
     .from("pedido_itens")
-    .select("destino")
-    .eq("pedido_id", pedidoAtual.id);
+    .select("quantidade")
+    .eq("id", id)
+    .single();
 
-  if(!itens?.length){
-    alert("Adicione itens ao pedido");
-    return;
+  const nova = data.quantidade + delta;
+
+  if(nova <= 0){
+    await sb.from("pedido_itens").delete().eq("id", id);
+  } else {
+    await sb.from("pedido_itens").update({ quantidade: nova }).eq("id", id);
   }
 
-  await sb.from("mesas")
-    .update({ ocupada: true })
-    .eq("id", mesaId)
-    .eq("app_id", appId);
-
-  await sb.from("pedidos")
-    .update({ status: "enviado" })
-    .eq("id", pedidoAtual.id);
-
-  pedidoAtual.status = "enviado";
-  alert("✅ Pedido enviado!");
+  carregarPedido();
 }
 
-/* ===== PEDIR CONTA ===== */
-async function pedirConta(){
-  if(!pedidoAtual) return;
-
-  await sb.from("pedidos")
-    .update({ status: "conta_solicitada" })
-    .eq("id", pedidoAtual.id);
-
-  pedidoAtual.status = "conta_solicitada";
-  alert("🧾 Conta solicitada!");
+/* ================= PAGAMENTO ================= */
+function irPagamento(){
+  location.href =
+    `pagamento.html?pedido=${pedidoAtual.id}&mesa=${mesaId}&app_id=${appId}`;
 }
 
-/* ===== 🔧 AJUSTE: MONITORAR PAGAMENTO ===== */
-async function monitorarPagamento(){
-  if(!pedidoAtual) return;
-
-  sb.channel(`pedido-${pedidoAtual.id}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'pedidos',
-        filter: `id=eq.${pedidoAtual.id}`
-      },
-      async (payload) => {
-        if(payload.new.status === "pago"){
-          await sb.from("mesas")
-            .update({ ocupada: false })
-            .eq("id", mesaId)
-            .eq("app_id", appId);
-
-          document.getElementById("pedido").innerHTML =
-            "<p>✅ Conta paga. Mesa liberada.</p>";
-
-          pedidoAtual = null;
-        }
-      }
-    )
-    .subscribe();
-}
-
-/* ===== START ===== */
-(async()=>{
+/* ================= START ================= */
+(async ()=>{
   await carregarMesa();
   pedidoAtual = await garantirPedido();
+  if(!pedidoAtual) return;
   await carregarProdutos();
   await carregarPedido();
-  monitorarPagamento(); // 👈 só isso aqui resolve o caos
 })();
 </script>
 
 </body>
 </html>
+
