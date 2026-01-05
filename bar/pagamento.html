@@ -2,180 +2,135 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Caixa</title>
+<title>Pagamento</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#020617;color:#fff}
-.topo{background:#0f172a;padding:16px;font-size:20px;font-weight:bold}
-.container{max-width:900px;margin:auto;padding:20px}
-.card{background:#0f172a;border-radius:14px;padding:16px;margin-bottom:16px}
-input,select{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:12px}
-button{width:100%;padding:14px;border:none;border-radius:12px;font-size:16px;font-weight:bold;cursor:pointer}
-.pay{background:#22c55e;color:#000}
-.total{font-size:20px;font-weight:bold;margin-bottom:10px}
-.troco{color:#22c55e;font-weight:bold}
+body{margin:0;font-family:Arial;background:#020617;color:#fff}
+.container{max-width:600px;margin:auto;padding:24px}
+.card{background:#0f172a;padding:20px;border-radius:16px}
+h2{margin-top:0}
+select,input,button{
+  width:100%;
+  padding:14px;
+  border-radius:10px;
+  border:none;
+  margin-top:12px
+}
+button{background:#22c55e;font-weight:bold;cursor:pointer}
+.troco{color:#22c55e;font-weight:bold;margin-top:10px}
 </style>
 </head>
 
 <body>
 
-<div class="topo">💰 Caixa</div>
-
 <div class="container">
-  <div id="pedidoBox" class="card">
-    <p>Aguardando pedido…</p>
+  <div class="card">
+    <h2>💳 Pagamento</h2>
+    <div id="resumo"></div>
+
+    <select id="forma" onchange="ajustarForma()">
+      <option value="dinheiro">Dinheiro</option>
+      <option value="pix">PIX</option>
+      <option value="debito">Débito</option>
+      <option value="credito">Crédito</option>
+    </select>
+
+    <input id="valorPago" type="number" step="0.01" placeholder="Valor pago">
+
+    <div id="troco" class="troco"></div>
+
+    <button onclick="finalizar()">✅ Finalizar pagamento</button>
   </div>
 </div>
 
 <script>
-/* ================= SUPABASE ================= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ================= CONTEXTO ================= */
 const params = new URLSearchParams(location.search);
-const appId = params.get("app_id");
+const pedidoId = params.get("pedido");
+const app_id = params.get("app_id");
 
-/* ================= ESTADO ================= */
-let pedido = null;
 let totalPedido = 0;
 
-/* ================= BUSCAR PEDIDO EM CONTA ================= */
-async function buscarPedidoConta(){
-  const { data } = await sb
-    .from("pedidos")
-    .select("id,mesa_id,status")
-    .eq("app_id", appId)
-    .eq("status", "conta_solicitada")
-    .order("created_at",{ascending:true})
-    .limit(1)
-    .maybeSingle();
-
-  if(!data){
-    document.getElementById("pedidoBox").innerHTML =
-      "<p>Aguardando pedido…</p>";
-    return;
-  }
-
-  pedido = data;
-  carregarItens();
-}
-
-/* ================= ITENS ================= */
-async function carregarItens(){
-  const { data } = await sb
+async function carregar(){
+  const { data: itens } = await sb
     .from("pedido_itens")
-    .select("nome_produto,quantidade,preco")
-    .eq("pedido_id", pedido.id)
-    .eq("app_id", appId);
+    .select("preco,quantidade")
+    .eq("pedido_id", pedidoId)
+    .eq("app_id", app_id);
 
-  totalPedido = 0;
-  let html = "<h3>Pedido</h3>";
-
-  data.forEach(i=>{
-    const sub = i.quantidade * i.preco;
-    totalPedido += sub;
-    html += `<p>${i.quantidade}x ${i.nome_produto} — R$ ${sub.toFixed(2)}</p>`;
+  itens.forEach(i=>{
+    totalPedido += i.preco * i.quantidade;
   });
 
-  html += `
-    <div class="total">Total: R$ ${totalPedido.toFixed(2)}</div>
+  document.getElementById("resumo").innerHTML =
+    `<p>Total: <strong>R$ ${totalPedido.toFixed(2)}</strong></p>`;
 
-    <select id="forma" onchange="ajustarForma()">
-      <option value="dinheiro">Dinheiro</option>
-      <option value="pix">PIX</option>
-      <option value="cartao">Cartão</option>
-    </select>
-
-    <input id="valorPago" type="number" step="0.01" placeholder="Valor pago">
-
-    <div id="troco"></div>
-
-    <button class="pay" onclick="finalizarPagamento()">✅ Finalizar pagamento</button>
-  `;
-
-  document.getElementById("pedidoBox").innerHTML = html;
-  ajustarForma();
+  document.getElementById("valorPago").value = totalPedido.toFixed(2);
 }
 
-/* ================= AJUSTE FORMA ================= */
 function ajustarForma(){
   const forma = document.getElementById("forma").value;
-  const campo = document.getElementById("valorPago");
-  const troco = document.getElementById("troco");
+  const input = document.getElementById("valorPago");
+  document.getElementById("troco").innerHTML = "";
 
-  if(forma === "dinheiro"){
-    campo.disabled = false;
-    campo.value = "";
-    troco.innerHTML = "";
-    campo.oninput = calcularTroco;
+  if(forma !== "dinheiro"){
+    input.value = totalPedido.toFixed(2);
+    input.disabled = true;
   } else {
-    campo.value = totalPedido.toFixed(2);
-    campo.disabled = true;
-    troco.innerHTML = "";
-    campo.oninput = null;
+    input.disabled = false;
   }
 }
 
-/* ================= TROCO ================= */
 function calcularTroco(){
-  const pago = parseFloat(document.getElementById("valorPago").value || 0);
+  const pago = Number(document.getElementById("valorPago").value || 0);
   const troco = pago - totalPedido;
 
   document.getElementById("troco").innerHTML =
-    troco >= 0
-      ? `<p class="troco">Troco: R$ ${troco.toFixed(2)}</p>`
-      : "";
+    troco >= 0 ? `Troco: R$ ${troco.toFixed(2)}` : "";
 }
 
-/* ================= PAGAMENTO ================= */
-async function finalizarPagamento(){
-  const forma = document.getElementById("forma").value;
-  const valorPago = forma === "dinheiro"
-    ? parseFloat(document.getElementById("valorPago").value || 0)
-    : totalPedido;
+document.getElementById("valorPago").addEventListener("input", calcularTroco);
 
-  if(valorPago < totalPedido){
-    alert("❌ Valor insuficiente");
+async function finalizar(){
+  const forma = document.getElementById("forma").value;
+  let pago = Number(document.getElementById("valorPago").value || 0);
+
+  if(forma !== "dinheiro"){
+    pago = totalPedido;
+  }
+
+  if(pago < totalPedido){
+    alert("Valor insuficiente");
     return;
   }
 
-  await sb.from("pedidos")
-    .update({
-      status: "pago",
-      valor_pago: valorPago,
-      forma_pagamento: forma
-    })
-    .eq("id", pedido.id)
-    .eq("app_id", appId);
+  const troco = forma === "dinheiro" ? pago - totalPedido : 0;
 
-  await sb.from("logs").insert({
-    app_id: appId,
-    pedido_id: pedido.id,
-    tipo: "pagamento",
-    destino: "caixa",
-    mensagem: `Pedido pago - Total R$ ${totalPedido.toFixed(2)}`,
-    nivel: "info",
-    acao: "pedido_pago"
+  await sb.from("pagamentos").insert({
+    app_id,
+    pedido_id: pedidoId,
+    tipo: forma,
+    valor: totalPedido,
+    troco
   });
 
-  pedido = null;
-  totalPedido = 0;
+  await sb.from("pedidos")
+    .update({ status:"pago" })
+    .eq("id", pedidoId)
+    .eq("app_id", app_id);
 
-  document.getElementById("pedidoBox").innerHTML =
-    "<p>Pagamento concluído. Aguardando próximo pedido…</p>";
-
-  // 🔁 RECARREGA O PRÓPRIO CAIXA
-  setTimeout(buscarPedidoConta, 800);
+  alert("Pagamento finalizado");
+  location.href = "caixa.html";
 }
 
-/* ================= LOOP ================= */
-buscarPedidoConta();
-setInterval(buscarPedidoConta, 5000);
+carregar();
+ajustarForma();
 </script>
 
 </body>
