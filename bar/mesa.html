@@ -44,7 +44,6 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
   font-weight:bold
 }
 
-/* status visual */
 .status{
   padding:10px;
   border-radius:10px;
@@ -95,7 +94,7 @@ const appId  = params.get("app_id");
 
 if(!mesaId || !appId){
   alert("Sessão inválida");
-  throw new Error("Mesa/app ausentes");
+  throw "";
 }
 
 /* ================= ESTADO ================= */
@@ -118,12 +117,12 @@ async function carregarMesa(){
   }
 }
 
-/* ================= STATUS VISUAL ================= */
+/* ================= STATUS ================= */
 function renderStatus(status){
   const div = document.getElementById("statusPedido");
   div.innerHTML = "";
 
-  if(status === "aceito" || status === "enviado")
+  if(status === "aberto" || status === "enviado" || status === "aceito")
     div.innerHTML = `<div class="status preparo">🟡 Pedido em preparo</div>`;
 
   if(status === "pronto")
@@ -133,11 +132,25 @@ function renderStatus(status){
     div.innerHTML = `<div class="status conta">🧾 Conta solicitada</div>`;
 }
 
-/* ================= GARANTIR PEDIDO (CORREÇÃO PRINCIPAL) ================= */
+/* ================= MESA STATUS ================= */
+async function marcarMesaOcupada(){
+  await sb.from("mesas")
+    .update({ status: "ocupada" })
+    .eq("id", mesaId)
+    .eq("app_id", appId);
+}
+
+async function liberarMesa(){
+  await sb.from("mesas")
+    .update({ status: "livre" })
+    .eq("id", mesaId)
+    .eq("app_id", appId);
+}
+
+/* ================= GARANTIR PEDIDO (CORRIGIDO) ================= */
 async function garantirPedido(){
   if(pedidoAtual) return pedidoAtual;
 
-  // 🔥 busca pedido ATIVO da mesa (inclusive PRONTO)
   const { data } = await sb
     .from("pedidos")
     .select("*")
@@ -150,17 +163,32 @@ async function garantirPedido(){
       "pronto",
       "conta_solicitada"
     ])
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending:false })
     .limit(1)
     .maybeSingle();
 
   if(data){
     pedidoAtual = data;
+    await marcarMesaOcupada();
     renderStatus(data.status);
     return pedidoAtual;
   }
 
-  return null; // ❗ NÃO cria pedido novo automaticamente
+  const { data: novo } = await sb
+    .from("pedidos")
+    .insert({
+      app_id: appId,
+      mesa_id: mesaId,
+      origem: "mesa",
+      status: "aberto"
+    })
+    .select()
+    .single();
+
+  pedidoAtual = novo;
+  await marcarMesaOcupada();
+  renderStatus("aberto");
+  return pedidoAtual;
 }
 
 /* ================= PRODUTOS ================= */
@@ -204,10 +232,6 @@ function filtrarProdutos(txt){
 /* ================= ADD PRODUTO ================= */
 async function addProduto(p){
   const pedido = await garantirPedido();
-  if(!pedido){
-    alert("Chame o garçom para iniciar o pedido");
-    return;
-  }
 
   const { data } = await sb
     .from("pedido_itens")
@@ -239,28 +263,32 @@ async function addProduto(p){
 /* ================= PEDIDO ================= */
 async function carregarPedido(){
   const pedido = await garantirPedido();
-  if(!pedido){
-    document.getElementById("pedido").innerHTML = "<p>Nenhum item</p>";
+
+  if(pedido.status === "pago" || pedido.status === "finalizado"){
+    pedidoAtual = null;
+    await liberarMesa();
+    document.getElementById("pedido").innerHTML = "<p>Mesa livre</p>";
+    document.getElementById("statusPedido").innerHTML = "";
     return;
   }
 
-  const { data: itens } = await sb
+  renderStatus(pedido.status);
+
+  const { data } = await sb
     .from("pedido_itens")
     .select("id,nome_produto,quantidade")
     .eq("pedido_id", pedido.id)
     .eq("app_id", appId);
 
-  renderStatus(pedido.status);
-
   const div = document.getElementById("pedido");
   div.innerHTML = "";
 
-  if(!itens?.length){
+  if(!data?.length){
     div.innerHTML = "<p>Nenhum item</p>";
     return;
   }
 
-  itens.forEach(i=>{
+  data.forEach(i=>{
     div.innerHTML += `
       <div class="item">
         <strong>${i.nome_produto}</strong>
@@ -274,11 +302,28 @@ async function carregarPedido(){
   });
 }
 
-/* ================= ENVIAR / CONTA ================= */
+/* ================= QTD ================= */
+async function alterarQtd(id, delta){
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("quantidade")
+    .eq("id", id)
+    .single();
+
+  const nova = data.quantidade + delta;
+
+  if(nova <= 0){
+    await sb.from("pedido_itens").delete().eq("id", id);
+  } else {
+    await sb.from("pedido_itens").update({ quantidade: nova }).eq("id", id);
+  }
+
+  carregarPedido();
+}
+
+/* ================= AÇÕES ================= */
 async function enviarPedido(){
   const pedido = await garantirPedido();
-  if(!pedido) return;
-
   await sb.from("pedidos")
     .update({ status: "enviado" })
     .eq("id", pedido.id);
@@ -288,8 +333,6 @@ async function enviarPedido(){
 
 async function pedirConta(){
   const pedido = await garantirPedido();
-  if(!pedido) return;
-
   await sb.from("pedidos")
     .update({ status: "conta_solicitada" })
     .eq("id", pedido.id);
