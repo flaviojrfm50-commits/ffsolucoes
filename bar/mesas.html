@@ -114,7 +114,7 @@ let criandoMesa = false;
 <script>
 async function carregarMesas(){
 
-  /* ===== BUSCA MESAS ===== */
+  /* ===== MESAS ===== */
   const { data: mesas } = await sb
     .from("mesas")
     .select("id,numero_mesa")
@@ -122,16 +122,15 @@ async function carregarMesas(){
     .eq("ativa", true)
     .order("numero_mesa");
 
-  /* ===== BUSCA SOMENTE PEDIDOS ATIVOS ===== */
+  /* ===== PEDIDOS ATIVOS (CORREÇÃO AQUI) ===== */
   const { data: pedidos } = await sb
     .from("pedidos")
     .select("mesa_id,status,created_at")
     .eq("app_id", app_id)
     .not("mesa_id","is",null)
-    .not("status","in",["pago","finalizado"])
+    .not("status","in",'("pago","finalizado")')
     .order("created_at",{ ascending:false });
 
-  /* ===== MAPA DE PEDIDO ATIVO POR MESA ===== */
   const pedidosPorMesa = {};
   (pedidos || []).forEach(p=>{
     if(!pedidosPorMesa[p.mesa_id]){
@@ -150,17 +149,15 @@ async function carregarMesas(){
 
     if(pedido){
       if(pedido.status === "conta_solicitada"){
-        classe = "conta";
-        texto  = "PEDIU A CONTA";
+        classe="conta"; texto="PEDIU A CONTA";
       }else{
-        classe = "preparando";
-        texto  = "OCUPADA";
+        classe="preparando"; texto="OCUPADA";
       }
     }
 
     const div = document.createElement("div");
-    div.className = `card ${classe}`;
-    div.innerHTML = `
+    div.className=`card ${classe}`;
+    div.innerHTML=`
       <h3>Mesa ${m.numero_mesa}</h3>
       <span class="status ${classe}">${texto}</span>
 
@@ -171,8 +168,8 @@ async function carregarMesas(){
       ${!pedido ? `<button class="btn-remover">Remover mesa</button>` : ``}
     `;
 
-    div.onclick = ()=>{
-      location.href = `mesa.html?mesa=${m.id}&app_id=${app_id}`;
+    div.onclick=()=>{
+      location.href=`mesa.html?mesa=${m.id}&app_id=${app_id}`;
     };
 
     grid.appendChild(div);
@@ -183,12 +180,12 @@ async function carregarMesas(){
       { width:120 }
     );
 
-    const btn = div.querySelector(".btn-remover");
+    const btn=div.querySelector(".btn-remover");
     if(btn){
-      btn.onclick = async(e)=>{
+      btn.onclick=async(e)=>{
         e.stopPropagation();
-        const senha = prompt("Código para remover a mesa:");
-        if(senha !== SEGREDO_REMOVER_MESA) return;
+        const senha=prompt("Código para remover a mesa:");
+        if(senha!==SEGREDO_REMOVER_MESA) return;
         await sb.from("mesas").update({ativa:false}).eq("id",m.id);
         carregarMesas();
       };
@@ -208,7 +205,7 @@ async function adicionarMesa(){
     .limit(1)
     .maybeSingle();
 
-  const prox = (data?.numero_mesa || 0) + 1;
+  const prox=(data?.numero_mesa||0)+1;
   await sb.from("mesas").insert({app_id,numero_mesa:prox,ativa:true});
   criandoMesa=false;
   carregarMesas();
