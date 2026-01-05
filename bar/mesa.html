@@ -43,67 +43,72 @@ const sb = supabase.createClient(
 
 /* ================= CONTEXTO ================= */
 const params = new URLSearchParams(location.search);
-const mesaId = params.get("mesa");     // UUID da mesa
-const appId  = params.get("app_id");   // negócio
+const mesaId = params.get("mesa");
+const appId  = params.get("app_id");
 
 if(!mesaId || !appId){
   alert("Sessão inválida");
   location.href = "mesas.html";
 }
 
+/* ================= ESTADO ================= */
 let mesaNumero = null;
 let pedidoAtual = null;
 let produtosCache = [];
 
-/* ================= BUSCAR NÚMERO DA MESA ================= */
+/* ================= MESA ================= */
 async function carregarMesa(){
-  const { data, error } = await sb
+  const { data } = await sb
     .from("mesas")
     .select("numero_mesa")
     .eq("id", mesaId)
     .eq("app_id", appId)
     .single();
 
-  if(error || !data){
-    console.error("Erro ao carregar mesa:", error);
-    document.getElementById("tituloMesa").innerText = "🍽️ Mesa";
-    return;
+  if(data){
+    mesaNumero = data.numero_mesa;
+    document.getElementById("tituloMesa").innerText = `🍽️ Mesa ${mesaNumero}`;
   }
-
-  mesaNumero = data.numero_mesa;
-  document.getElementById("tituloMesa").innerText = `🍽️ Mesa ${mesaNumero}`;
 }
 
-/* ================= GARANTIR PEDIDO (MESA) ================= */
+/* ================= GARANTIR PEDIDO ================= */
 async function garantirPedido(){
   const { data } = await sb
     .from("pedidos")
     .select("*")
     .eq("mesa_id", mesaId)
     .eq("app_id", appId)
-    .eq("status", "aberto")
+    .not("status","in",'("pago","fechado","finalizado","cancelado")') // 🔧
+    .order("created_at",{ascending:false})
+    .limit(1)
     .maybeSingle();
 
-  if(data) return data;
+  if(data){
+    // 🔧 ocupa mesa SOMENTE se pedido não estiver pago
+    await sb.from("mesas")
+      .update({ ocupada: true })
+      .eq("id", mesaId)
+      .eq("app_id", appId);
 
-  const { data: novo, error } = await sb
+    return data;
+  }
+
+  const { data: novo } = await sb
     .from("pedidos")
     .insert({
       app_id: appId,
       mesa_id: mesaId,
-      origem: "mesa",          // 🔥 DEFINE QUE É MESA
-      status: "aberto",
-      cliente_nome: null,      // 🔥 NÃO PEDE DADOS
-      cliente_whatsapp: null
+      origem: "mesa",
+      status: "aberto"
     })
     .select()
     .single();
 
-  if(error){
-    console.error("Erro ao criar pedido:", error);
-    alert("Erro ao criar pedido da mesa");
-    return null;
-  }
+  // 🔧 ocupa mesa ao criar pedido
+  await sb.from("mesas")
+    .update({ ocupada: true })
+    .eq("id", mesaId)
+    .eq("app_id", appId);
 
   return novo;
 }
@@ -124,7 +129,6 @@ async function carregarProdutos(){
 function renderProdutos(lista){
   const div = document.getElementById("listaProdutos");
   div.innerHTML = "";
-
   lista.forEach(p=>{
     div.innerHTML += `
       <div class="produto">
@@ -155,7 +159,7 @@ async function carregarPedido(){
   const div = document.getElementById("pedido");
   div.innerHTML = "";
 
-  if(!data || data.length === 0){
+  if(!data?.length){
     div.innerHTML = "<p>Nenhum item</p>";
     return;
   }
@@ -231,7 +235,6 @@ function irPagamento(){
 (async ()=>{
   await carregarMesa();
   pedidoAtual = await garantirPedido();
-  if(!pedidoAtual) return;
   await carregarProdutos();
   await carregarPedido();
 })();
@@ -239,4 +242,3 @@ function irPagamento(){
 
 </body>
 </html>
-
