@@ -41,6 +41,11 @@ button{
   cursor:pointer;
 }
 
+button[disabled]{
+  opacity:.4;
+  cursor:not-allowed;
+}
+
 .pay{
   width:100%;
   padding:16px;
@@ -50,6 +55,22 @@ button{
   font-weight:bold;
   background:#2563eb;
   color:#fff;
+}
+.send{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  font-size:15px;
+  font-weight:bold;
+  background:#16a34a;
+  color:#fff;
+  margin-bottom:12px;
+}
+.total{
+  font-size:18px;
+  font-weight:bold;
+  margin-top:10px;
 }
 </style>
 </head>
@@ -78,9 +99,12 @@ button{
   <div class="section">
     <h3>🧾 Pedido</h3>
     <div id="pedido"></div>
+    <div class="total" id="totalPedido"></div>
   </div>
 
+  <button class="send" id="btnEnviar" onclick="enviarPedido()">📨 Enviar pedido</button>
   <button class="pay" onclick="pedirConta()">💳 Fechar conta</button>
+
 </div>
 
 <script>
@@ -104,6 +128,11 @@ let pedidoAtual = null;
 let produtosBar = [];
 let produtosCozinha = [];
 
+/* ================= UTIL ================= */
+function pedidoBloqueado(){
+  return pedidoAtual && pedidoAtual.status !== "aberto";
+}
+
 /* ================= MESA ================= */
 async function carregarMesa(){
   const { data } = await sb
@@ -123,7 +152,8 @@ async function garantirPedido(){
     .select("*")
     .eq("mesa_id", mesaId)
     .eq("app_id", appId)
-    .eq("status", "aberto")
+    .not("status", "in", '("pago","finalizado")')
+    .order("created_at",{ascending:false})
     .maybeSingle();
 
   if(data) return data;
@@ -151,8 +181,8 @@ async function carregarProdutos(){
     .eq("ativo", true)
     .order("nome");
 
-  produtosBar = data.filter(p => p.destino === "bar");
-  produtosCozinha = data.filter(p => p.destino === "cozinha");
+  produtosBar = data.filter(p=>p.destino==="bar");
+  produtosCozinha = data.filter(p=>p.destino==="cozinha");
 
   renderBar(produtosBar);
   renderCozinha(produtosCozinha);
@@ -160,71 +190,68 @@ async function carregarProdutos(){
 
 function renderBar(lista){
   const div = document.getElementById("listaBar");
-  div.innerHTML = "";
+  div.innerHTML="";
   lista.forEach(p=>{
-    div.innerHTML += `
+    div.innerHTML+=`
       <div class="produto">
         <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
-        <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
-      </div>
-    `;
+        <button onclick='addProduto(${JSON.stringify(p)})' ${pedidoBloqueado()?"disabled":""}>➕</button>
+      </div>`;
   });
 }
-
 function renderCozinha(lista){
   const div = document.getElementById("listaCozinha");
-  div.innerHTML = "";
+  div.innerHTML="";
   lista.forEach(p=>{
-    div.innerHTML += `
+    div.innerHTML+=`
       <div class="produto">
         <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
-        <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
-      </div>
-    `;
+        <button onclick='addProduto(${JSON.stringify(p)})' ${pedidoBloqueado()?"disabled":""}>➕</button>
+      </div>`;
   });
 }
-
-function filtrarBar(txt){
-  txt = (txt || "").toLowerCase();
-  renderBar(produtosBar.filter(p => p.nome.toLowerCase().includes(txt)));
-}
-
-function filtrarCozinha(txt){
-  txt = (txt || "").toLowerCase();
-  renderCozinha(produtosCozinha.filter(p => p.nome.toLowerCase().includes(txt)));
-}
+function filtrarBar(t){renderBar(produtosBar.filter(p=>p.nome.toLowerCase().includes(t.toLowerCase())))}
+function filtrarCozinha(t){renderCozinha(produtosCozinha.filter(p=>p.nome.toLowerCase().includes(t.toLowerCase())))}
 
 /* ================= PEDIDO ================= */
 async function carregarPedido(){
   const { data } = await sb
     .from("pedido_itens")
-    .select("id,nome_produto,quantidade")
+    .select("id,nome_produto,quantidade,preco")
     .eq("pedido_id", pedidoAtual.id);
 
   const div = document.getElementById("pedido");
-  div.innerHTML = "";
+  div.innerHTML="";
+  let total = 0;
 
   if(!data || !data.length){
-    div.innerHTML = "<p>Nenhum item</p>";
-    return;
+    div.innerHTML="<p>Nenhum item</p>";
+  } else {
+    data.forEach(i=>{
+      total += i.preco * i.quantidade;
+      div.innerHTML+=`
+        <div class="item">
+          <strong>${i.nome_produto}</strong>
+          <div class="controls">
+            <button onclick="alterarQtd('${i.id}',-1)" ${pedidoBloqueado()?"disabled":""}>➖</button>
+            <span>${i.quantidade}</span>
+            <button onclick="alterarQtd('${i.id}',1)" ${pedidoBloqueado()?"disabled":""}>➕</button>
+          </div>
+        </div>`;
+    });
   }
 
-  data.forEach(i=>{
-    div.innerHTML += `
-      <div class="item">
-        <strong>${i.nome_produto}</strong>
-        <div class="controls">
-          <button onclick="alterarQtd('${i.id}',-1)">➖</button>
-          <span>${i.quantidade}</span>
-          <button onclick="alterarQtd('${i.id}',1)">➕</button>
-        </div>
-      </div>
-    `;
-  });
+  document.getElementById("totalPedido").innerText =
+    total>0 ? `💰 Total: R$ ${total.toFixed(2)}` : "";
+
+  document.getElementById("btnEnviar").style.display =
+    pedidoAtual.status==="aberto" ? "block" : "none";
 }
 
-/* ================= ADD PRODUTO ================= */
+/* ================= ADD / QTD ================= */
 async function addProduto(p){
+  if(pedidoBloqueado()) return;
+
   const { data } = await sb
     .from("pedido_itens")
     .select("id,quantidade")
@@ -234,8 +261,8 @@ async function addProduto(p){
 
   if(data){
     await sb.from("pedido_itens")
-      .update({ quantidade: data.quantidade + 1 })
-      .eq("id", data.id);
+      .update({quantidade:data.quantidade+1})
+      .eq("id",data.id);
   } else {
     await sb.from("pedido_itens").insert({
       app_id: appId,
@@ -247,40 +274,34 @@ async function addProduto(p){
       destino: p.destino
     });
   }
-
   carregarPedido();
 }
 
-/* ================= QTD ================= */
 async function alterarQtd(id,delta){
-  const { data } = await sb
-    .from("pedido_itens")
-    .select("quantidade")
-    .eq("id", id)
-    .single();
+  if(pedidoBloqueado()) return;
 
+  const { data } = await sb.from("pedido_itens").select("quantidade").eq("id",id).single();
   const nova = data.quantidade + delta;
 
-  if(nova <= 0){
-    await sb.from("pedido_itens").delete().eq("id", id);
-  } else {
-    await sb.from("pedido_itens").update({ quantidade:nova }).eq("id", id);
-  }
+  if(nova<=0) await sb.from("pedido_itens").delete().eq("id",id);
+  else await sb.from("pedido_itens").update({quantidade:nova}).eq("id",id);
 
   carregarPedido();
 }
 
-/* ================= PEDIR CONTA ================= */
+/* ================= ENVIAR / CONTA ================= */
+async function enviarPedido(){
+  await sb.from("pedidos").update({status:"enviado"}).eq("id",pedidoAtual.id);
+  pedidoAtual.status="enviado";
+  carregarPedido();
+}
 async function pedirConta(){
-  await sb.from("pedidos")
-    .update({ status:"conta_solicitada" })
-    .eq("id", pedidoAtual.id);
-
+  await sb.from("pedidos").update({status:"conta_solicitada"}).eq("id",pedidoAtual.id);
   alert("Conta solicitada. Aguarde o garçom.");
 }
 
 /* ================= START ================= */
-(async ()=>{
+(async()=>{
   await carregarMesa();
   pedidoAtual = await garantirPedido();
   await carregarProdutos();
