@@ -202,9 +202,10 @@ async function aceitarPedido(id){
   carregarPedidos();
 }
 
+/* 🔥 CORREÇÃO AQUI */
 async function marcarPronto(id){
   await sb.from("pedidos")
-    .update({ status: "aguardando_pagamento" })
+    .update({ status:"aguardando_pagamento" })
     .eq("id", id)
     .eq("app_id", app_id);
 
@@ -229,4 +230,3 @@ setInterval(carregarPedidos, 5000);
 
 </body>
 </html>
-
