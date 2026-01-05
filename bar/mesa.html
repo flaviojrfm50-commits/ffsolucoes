@@ -47,6 +47,11 @@ const params = new URLSearchParams(location.search);
 const mesaId = params.get("mesa");
 const appId  = params.get("app_id");
 
+if(!mesaId || !appId){
+  alert("Sessão inválida");
+  throw new Error("mesa/app não informados");
+}
+
 let mesaNumero = "";
 let pedidoAtual = null;
 let produtosCache = [];
@@ -127,6 +132,8 @@ function filtrarProdutos(txt){
 
 /* ===== PEDIDO ===== */
 async function carregarPedido(){
+  if(!pedidoAtual) return;
+
   const { data } = await sb
     .from("pedido_itens")
     .select("id,nome_produto,quantidade")
@@ -185,6 +192,7 @@ async function addProduto(p){
 
 /* ===== ENVIAR PEDIDO ===== */
 async function enviarPedido(){
+  if(!pedidoAtual) return;
 
   const { data: itens } = await sb
     .from("pedido_itens")
@@ -196,13 +204,11 @@ async function enviarPedido(){
     return;
   }
 
-  // mesa ocupada
   await sb.from("mesas")
     .update({ ocupada: true })
     .eq("id", mesaId)
     .eq("app_id", appId);
 
-  // pedido enviado
   await sb.from("pedidos")
     .update({ status: "enviado" })
     .eq("id", pedidoAtual.id);
@@ -211,7 +217,6 @@ async function enviarPedido(){
     itens.map(i => i.destino).filter(d => d === "bar" || d === "cozinha")
   )];
 
-  // 🔔 LOGS (NÃO QUEBRA FLUXO)
   for(const d of destinos){
     try{
       await sb.from("logs").insert({
@@ -246,6 +251,7 @@ async function enviarPedido(){
 
 /* ===== PEDIR CONTA ===== */
 async function pedirConta(){
+  if(!pedidoAtual) return;
 
   await sb.from("pedidos")
     .update({ status: "conta_solicitada" })
