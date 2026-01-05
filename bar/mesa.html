@@ -1,280 +1,32 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<title>Mesa</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<style>
-body{margin:0;font-family:Arial,sans-serif;background:#020617;color:#fff}
-.topo{background:#0f172a;padding:16px;font-size:20px;font-weight:bold}
-.container{max-width:900px;margin:auto;padding:20px}
-input{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:16px}
-
-.section-title{margin:20px 0 10px;font-size:18px}
-
-.produto,.item{
-  background:#0f172a;
-  border-radius:14px;
-  padding:14px;
-  margin-bottom:12px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-.controls{display:flex;gap:8px}
-button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
-
-.send{
-  width:100%;
-  padding:16px;
-  border-radius:12px;
-  background:#22c55e;
-  font-weight:bold;
-  margin-bottom:10px
-}
-
-.bill{
-  width:100%;
-  padding:16px;
-  border-radius:12px;
-  background:#a855f7;
-  font-weight:bold
-}
-
-.status{
-  padding:10px;
-  border-radius:10px;
-  margin-bottom:12px;
-  font-weight:bold;
-  text-align:center;
-}
-.preparo{background:#ca8a04}
-.pronto{background:#2563eb}
-.conta{background:#7c3aed}
-</style>
-</head>
-
-<body>
-
-<div class="topo" id="tituloMesa">🍽️ Mesa</div>
-
-<div class="container">
-
-  <div id="statusPedido"></div>
-
-  <input placeholder="🔍 Buscar produto..." oninput="filtrarProdutos(this.value)">
-
-  <div class="section-title">🍺 Bar</div>
-  <div id="listaBar"></div>
-
-  <div class="section-title">🍳 Cozinha</div>
-  <div id="listaCozinha"></div>
-
-  <h3>🧾 Pedido</h3>
-  <div id="pedido"></div>
-
-  <button class="send" onclick="enviarPedido()">📤 Enviar pedido</button>
-  <button class="bill" onclick="pedirConta()">🧾 Pedir conta</button>
-</div>
-
-<script>
-/* ================= SUPABASE ================= */
-const sb = supabase.createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-);
-
-/* ================= CONTEXTO ================= */
-const params = new URLSearchParams(location.search);
-const mesaId = params.get("mesa");
-const appId  = params.get("app_id");
-
-if(!mesaId || !appId){
-  alert("Sessão inválida");
-  throw "";
-}
-
-/* ================= ESTADO ================= */
-let mesaNumero = null;
-let pedidoAtual = null;
-let produtosCache = [];
-
-/* ================= MESA ================= */
-async function carregarMesa(){
-  const { data } = await sb
-    .from("mesas")
-    .select("numero_mesa")
-    .eq("id", mesaId)
-    .eq("app_id", appId)
-    .single();
-
-  if(data){
-    mesaNumero = data.numero_mesa;
-    document.getElementById("tituloMesa").innerText = `🍽️ Mesa ${mesaNumero}`;
-  }
-}
-
-/* ================= STATUS ================= */
-function renderStatus(status){
-  const div = document.getElementById("statusPedido");
-  div.innerHTML = "";
-
-  if(status === "aberto" || status === "enviado" || status === "aceito")
-    div.innerHTML = `<div class="status preparo">🟡 Pedido em preparo</div>`;
-
-  if(status === "pronto")
-    div.innerHTML = `<div class="status pronto">🔵 Pedido pronto</div>`;
-
-  if(status === "conta_solicitada")
-    div.innerHTML = `<div class="status conta">🧾 Conta solicitada</div>`;
-}
-
-/* ================= MESA STATUS ================= */
-async function marcarMesaOcupada(){
-  await sb.from("mesas")
-    .update({ status: "ocupada" })
-    .eq("id", mesaId)
-    .eq("app_id", appId);
-}
-
-async function liberarMesa(){
-  await sb.from("mesas")
-    .update({ status: "livre" })
-    .eq("id", mesaId)
-    .eq("app_id", appId);
-}
-
-/* ================= GARANTIR PEDIDO (CORRIGIDO) ================= */
-async function garantirPedido(){
-  if(pedidoAtual) return pedidoAtual;
-
-  const { data } = await sb
+async function carregarPedido(){
+  const { data: pedido } = await sb
     .from("pedidos")
-    .select("*")
+    .select("id,status")
     .eq("app_id", appId)
     .eq("mesa_id", mesaId)
-    .in("status", [
-      "aberto",
-      "enviado",
-      "aceito",
-      "pronto",
-      "conta_solicitada"
-    ])
     .order("created_at", { ascending:false })
     .limit(1)
     .maybeSingle();
 
-  if(data){
-    pedidoAtual = data;
-    await marcarMesaOcupada();
-    renderStatus(data.status);
-    return pedidoAtual;
-  }
-
-  const { data: novo } = await sb
-    .from("pedidos")
-    .insert({
-      app_id: appId,
-      mesa_id: mesaId,
-      origem: "mesa",
-      status: "aberto"
-    })
-    .select()
-    .single();
-
-  pedidoAtual = novo;
-  await marcarMesaOcupada();
-  renderStatus("aberto");
-  return pedidoAtual;
-}
-
-/* ================= PRODUTOS ================= */
-async function carregarProdutos(){
-  const { data } = await sb
-    .from("produtos")
-    .select("id,nome,preco,destino")
-    .eq("app_id", appId)
-    .eq("ativo", true)
-    .order("nome");
-
-  produtosCache = data || [];
-  renderProdutos(produtosCache);
-}
-
-function renderProdutos(lista){
-  const bar = document.getElementById("listaBar");
-  const cozinha = document.getElementById("listaCozinha");
-  bar.innerHTML = "";
-  cozinha.innerHTML = "";
-
-  lista.forEach(p=>{
-    const html = `
-      <div class="produto">
-        <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
-        <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
-      </div>
-    `;
-    if(p.destino === "bar") bar.innerHTML += html;
-    if(p.destino === "cozinha") cozinha.innerHTML += html;
-  });
-}
-
-function filtrarProdutos(txt){
-  txt = (txt || "").toLowerCase();
-  renderProdutos(produtosCache.filter(p =>
-    p.nome.toLowerCase().includes(txt)
-  ));
-}
-
-/* ================= ADD PRODUTO ================= */
-async function addProduto(p){
-  const pedido = await garantirPedido();
-
-  const { data } = await sb
-    .from("pedido_itens")
-    .select("id,quantidade")
-    .eq("pedido_id", pedido.id)
-    .eq("produto_id", p.id)
-    .eq("app_id", appId)
-    .maybeSingle();
-
-  if(data){
-    await sb.from("pedido_itens")
-      .update({ quantidade: data.quantidade + 1 })
-      .eq("id", data.id);
-  } else {
-    await sb.from("pedido_itens").insert({
-      app_id: appId,
-      pedido_id: pedido.id,
-      produto_id: p.id,
-      nome_produto: p.nome,
-      preco: p.preco,
-      destino: p.destino,
-      quantidade: 1
-    });
-  }
-
-  carregarPedido();
-}
-
-/* ================= PEDIDO ================= */
-async function carregarPedido(){
-  const pedido = await garantirPedido();
-
-  if(pedido.status === "pago" || pedido.status === "finalizado"){
+  // 🔓 PEDIDO ENCERRADO → LIBERA MESA
+  if(pedido && (pedido.status === "pago" || pedido.status === "finalizado")){
     pedidoAtual = null;
-    await liberarMesa();
-    document.getElementById("pedido").innerHTML = "<p>Mesa livre</p>";
+    document.getElementById("pedido").innerHTML = "<p>Nenhuma mesa ocupada</p>";
     document.getElementById("statusPedido").innerHTML = "";
+    return;
+  }
+
+  // 🔁 PEDIDO ATIVO → MANTÉM MESA OCUPADA
+  if(pedido){
+    pedidoAtual = pedido;
+  } else {
+    pedidoAtual = null;
     return;
   }
 
   renderStatus(pedido.status);
 
-  const { data } = await sb
+  const { data: itens } = await sb
     .from("pedido_itens")
     .select("id,nome_produto,quantidade")
     .eq("pedido_id", pedido.id)
@@ -283,12 +35,12 @@ async function carregarPedido(){
   const div = document.getElementById("pedido");
   div.innerHTML = "";
 
-  if(!data?.length){
+  if(!itens?.length){
     div.innerHTML = "<p>Nenhum item</p>";
     return;
   }
 
-  data.forEach(i=>{
+  itens.forEach(i=>{
     div.innerHTML += `
       <div class="item">
         <strong>${i.nome_produto}</strong>
@@ -301,53 +53,3 @@ async function carregarPedido(){
     `;
   });
 }
-
-/* ================= QTD ================= */
-async function alterarQtd(id, delta){
-  const { data } = await sb
-    .from("pedido_itens")
-    .select("quantidade")
-    .eq("id", id)
-    .single();
-
-  const nova = data.quantidade + delta;
-
-  if(nova <= 0){
-    await sb.from("pedido_itens").delete().eq("id", id);
-  } else {
-    await sb.from("pedido_itens").update({ quantidade: nova }).eq("id", id);
-  }
-
-  carregarPedido();
-}
-
-/* ================= AÇÕES ================= */
-async function enviarPedido(){
-  const pedido = await garantirPedido();
-  await sb.from("pedidos")
-    .update({ status: "enviado" })
-    .eq("id", pedido.id);
-
-  alert("✅ Pedido enviado!");
-}
-
-async function pedirConta(){
-  const pedido = await garantirPedido();
-  await sb.from("pedidos")
-    .update({ status: "conta_solicitada" })
-    .eq("id", pedido.id);
-
-  alert("🧾 Conta solicitada!");
-}
-
-/* ================= START ================= */
-(async()=>{
-  await carregarMesa();
-  await carregarProdutos();
-  await carregarPedido();
-  setInterval(carregarPedido, 4000);
-})();
-</script>
-
-</body>
-</html>
