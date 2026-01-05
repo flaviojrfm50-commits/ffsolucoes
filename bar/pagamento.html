@@ -29,32 +29,6 @@ button.sec{background:#1e293b;color:#fff}
 
 <body>
 
-<script>
-const sb = supabase.createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-);
-
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-if(!admin?.app_id){
-  alert("Sessão expirada");
-  location.href="../auth/login.html";
-}
-
-const pedidoId = new URLSearchParams(location.search).get("pedido");
-if(!pedidoId){
-  alert("Pedido não informado");
-  throw new Error("Pedido não informado");
-}
-
-let totalPedido = 0;
-let pagamentos = [];
-let mesaId = null;
-let numeroMesa = null;
-
-let tipoSelect, valorInput, clienteInput, obsInput;
-</script>
-
 <div class="container">
 
 <h2>🧾 Fechar Conta</h2>
@@ -104,31 +78,168 @@ let tipoSelect, valorInput, clienteInput, obsInput;
 </div>
 
 <script>
-// ================= FECHAR =================
+const sb = supabase.createClient(
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+);
+
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+const pedidoId = new URLSearchParams(location.search).get("pedido");
+
+let totalPedido = 0;
+let pagamentos = [];
+let mesaId = null;
+let numeroMesa = null;
+
+const tipoSelect   = document.getElementById("tipo");
+const valorInput   = document.getElementById("valor");
+const clienteInput = document.getElementById("cliente");
+const obsInput     = document.getElementById("obs");
+
+/* ===== CONSUMO ===== */
+async function carregarItens(){
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("nome_produto, preco, quantidade")
+    .eq("app_id", admin.app_id)
+    .eq("pedido_id", pedidoId);
+
+  totalPedido = 0;
+  const div = document.getElementById("itens");
+  div.innerHTML = "";
+
+  (data||[]).forEach(i=>{
+    const sub = i.preco * i.quantidade;
+    totalPedido += sub;
+    div.innerHTML += `
+      <div class="item">
+        <span>${i.quantidade}x ${i.nome_produto}</span>
+        <span>R$ ${sub.toFixed(2)}</span>
+      </div>`;
+  });
+
+  document.getElementById("totalPedido").innerText = totalPedido.toFixed(2);
+}
+
+/* ===== PEDIDO / MESA ===== */
+async function carregarPedido(){
+  const { data } = await sb
+    .from("pedidos")
+    .select("mesa_id, mesas(numero_mesa)")
+    .eq("id", pedidoId)
+    .eq("app_id", admin.app_id)
+    .single();
+
+  mesaId = data?.mesa_id || null;
+  numeroMesa = data?.mesas?.numero_mesa || null;
+}
+
+/* ===== TIPO ===== */
+function tipoChanged(){
+  clienteInput.style.display =
+    tipoSelect.value === "fiado" ? "block" : "none";
+  if(tipoSelect.value !== "fiado") clienteInput.value = "";
+}
+
+/* ===== PAGAMENTOS ===== */
+async function carregarPagamentos(){
+  const { data } = await sb
+    .from("pagamentos")
+    .select("*")
+    .eq("app_id", admin.app_id)
+    .eq("pedido_id", pedidoId);
+
+  pagamentos = data || [];
+  renderTotais();
+}
+
+function renderTotais(){
+  let totalPago = 0;
+  let dinheiro = 0;
+
+  const div = document.getElementById("listaPagamentos");
+  div.innerHTML = "";
+
+  pagamentos.forEach(p=>{
+    if(p.tipo !== "fiado"){
+      totalPago += p.valor;
+      if(p.tipo === "dinheiro") dinheiro += p.valor;
+    }
+
+    div.innerHTML += `
+      <div class="item">
+        <span>${p.tipo.toUpperCase()}
+        ${p.cliente_fiado ? "• "+p.cliente_fiado : ""}</span>
+        <span>R$ ${p.valor.toFixed(2)}</span>
+      </div>`;
+  });
+
+  const falta = Math.max(0, totalPedido - totalPago);
+  const troco = Math.max(0, dinheiro - totalPedido);
+
+  document.getElementById("totalPago").innerText = totalPago.toFixed(2);
+  document.getElementById("falta").innerText = falta.toFixed(2);
+  document.getElementById("troco").innerText = troco.toFixed(2);
+}
+
+/* ===== ADD PAGAMENTO ===== */
+async function addPagamento(){
+  const tipo = tipoSelect.value;
+  const valor = Number(valorInput.value);
+
+  if(valor <= 0) return alert("Valor inválido");
+  if(tipo === "fiado" && !clienteInput.value.trim())
+    return alert("Informe o cliente do fiado");
+
+  await sb.from("pagamentos").insert({
+    app_id: admin.app_id,
+    pedido_id: pedidoId,
+    tipo,
+    valor,
+    cliente_fiado: tipo==="fiado" ? clienteInput.value.trim() : null
+  });
+
+  valorInput.value = "";
+  clienteInput.value = "";
+  carregarPagamentos();
+}
+
+/* ===== FECHAR CONTA ===== */
 async function confirmarFechamento(){
   const falta = Number(document.getElementById("falta").innerText);
-  const obs = obsInput.value.trim();
 
-  if(falta > 0 && !obs){
+  if(falta > 0 && !obsInput.value.trim()){
     alert("Informe a observação do valor faltante");
     return;
   }
 
   await sb.from("pedidos").update({
     status:"fechado",
-    observacao: obs || null
+    observacao: obsInput.value || null
   }).eq("id", pedidoId).eq("app_id", admin.app_id);
 
   if(mesaId){
     await sb.from("mesas")
-      .update({ ocupada: false })   // ✅ CORREÇÃO AQUI
+      .update({ ocupada:false })
       .eq("id", mesaId)
       .eq("app_id", admin.app_id);
   }
 
   alert("Conta fechada com sucesso ✅");
-  location.href = "mesas.html?reload="+Date.now();
+  location.href = "mesas.html";
 }
+
+/* ===== VOLTAR ===== */
+function voltarAdicionar(){
+  if(numeroMesa){
+    location.href = `mesa.html?mesa=${mesaId}&app_id=${admin.app_id}`;
+  }
+}
+
+/* ===== START ===== */
+carregarPedido();
+carregarItens();
+carregarPagamentos();
 </script>
 
 </body>
