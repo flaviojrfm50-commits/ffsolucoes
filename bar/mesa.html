@@ -82,7 +82,15 @@ async function garantirPedido(){
     .limit(1)
     .maybeSingle();
 
-  if(data) return data;
+  // 🔧 AJUSTE: garante mesa ocupada se já existir pedido ativo
+  if(data){
+    await sb.from("mesas")
+      .update({ ocupada: true })
+      .eq("id", mesaId)
+      .eq("app_id", appId);
+
+    return data;
+  }
 
   const { data: novo } = await sb
     .from("pedidos")
@@ -213,38 +221,6 @@ async function enviarPedido(){
     .update({ status: "enviado" })
     .eq("id", pedidoAtual.id);
 
-  const destinos = [...new Set(
-    itens.map(i => i.destino).filter(d => d === "bar" || d === "cozinha")
-  )];
-
-  for(const d of destinos){
-    try{
-      await sb.from("logs").insert({
-        app_id: appId,
-        pedido_id: pedidoAtual.id,
-        tipo: "novo_pedido",
-        destino: d,
-        mensagem: `Novo pedido - Mesa ${mesaNumero}`,
-        origem: "mesa",
-        nivel: "info",
-        acao: "pedido_enviado"
-      });
-    }catch(e){}
-  }
-
-  try{
-    await sb.from("logs").insert({
-      app_id: appId,
-      pedido_id: pedidoAtual.id,
-      tipo: "novo_pedido",
-      destino: "caixa",
-      mensagem: `Novo pedido - Mesa ${mesaNumero}`,
-      origem: "mesa",
-      nivel: "info",
-      acao: "pedido_enviado"
-    });
-  }catch(e){}
-
   pedidoAtual.status = "enviado";
   alert("✅ Pedido enviado!");
 }
@@ -257,33 +233,38 @@ async function pedirConta(){
     .update({ status: "conta_solicitada" })
     .eq("id", pedidoAtual.id);
 
-  try{
-    await sb.from("logs").insert([
-      {
-        app_id: appId,
-        pedido_id: pedidoAtual.id,
-        tipo: "pedir_conta",
-        destino: "caixa",
-        mensagem: `Mesa ${mesaNumero} pediu a conta`,
-        origem: "mesa",
-        nivel: "info",
-        acao: "pedir_conta"
-      },
-      {
-        app_id: appId,
-        pedido_id: pedidoAtual.id,
-        tipo: "pedir_conta",
-        destino: "garcom",
-        mensagem: `Mesa ${mesaNumero} pediu a conta`,
-        origem: "mesa",
-        nivel: "info",
-        acao: "pedir_conta"
-      }
-    ]);
-  }catch(e){}
-
   pedidoAtual.status = "conta_solicitada";
   alert("🧾 Conta solicitada!");
+}
+
+/* ===== 🔧 AJUSTE: MONITORAR PAGAMENTO ===== */
+async function monitorarPagamento(){
+  if(!pedidoAtual) return;
+
+  sb.channel(`pedido-${pedidoAtual.id}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'pedidos',
+        filter: `id=eq.${pedidoAtual.id}`
+      },
+      async (payload) => {
+        if(payload.new.status === "pago"){
+          await sb.from("mesas")
+            .update({ ocupada: false })
+            .eq("id", mesaId)
+            .eq("app_id", appId);
+
+          document.getElementById("pedido").innerHTML =
+            "<p>✅ Conta paga. Mesa liberada.</p>";
+
+          pedidoAtual = null;
+        }
+      }
+    )
+    .subscribe();
 }
 
 /* ===== START ===== */
@@ -292,6 +273,7 @@ async function pedirConta(){
   pedidoAtual = await garantirPedido();
   await carregarProdutos();
   await carregarPedido();
+  monitorarPagamento(); // 👈 só isso aqui resolve o caos
 })();
 </script>
 
