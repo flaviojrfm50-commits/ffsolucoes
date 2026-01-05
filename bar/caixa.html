@@ -18,30 +18,6 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .container{max-width:1200px;margin:auto;padding:24px}
 .box{background:#0f172a;padding:20px;border-radius:16px;margin-bottom:20px}
 
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-  gap:16px
-}
-
-.card{
-  background:#020617;
-  border:1px solid #1e293b;
-  border-radius:12px;
-  padding:14px
-}
-
-.valor{font-size:22px;font-weight:bold}
-.tipo{font-size:13px;color:#94a3b8}
-.total{font-size:26px;font-weight:bold}
-
-.positivo{color:#22c55e}
-.negativo{color:#ef4444}
-
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{padding:8px;border-bottom:1px solid #1e293b;font-size:14px}
-th{color:#94a3b8}
-
 button{
   padding:10px 16px;
   border:none;
@@ -51,7 +27,6 @@ button{
   cursor:pointer
 }
 button.sec{background:#1e293b;color:#fff}
-button.alerta{background:#eab308;color:#000}
 
 .badge{
   background:#ef4444;
@@ -62,16 +37,16 @@ button.alerta{background:#eab308;color:#000}
   margin-left:6px
 }
 
-@keyframes piscar {
-  0% { box-shadow:0 0 0 rgba(234,179,8,0) }
-  50% { box-shadow:0 0 18px rgba(234,179,8,.9) }
-  100% { box-shadow:0 0 0 rgba(234,179,8,0) }
-}
-button.alerta.piscar{
-  animation:piscar 1s infinite;
-}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{padding:10px;border-bottom:1px solid #1e293b;font-size:14px}
+th{color:#94a3b8}
 
-small{color:#94a3b8}
+@keyframes piscar{
+  0%{box-shadow:0 0 0 transparent}
+  50%{box-shadow:0 0 18px rgba(234,179,8,.9)}
+  100%{box-shadow:0 0 0 transparent}
+}
+.alerta.piscar{animation:piscar 1s infinite}
 </style>
 </head>
 
@@ -93,12 +68,9 @@ if(!admin?.app_id){
 <div class="topo">
   <h2>💰 Caixa</h2>
   <div>
-    <button onclick="location.href='venda-avulsa.html'">➕ Venda Avulsa</button>
-
-    <button class="alerta" id="btnContas" style="display:none" onclick="mostrarContas()">
+    <button class="alerta" id="btnContas" style="display:none" onclick="scrollContas()">
       🔔 Contas <span class="badge" id="qtdContas">0</span>
     </button>
-
     <button class="sec" onclick="location.href='historico.html'">📊 Histórico</button>
     <button class="sec" onclick="location.href='admin.html'">Voltar</button>
   </div>
@@ -106,7 +78,7 @@ if(!admin?.app_id){
 
 <div class="container">
 
-<!-- CONTAS PENDENTES -->
+<!-- CONTAS -->
 <div class="box" id="boxContas" style="display:none">
   <h3>🧾 Mesas aguardando pagamento</h3>
   <table>
@@ -114,6 +86,7 @@ if(!admin?.app_id){
       <tr>
         <th>Mesa</th>
         <th>Total</th>
+        <th>Solicitado por</th>
         <th>Forma sugerida</th>
         <th>Ação</th>
       </tr>
@@ -122,59 +95,21 @@ if(!admin?.app_id){
   </table>
 </div>
 
-<!-- RESUMO -->
-<div class="grid">
-  <div class="card"><div class="tipo">Dinheiro</div><div class="valor positivo" id="tDinheiro">R$ 0,00</div></div>
-  <div class="card"><div class="tipo">Pix</div><div class="valor positivo" id="tPix">R$ 0,00</div></div>
-  <div class="card"><div class="tipo">Débito</div><div class="valor positivo" id="tDebito">R$ 0,00</div></div>
-  <div class="card"><div class="tipo">Crédito</div><div class="valor positivo" id="tCredito">R$ 0,00</div></div>
-  <div class="card"><div class="tipo">Fiado</div><div class="valor negativo" id="tFiado">R$ 0,00</div></div>
-</div>
-
-<!-- MOVIMENTAÇÕES -->
-<div class="box">
-  <h3>📋 Movimentações</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Tipo</th>
-        <th>Valor</th>
-        <th>Pedido</th>
-        <th>Obs</th>
-      </tr>
-    </thead>
-    <tbody id="listaMov"></tbody>
-  </table>
-</div>
-
-<div class="box">
-  <p class="total">
-    Total em caixa: R$ <span id="totalCaixa">0.00</span><br>
-    <small class="negativo">Fiado pendente: R$ <span id="totalFiado">0.00</span></small>
-  </p>
-</div>
-
 </div>
 
 <script>
-/* ===== CONTAS PENDENTES ===== */
 async function verificarContas(){
-  const { data, error } = await sb
+  const { data } = await sb
     .from("pedidos")
     .select(`
       id,
-      status,
+      origem,
       forma_pagamento_sugerida,
       mesas(numero_mesa),
       pedido_itens(preco,quantidade)
     `)
     .eq("app_id", admin.app_id)
     .in("status", ["conta_solicitada","aguardando_pagamento"]);
-
-  if(error){
-    console.error(error);
-    return;
-  }
 
   const btn = document.getElementById("btnContas");
   const qtd = document.getElementById("qtdContas");
@@ -183,7 +118,7 @@ async function verificarContas(){
 
   lista.innerHTML = "";
 
-  if(data && data.length){
+  if(data?.length){
     btn.style.display = "inline-block";
     btn.classList.add("piscar");
     qtd.innerText = data.length;
@@ -199,11 +134,10 @@ async function verificarContas(){
         <tr>
           <td>Mesa ${p.mesas.numero_mesa}</td>
           <td>R$ ${total.toFixed(2)}</td>
+          <td>${p.origem === "garcom" ? "🧑‍🍺 Garçom" : "📱 Cliente"}</td>
           <td>${p.forma_pagamento_sugerida?.toUpperCase() || "-"}</td>
           <td>
-            <button onclick="irPagamento('${p.id}')">
-              💳 Ir para pagamento
-            </button>
+            <button onclick="irPagamento('${p.id}')">💳 Pagar</button>
           </td>
         </tr>
       `;
@@ -215,89 +149,17 @@ async function verificarContas(){
   }
 }
 
-function irPagamento(pedidoId){
-  location.href = `pagamento.html?pedido=${pedidoId}&app_id=${admin.app_id}`;
+function irPagamento(id){
+  location.href = `pagamento.html?pedido=${id}&app_id=${admin.app_id}`;
 }
 
-function mostrarContas(){
+function scrollContas(){
   document.getElementById("boxContas")
-    .scrollIntoView({ behavior:"smooth" });
+    .scrollIntoView({behavior:"smooth"});
 }
 
-/* ===== CAIXA FINANCEIRO ===== */
-let pagamentos = [];
-let pedidosMap = {};
-let total = { dinheiro:0, pix:0, debito:0, credito:0, fiado:0 };
-
-async function carregarCaixa(){
-  const { data: pags } = await sb
-    .from("pagamentos")
-    .select("tipo,valor,pedido_id")
-    .eq("app_id", admin.app_id)
-    .order("created_at");
-
-  pagamentos = pags || [];
-
-  const { data: peds } = await sb
-    .from("pedidos")
-    .select("id,observacao,total")
-    .eq("app_id", admin.app_id);
-
-  pedidosMap = {};
-  (peds||[]).forEach(p=>{
-    pedidosMap[p.id] = {
-      obs: p.observacao,
-      total: Number(p.total) || 0
-    };
-  });
-
-  renderCaixa();
-}
-
-function renderCaixa(){
-  total = { dinheiro:0, pix:0, debito:0, credito:0, fiado:0 };
-  const tbody = document.getElementById("listaMov");
-  tbody.innerHTML = "";
-
-  pagamentos.forEach(p=>{
-    const tipo = p.tipo?.toLowerCase();
-    let valor = Number(p.valor);
-
-    if(tipo === "fiado" && (!valor || valor === 0)){
-      valor = pedidosMap[p.pedido_id]?.total || 0;
-    }
-
-    if(total[tipo] !== undefined){
-      total[tipo] += valor;
-    }
-
-    tbody.innerHTML += `
-      <tr>
-        <td>${p.tipo.toUpperCase()}</td>
-        <td>R$ ${valor.toFixed(2)}</td>
-        <td>${p.pedido_id ? "#" + p.pedido_id.slice(0,6) : "-"}</td>
-        <td>${pedidosMap[p.pedido_id]?.obs || "-"}</td>
-      </tr>
-    `;
-  });
-
-  document.getElementById("tDinheiro").innerText = "R$ " + total.dinheiro.toFixed(2);
-  document.getElementById("tPix").innerText = "R$ " + total.pix.toFixed(2);
-  document.getElementById("tDebito").innerText = "R$ " + total.debito.toFixed(2);
-  document.getElementById("tCredito").innerText = "R$ " + total.credito.toFixed(2);
-  document.getElementById("tFiado").innerText = "R$ " + total.fiado.toFixed(2);
-
-  const totalCaixa =
-    total.dinheiro + total.pix + total.debito + total.credito;
-
-  document.getElementById("totalCaixa").innerText = totalCaixa.toFixed(2);
-  document.getElementById("totalFiado").innerText = total.fiado.toFixed(2);
-}
-
-/* START */
-carregarCaixa();
 verificarContas();
-setInterval(verificarContas, 3000);
+setInterval(verificarContas,3000);
 </script>
 
 </body>
