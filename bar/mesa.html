@@ -211,23 +211,34 @@ async function enviarPedido(){
     itens.map(i => i.destino).filter(d => d === "bar" || d === "cozinha")
   )];
 
+  // 🔔 LOGS (NÃO QUEBRA FLUXO)
   for(const d of destinos){
+    try{
+      await sb.from("logs").insert({
+        app_id: appId,
+        pedido_id: pedidoAtual.id,
+        tipo: "novo_pedido",
+        destino: d,
+        mensagem: `Novo pedido - Mesa ${mesaNumero}`,
+        origem: "mesa",
+        nivel: "info",
+        acao: "pedido_enviado"
+      });
+    }catch(e){}
+  }
+
+  try{
     await sb.from("logs").insert({
       app_id: appId,
       pedido_id: pedidoAtual.id,
       tipo: "novo_pedido",
-      destino: d,
-      mensagem: `Novo pedido - Mesa ${mesaNumero}`
+      destino: "caixa",
+      mensagem: `Novo pedido - Mesa ${mesaNumero}`,
+      origem: "mesa",
+      nivel: "info",
+      acao: "pedido_enviado"
     });
-  }
-
-  await sb.from("logs").insert({
-    app_id: appId,
-    pedido_id: pedidoAtual.id,
-    tipo: "novo_pedido",
-    destino: "caixa",
-    mensagem: `Novo pedido - Mesa ${mesaNumero}`
-  });
+  }catch(e){}
 
   pedidoAtual.status = "enviado";
   alert("✅ Pedido enviado!");
@@ -240,22 +251,30 @@ async function pedirConta(){
     .update({ status: "conta_solicitada" })
     .eq("id", pedidoAtual.id);
 
-  await sb.from("logs").insert([
-    {
-      app_id: appId,
-      pedido_id: pedidoAtual.id,
-      tipo: "pedir_conta",
-      destino: "caixa",
-      mensagem: `Mesa ${mesaNumero} pediu a conta`
-    },
-    {
-      app_id: appId,
-      pedido_id: pedidoAtual.id,
-      tipo: "pedir_conta",
-      destino: "garcom",
-      mensagem: `Mesa ${mesaNumero} pediu a conta`
-    }
-  ]);
+  try{
+    await sb.from("logs").insert([
+      {
+        app_id: appId,
+        pedido_id: pedidoAtual.id,
+        tipo: "pedir_conta",
+        destino: "caixa",
+        mensagem: `Mesa ${mesaNumero} pediu a conta`,
+        origem: "mesa",
+        nivel: "info",
+        acao: "pedir_conta"
+      },
+      {
+        app_id: appId,
+        pedido_id: pedidoAtual.id,
+        tipo: "pedir_conta",
+        destino: "garcom",
+        mensagem: `Mesa ${mesaNumero} pediu a conta`,
+        origem: "mesa",
+        nivel: "info",
+        acao: "pedir_conta"
+      }
+    ]);
+  }catch(e){}
 
   pedidoAtual.status = "conta_solicitada";
   alert("🧾 Conta solicitada!");
