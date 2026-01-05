@@ -88,8 +88,7 @@ let tipoSelect, valorInput, clienteInput, obsInput;
   <p class="falta">Falta: R$ <span id="falta">0.00</span></p>
   <p class="pago">Troco: R$ <span id="troco">0.00</span></p>
 
-  <!-- OBSERVAÇÃO -->
-  <textarea id="obs" placeholder="Observação (ex: cliente só tinha 14,50)"
+  <textarea id="obs" placeholder="Observação"
     style="width:100%;margin-top:10px"></textarea>
 </div>
 
@@ -105,108 +104,6 @@ let tipoSelect, valorInput, clienteInput, obsInput;
 </div>
 
 <script>
-// ================= INIT =================
-document.addEventListener("DOMContentLoaded", ()=>{
-  tipoSelect   = document.getElementById("tipo");
-  valorInput   = document.getElementById("valor");
-  clienteInput = document.getElementById("cliente");
-  obsInput     = document.getElementById("obs");
-});
-
-// ================= CONSUMO =================
-async function carregarItens(){
-  const { data } = await sb
-    .from("pedido_itens")
-    .select("nome_produto, preco, quantidade")
-    .eq("app_id", admin.app_id)
-    .eq("pedido_id", pedidoId);
-
-  const div = document.getElementById("itens");
-  div.innerHTML = "";
-  totalPedido = 0;
-
-  (data||[]).forEach(i=>{
-    const sub = i.preco * i.quantidade;
-    totalPedido += sub;
-    div.innerHTML += `
-      <div class="item">
-        <span>${i.quantidade}x ${i.nome_produto}</span>
-        <span>R$ ${sub.toFixed(2)}</span>
-      </div>`;
-  });
-
-  document.getElementById("totalPedido").innerText = totalPedido.toFixed(2);
-}
-
-// ================= PEDIDO / MESA =================
-async function carregarPedido(){
-  const { data } = await sb
-    .from("pedidos")
-    .select("mesa_id")
-    .eq("id", pedidoId)
-    .eq("app_id", admin.app_id)
-    .single();
-
-  mesaId = data?.mesa_id || null;
-
-  if(mesaId){
-    const { data: mesa } = await sb
-      .from("mesas")
-      .select("numero_mesa")
-      .eq("id", mesaId)
-      .single();
-
-    numeroMesa = mesa?.numero_mesa || null;
-  }
-}
-
-// ================= TIPO =================
-function tipoChanged(){
-  clienteInput.style.display = tipoSelect.value === "fiado" ? "block" : "none";
-  if(tipoSelect.value !== "fiado") clienteInput.value = "";
-}
-
-// ================= PAGAMENTOS =================
-async function carregarPagamentos(){
-  const { data } = await sb
-    .from("pagamentos")
-    .select("*")
-    .eq("app_id", admin.app_id)
-    .eq("pedido_id", pedidoId);
-
-  pagamentos = data || [];
-  renderTotais();
-}
-
-function renderTotais(){
-  const div = document.getElementById("listaPagamentos");
-  div.innerHTML = "";
-
-  let totalPago = 0;
-  let dinheiro = 0;
-
-  pagamentos.forEach(p=>{
-    if(p.tipo !== "fiado"){
-      totalPago += p.valor;
-      if(p.tipo === "dinheiro") dinheiro += p.valor;
-    }
-
-    div.innerHTML += `
-      <div class="item">
-        <span>${p.tipo.toUpperCase()}
-        ${p.tipo==="fiado" && p.cliente_fiado ? "• "+p.cliente_fiado : ""}</span>
-        <span>R$ ${p.valor.toFixed(2)}</span>
-      </div>`;
-  });
-
-  const falta = Math.max(0, totalPedido - totalPago);
-  const troco = Math.max(0, Math.min(dinheiro, totalPago - totalPedido));
-
-  document.getElementById("totalPago").innerText = totalPago.toFixed(2);
-  document.getElementById("falta").innerText = falta.toFixed(2);
-  document.getElementById("troco").innerText = troco.toFixed(2);
-}
-
 // ================= FECHAR =================
 async function confirmarFechamento(){
   const falta = Number(document.getElementById("falta").innerText);
@@ -224,7 +121,7 @@ async function confirmarFechamento(){
 
   if(mesaId){
     await sb.from("mesas")
-      .update({ status:"livre" })
+      .update({ ocupada: false })   // ✅ CORREÇÃO AQUI
       .eq("id", mesaId)
       .eq("app_id", admin.app_id);
   }
@@ -232,42 +129,6 @@ async function confirmarFechamento(){
   alert("Conta fechada com sucesso ✅");
   location.href = "mesas.html?reload="+Date.now();
 }
-
-// ================= ADD PAGAMENTO =================
-async function addPagamento(){
-  const tipo = tipoSelect.value;
-  const valor = Number(valorInput.value);
-
-  if(valor <= 0) return alert("Valor inválido");
-  if(tipo==="fiado" && !clienteInput.value.trim())
-    return alert("Informe o cliente do fiado");
-
-  await sb.from("pagamentos").insert({
-    app_id: admin.app_id,
-    pedido_id: pedidoId,
-    tipo,
-    valor,
-    cliente_fiado: tipo==="fiado" ? clienteInput.value.trim() : null
-  });
-
-  valorInput.value="";
-  clienteInput.value="";
-  carregarPagamentos();
-}
-
-// ================= VOLTAR =================
-function voltarAdicionar(){
-  if(numeroMesa){
-    location.href = `mesa.html?mesa=${numeroMesa}`;
-  }else{
-    location.href = `venda-avulsa.html?pedido=${pedidoId}`;
-  }
-}
-
-// ================= START =================
-carregarPedido();
-carregarItens();
-carregarPagamentos();
 </script>
 
 </body>
