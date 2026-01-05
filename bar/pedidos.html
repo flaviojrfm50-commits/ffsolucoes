@@ -34,7 +34,6 @@ h2{ margin-top:0; }
   font-weight:bold;
   margin-bottom:6px;
 }
-.web{ background:#9333ea }
 .mesa{ background:#2563eb }
 .itens{ margin-top:10px; }
 .item{
@@ -63,10 +62,7 @@ button{
 }
 .aceitar{ background:#22c55e }
 .finalizar{ background:#3b82f6 }
-.whatsapp{ background:#16a34a }
-.imprimir{ background:#64748b }
 .excluir{ background:#ef4444 }
-
 .aceito-tag{
   background:#16a34a;
   padding:10px 16px;
@@ -79,7 +75,7 @@ button{
 <body>
 
 <div class="container">
-  <h2>🍳 Pedidos em andamento</h2>
+  <h2>🍳 Pedidos da Cozinha</h2>
   <div id="lista">Carregando pedidos...</div>
 </div>
 
@@ -102,23 +98,14 @@ if(!app_id){
 localStorage.setItem("app_id", app_id);
 const lista = document.getElementById("lista");
 
-/* ================= WHATSAPP HELPER ================= */
-function enviarWhats(numero, mensagem){
-  const num = numero.replace(/\D/g,"");
-  window.open(
-    `https://wa.me/55${num}?text=${encodeURIComponent(mensagem)}`,
-    "_blank"
-  );
-}
-
-/* ================= CARREGAR PEDIDOS ================= */
+/* ================= CARREGAR PEDIDOS (COZINHA) ================= */
 async function carregarPedidos(){
+
+  // 🔥 pega pedidos que têm ITEM de cozinha
   const { data, error } = await sb
     .from("pedidos")
     .select(`
       id,
-      cliente_nome,
-      cliente_whatsapp,
       status,
       created_at,
       mesa_id,
@@ -126,11 +113,12 @@ async function carregarPedidos(){
       pedido_itens (
         nome_produto,
         quantidade,
-        preco
+        preco,
+        destino
       )
     `)
     .eq("app_id", app_id)
-    .in("status", ["aberto","aceito"])
+    .in("status", ["aberto","enviado","aceito"])
     .order("created_at", { ascending:true });
 
   if(error){
@@ -141,13 +129,21 @@ async function carregarPedidos(){
 
   lista.innerHTML = "";
 
-  if(!data || data.length === 0){
-    lista.innerHTML = "<p>Nenhum pedido em andamento</p>";
+  // 🔥 filtra só pedidos com itens de cozinha
+  const pedidosCozinha = (data || []).filter(p =>
+    p.pedido_itens.some(i => i.destino === "cozinha")
+  );
+
+  if(pedidosCozinha.length === 0){
+    lista.innerHTML = "<p>Nenhum pedido da cozinha</p>";
     return;
   }
 
-  data.forEach(pedido=>{
-    const total = pedido.pedido_itens.reduce(
+  pedidosCozinha.forEach(pedido=>{
+
+    const itens = pedido.pedido_itens.filter(i => i.destino === "cozinha");
+
+    const total = itens.reduce(
       (s,i)=>s + (i.preco * i.quantidade), 0
     );
 
@@ -155,18 +151,14 @@ async function carregarPedidos(){
 
     lista.innerHTML += `
       <div class="pedido">
-        <span class="tag ${numeroMesa ? 'mesa' : 'web'}">
-          ${numeroMesa ? 'Mesa' : 'Delivery'}
-        </span>
+        <span class="tag mesa">Mesa</span>
 
         <div>
-          <b>
-            ${numeroMesa ? `Mesa ${numeroMesa}` : (pedido.cliente_nome || 'Cliente')}
-          </b>
+          <b>Mesa ${numeroMesa}</b>
         </div>
 
         <div class="itens">
-          ${pedido.pedido_itens.map(i=>`
+          ${itens.map(i=>`
             <div class="item">
               <span>${i.quantidade}x ${i.nome_produto}</span>
               <b>R$ ${(i.preco * i.quantidade).toFixed(2)}</b>
@@ -174,16 +166,15 @@ async function carregarPedidos(){
           `).join("")}
         </div>
 
-        <div class="total">Total: R$ ${total.toFixed(2)}</div>
+        <div class="total">Total cozinha: R$ ${total.toFixed(2)}</div>
 
         <div class="acoes">
           ${
-            pedido.status === "aberto"
+            pedido.status === "aberto" || pedido.status === "enviado"
             ? `<button class="aceitar" onclick="aceitarPedido('${pedido.id}')">Aceitar</button>`
             : `<div class="aceito-tag">✔ Pedido aceito</div>`
           }
           <button class="finalizar" onclick="finalizarPedido('${pedido.id}')">Finalizar</button>
-          <button class="imprimir" onclick="window.print()">Imprimir</button>
           <button class="excluir" onclick="excluirPedido('${pedido.id}')">Excluir</button>
         </div>
       </div>
@@ -193,54 +184,19 @@ async function carregarPedidos(){
 
 /* ================= AÇÕES ================= */
 async function aceitarPedido(id){
-  const { data:pedido } = await sb
-    .from("pedidos")
-    .select("mesa_id, cliente_whatsapp")
-    .eq("id", id)
-    .single();
-
   await sb.from("pedidos")
     .update({ status:"aceito" })
     .eq("id", id)
     .eq("app_id", app_id);
 
-  // DELIVERY → avisa cliente
-  if(!pedido.mesa_id && pedido.cliente_whatsapp){
-    enviarWhats(
-      pedido.cliente_whatsapp,
-      "🍳 Seu pedido está sendo preparado!"
-    );
-  }
-
   carregarPedidos();
 }
 
 async function finalizarPedido(id){
-  const { data:pedido } = await sb
-    .from("pedidos")
-    .select("mesa_id, cliente_whatsapp, mesas(numero_mesa)")
-    .eq("id", id)
-    .single();
-
   await sb.from("pedidos")
     .update({ status:"finalizado" })
     .eq("id", id)
     .eq("app_id", app_id);
-
-  // DELIVERY → pedido a caminho
-  if(!pedido.mesa_id && pedido.cliente_whatsapp){
-    enviarWhats(
-      pedido.cliente_whatsapp,
-      "🛵 Seu pedido está a caminho!"
-    );
-  }
-
-  // MESA → apenas aviso interno (garçom)
-  if(pedido.mesa_id){
-    console.log(
-      `🍽️ Pedido da Mesa ${pedido.mesas.numero_mesa} pronto — avisar garçom`
-    );
-  }
 
   carregarPedidos();
 }
