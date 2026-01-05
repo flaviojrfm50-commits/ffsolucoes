@@ -12,7 +12,313 @@ body{margin:0;font-family:Arial,sans-serif;background:#020617;color:#fff}
 .container{max-width:900px;margin:auto;padding:20px}
 input{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:16px}
 .produto,.item{background:#0f172a;border-radius:14px;padding:14px;margin-bottom:12px}
+.produto{display:flex;justify-content:space-between<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Mesa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#020617;color:#fff}
+.topo{background:#0f172a;padding:16px;font-size:20px;font-weight:bold}
+.container{max-width:900px;margin:auto;padding:20px}
+input{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:16px}
+.produto,.item{background:#0f172a;border-radius:14px;padding:14px;margin-bottom:12px}
 .produto{display:flex;justify-content:space-between;align-items:center}
+.controls{display:flex;gap:8px;margin-top:8px}
+button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
+.send{width:100%;padding:16px;border-radius:12px;background:#22c55e;font-weight:bold;margin-bottom:10px}
+.bill{width:100%;padding:16px;border-radius:12px;background:#eab308;color:#000;font-weight:bold}
+</style>
+</head>
+
+<body>
+
+<div class="topo" id="tituloMesa">🍽️ Mesa</div>
+
+<div class="container">
+  <input placeholder="🔍 Buscar produto..." oninput="filtrarProdutos(this.value)">
+
+  <h3>Produtos</h3>
+  <div id="listaProdutos"></div>
+
+  <h3>Pedido</h3>
+  <div id="pedido"></div>
+
+  <button class="send" onclick="enviarPedido()">📤 Enviar pedido</button>
+  <button class="bill" onclick="pedirConta()">🧾 Pedir conta</button>
+</div>
+
+<script>
+/* ================= SUPABASE ================= */
+const sb = supabase.createClient(
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+);
+
+/* ================= CONTEXTO ================= */
+const params = new URLSearchParams(location.search);
+const mesaId = params.get("mesa");
+const appId  = params.get("app_id");
+
+let mesaNumero = null;
+let pedidoAtual = null;
+let produtosCache = [];
+
+/* ================= MESA ================= */
+async function carregarMesa(){
+  const { data } = await sb
+    .from("mesas")
+    .select("numero_mesa")
+    .eq("id", mesaId)
+    .eq("app_id", appId)
+    .single();
+
+  mesaNumero = data?.numero_mesa ?? "";
+  document.getElementById("tituloMesa").innerText =
+    mesaNumero ? `🍽️ Mesa ${mesaNumero}` : "🍽️ Mesa";
+}
+
+/* ================= GARANTIR PEDIDO ================= */
+async function garantirPedido(){
+  const { data } = await sb
+    .from("pedidos")
+    .select("*")
+    .eq("mesa_id", mesaId)
+    .eq("app_id", appId)
+    .not("status","in",'("pago","cancelado")')
+    .order("created_at",{ascending:false})
+    .limit(1)
+    .maybeSingle();
+
+  if(data) return data;
+
+  const { data: novo } = await sb
+    .from("pedidos")
+    .insert({
+      app_id: appId,
+      mesa_id: mesaId,
+      origem: "mesa",
+      status: "aberto"
+    })
+    .select()
+    .single();
+
+  return novo;
+}
+
+/* ================= PRODUTOS ================= */
+async function carregarProdutos(){
+  const { data } = await sb
+    .from("produtos")
+    .select("id,nome,preco,destino")
+    .eq("app_id", appId)
+    .eq("ativo", true)
+    .order("nome");
+
+  produtosCache = data || [];
+  renderProdutos(produtosCache);
+}
+
+function renderProdutos(lista){
+  const div = document.getElementById("listaProdutos");
+  div.innerHTML = "";
+  lista.forEach(p=>{
+    div.innerHTML += `
+      <div class="produto">
+        <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
+        <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
+      </div>`;
+  });
+}
+
+function filtrarProdutos(txt){
+  txt = (txt || "").toLowerCase();
+  renderProdutos(produtosCache.filter(p =>
+    p.nome.toLowerCase().includes(txt)
+  ));
+}
+
+/* ================= PEDIDO ================= */
+async function carregarPedido(){
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("id,nome_produto,quantidade")
+    .eq("pedido_id", pedidoAtual.id)
+    .eq("app_id", appId);
+
+  const div = document.getElementById("pedido");
+  div.innerHTML = "";
+
+  if(!data?.length){
+    div.innerHTML = "<p>Nenhum item</p>";
+    return;
+  }
+
+  data.forEach(i=>{
+    div.innerHTML += `
+      <div class="item">
+        <strong>${i.nome_produto}</strong>
+        <div class="controls">
+          <button onclick="alterarQtd('${i.id}',-1)">➖</button>
+          <span>${i.quantidade}</span>
+          <button onclick="alterarQtd('${i.id}',1)">➕</button>
+        </div>
+      </div>`;
+  });
+}
+
+/* ================= ADD PRODUTO ================= */
+async function addProduto(p){
+
+  if(pedidoAtual.status === "enviado"){
+    const ok = confirm(
+      "⚠️ Já existe um pedido em andamento.\n\nDeseja adicionar este item ao pedido atual?"
+    );
+    if(!ok) return;
+    pedidoAtual.status = "aberto";
+  }
+
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("id,quantidade")
+    .eq("pedido_id", pedidoAtual.id)
+    .eq("produto_id", p.id)
+    .eq("app_id", appId)
+    .maybeSingle();
+
+  if(data){
+    await sb.from("pedido_itens")
+      .update({ quantidade: data.quantidade + 1 })
+      .eq("id", data.id);
+  }else{
+    await sb.from("pedido_itens").insert({
+      app_id: appId,
+      pedido_id: pedidoAtual.id,
+      produto_id: p.id,
+      nome_produto: p.nome,
+      preco: p.preco,
+      quantidade: 1,
+      destino: p.destino
+    });
+  }
+
+  carregarPedido();
+}
+
+/* ================= QTD ================= */
+async function alterarQtd(id, delta){
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("quantidade")
+    .eq("id", id)
+    .single();
+
+  const nova = data.quantidade + delta;
+
+  if(nova <= 0){
+    await sb.from("pedido_itens").delete().eq("id", id);
+  }else{
+    await sb.from("pedido_itens")
+      .update({ quantidade: nova })
+      .eq("id", id);
+  }
+
+  carregarPedido();
+}
+
+/* ================= ENVIAR PEDIDO ================= */
+async function enviarPedido(){
+
+  const { data: itens } = await sb
+    .from("pedido_itens")
+    .select("destino")
+    .eq("pedido_id", pedidoAtual.id);
+
+  if(!itens?.length){
+    alert("Adicione itens ao pedido");
+    return;
+  }
+
+  await sb.from("mesas")
+    .update({ status: "ocupada" })
+    .eq("id", mesaId)
+    .eq("app_id", appId);
+
+  await sb.from("pedidos")
+    .update({ status: "enviado" })
+    .eq("id", pedidoAtual.id);
+
+  const destinos = [...new Set(
+    itens
+      .map(i => (i.destino || "").trim().toLowerCase())
+      .filter(d => d === "bar" || d === "cozinha")
+  )];
+
+  for(const d of destinos){
+    await sb.from("notificacoes").insert({
+      app_id: appId,
+      pedido_id: pedidoAtual.id,
+      tipo: "novo_pedido",
+      destino: d,
+      mensagem: `Novo pedido - Mesa ${mesaNumero}`
+    });
+  }
+
+  await sb.from("notificacoes").insert({
+    app_id: appId,
+    pedido_id: pedidoAtual.id,
+    tipo: "novo_pedido",
+    destino: "caixa",
+    mensagem: `Novo pedido - Mesa ${mesaNumero}`
+  });
+
+  pedidoAtual.status = "enviado";
+  alert("✅ Pedido enviado!");
+}
+
+/* ================= PEDIR CONTA ================= */
+async function pedirConta(){
+
+  await sb.from("pedidos")
+    .update({ status: "conta_solicitada" })
+    .eq("id", pedidoAtual.id);
+
+  await sb.from("notificacoes").insert([
+    {
+      app_id: appId,
+      pedido_id: pedidoAtual.id,
+      tipo: "pedir_conta",
+      destino: "caixa",
+      mensagem: `Mesa ${mesaNumero} pediu a conta`
+    },
+    {
+      app_id: appId,
+      pedido_id: pedidoAtual.id,
+      tipo: "pedir_conta",
+      destino: "garcom",
+      mensagem: `Mesa ${mesaNumero} pediu a conta`
+    }
+  ]);
+
+  pedidoAtual.status = "conta_solicitada";
+  alert("🧾 Conta solicitada!");
+}
+
+/* ================= START ================= */
+(async ()=>{
+  await carregarMesa();
+  pedidoAtual = await garantirPedido();
+  await carregarProdutos();
+  await carregarPedido();
+})();
+</script>
+
+</body>
+</html>
+;align-items:center}
 .controls{display:flex;gap:8px;margin-top:8px}
 button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 .pay{width:100%;padding:16px;border:none;border-radius:12px;font-size:16px;font-weight:bold;background:#2563eb;color:#fff}
@@ -308,3 +614,4 @@ function irPagamento(){
 
 </body>
 </html>
+
