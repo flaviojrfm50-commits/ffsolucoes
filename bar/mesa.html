@@ -43,6 +43,18 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
   background:#a855f7;
   font-weight:bold
 }
+
+/* 🔥 STATUS */
+.status{
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:12px;
+  font-weight:bold;
+  text-align:center;
+}
+.preparo{background:#ca8a04}
+.pronto{background:#2563eb}
+.conta{background:#7c3aed}
 </style>
 </head>
 
@@ -51,6 +63,9 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 <div class="topo" id="tituloMesa">🍽️ Mesa</div>
 
 <div class="container">
+
+  <div id="statusPedido"></div>
+
   <input placeholder="🔍 Buscar produto..." oninput="filtrarProdutos(this.value)">
 
   <div class="section-title">🍺 Bar</div>
@@ -103,6 +118,21 @@ async function carregarMesa(){
   }
 }
 
+/* ================= STATUS VISUAL ================= */
+function renderStatus(status){
+  const div = document.getElementById("statusPedido");
+  if(!status){ div.innerHTML = ""; return; }
+
+  if(status === "aceito")
+    div.innerHTML = `<div class="status preparo">🟡 Pedido em preparo</div>`;
+
+  if(status === "pronto")
+    div.innerHTML = `<div class="status pronto">🔵 Pedido pronto</div>`;
+
+  if(status === "conta_solicitada")
+    div.innerHTML = `<div class="status conta">🧾 Conta solicitada</div>`;
+}
+
 /* ================= PRODUTOS ================= */
 async function carregarProdutos(){
   const { data } = await sb
@@ -141,7 +171,7 @@ function filtrarProdutos(txt){
   ));
 }
 
-/* ================= GARANTIR PEDIDO (SÓ COM ITEM) ================= */
+/* ================= GARANTIR PEDIDO ================= */
 async function garantirPedido(){
   if(pedidoAtual) return pedidoAtual;
 
@@ -157,48 +187,21 @@ async function garantirPedido(){
     .single();
 
   pedidoAtual = data;
+  renderStatus(data.status);
   return pedidoAtual;
-}
-
-/* ================= ADD PRODUTO ================= */
-async function addProduto(p){
-  if(!pedidoAtual){
-    await garantirPedido();
-  }
-
-  const { data } = await sb
-    .from("pedido_itens")
-    .select("id,quantidade")
-    .eq("pedido_id", pedidoAtual.id)
-    .eq("produto_id", p.id)
-    .eq("app_id", appId)
-    .maybeSingle();
-
-  if(data){
-    await sb.from("pedido_itens")
-      .update({ quantidade: data.quantidade + 1 })
-      .eq("id", data.id);
-  } else {
-    await sb.from("pedido_itens").insert({
-      app_id: appId,
-      pedido_id: pedidoAtual.id,
-      produto_id: p.id,
-      nome_produto: p.nome,
-      preco: p.preco,
-      destino: p.destino,
-      quantidade: 1
-    });
-  }
-
-  carregarPedido();
 }
 
 /* ================= PEDIDO ================= */
 async function carregarPedido(){
-  if(!pedidoAtual){
-    document.getElementById("pedido").innerHTML = "<p>Nenhum item</p>";
-    return;
-  }
+  if(!pedidoAtual) return;
+
+  const { data: pedido } = await sb
+    .from("pedidos")
+    .select("status")
+    .eq("id", pedidoAtual.id)
+    .single();
+
+  renderStatus(pedido.status);
 
   const { data } = await sb
     .from("pedido_itens")
@@ -228,51 +231,23 @@ async function carregarPedido(){
   });
 }
 
-/* ================= QTD ================= */
-async function alterarQtd(id, delta){
-  const { data } = await sb
-    .from("pedido_itens")
-    .select("quantidade")
-    .eq("id", id)
-    .single();
-
-  const nova = data.quantidade + delta;
-
-  if(nova <= 0){
-    await sb.from("pedido_itens").delete().eq("id", id);
-  } else {
-    await sb.from("pedido_itens").update({ quantidade: nova }).eq("id", id);
-  }
-
-  carregarPedido();
-}
-
-/* ================= ENVIAR PEDIDO ================= */
+/* ================= AÇÕES ================= */
 async function enviarPedido(){
-  if(!pedidoAtual){
-    alert("Adicione itens ao pedido");
-    return;
-  }
+  if(!pedidoAtual) return alert("Adicione itens ao pedido");
 
   await sb.from("pedidos")
     .update({ status: "enviado" })
-    .eq("id", pedidoAtual.id)
-    .eq("app_id", appId);
+    .eq("id", pedidoAtual.id);
 
   alert("✅ Pedido enviado!");
 }
 
-/* ================= PEDIR CONTA ================= */
 async function pedirConta(){
-  if(!pedidoAtual){
-    alert("Nenhum pedido para fechar");
-    return;
-  }
+  if(!pedidoAtual) return alert("Nenhum pedido");
 
   await sb.from("pedidos")
     .update({ status: "conta_solicitada" })
-    .eq("id", pedidoAtual.id)
-    .eq("app_id", appId);
+    .eq("id", pedidoAtual.id);
 
   alert("🧾 Conta solicitada!");
 }
@@ -281,6 +256,7 @@ async function pedirConta(){
 (async()=>{
   await carregarMesa();
   await carregarProdutos();
+  setInterval(carregarPedido, 4000);
 })();
 </script>
 
