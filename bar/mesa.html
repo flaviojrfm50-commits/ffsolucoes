@@ -7,49 +7,80 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{
-  margin:0;
-  font-family:Arial, sans-serif;
-  background:#020617;
-  color:#fff;
-}
-.container{
-  max-width:600px;
-  margin:auto;
-  padding:24px;
-}
-h2{margin-top:0}
-.item{
+body{margin:0;font-family:Arial,sans-serif;background:#020617;color:#fff}
+.topo{background:#0f172a;padding:16px;font-size:20px;font-weight:bold}
+.container{max-width:900px;margin:auto;padding:20px}
+input{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:12px}
+
+.section{margin-bottom:24px}
+.section h3{margin-bottom:10px}
+
+.produto,.item{
   background:#0f172a;
-  padding:12px;
-  border-radius:12px;
+  border-radius:14px;
+  padding:14px;
   margin-bottom:10px;
 }
-.controls{
+
+.produto{
   display:flex;
-  gap:10px;
+  justify-content:space-between;
   align-items:center;
 }
+
+.controls{
+  display:flex;
+  gap:8px;
+  margin-top:8px;
+}
+
 button{
   padding:6px 12px;
   border:none;
   border-radius:8px;
-  font-weight:bold;
   cursor:pointer;
 }
-.status{
-  margin:12px 0;
+
+.pay{
+  width:100%;
+  padding:16px;
+  border:none;
+  border-radius:12px;
+  font-size:16px;
   font-weight:bold;
+  background:#2563eb;
+  color:#fff;
 }
 </style>
 </head>
 
 <body>
 
+<div class="topo" id="tituloMesa">🍽️ Mesa</div>
+
 <div class="container">
-  <h2>🍽️ Mesa</h2>
-  <div id="statusPedido" class="status"></div>
-  <div id="pedido">Carregando...</div>
+
+  <!-- BAR -->
+  <div class="section">
+    <h3>🍺 Bar</h3>
+    <input placeholder="🔍 Buscar produto do bar..." oninput="filtrarBar(this.value)">
+    <div id="listaBar"></div>
+  </div>
+
+  <!-- COZINHA -->
+  <div class="section">
+    <h3>🍳 Cozinha</h3>
+    <input placeholder="🔍 Buscar produto da cozinha..." oninput="filtrarCozinha(this.value)">
+    <div id="listaCozinha"></div>
+  </div>
+
+  <!-- PEDIDO -->
+  <div class="section">
+    <h3>🧾 Pedido</h3>
+    <div id="pedido"></div>
+  </div>
+
+  <button class="pay" onclick="pedirConta()">💳 Fechar conta</button>
 </div>
 
 <script>
@@ -59,73 +90,126 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ================= PARAMS ================= */
+/* ================= CONTEXTO ================= */
 const params = new URLSearchParams(location.search);
 const mesaId = params.get("mesa");
-const appId = params.get("app_id");
+const appId  = params.get("app_id");
 
-let pedidoAtual = null;
-
-/* ================= STATUS VISUAL ================= */
-function renderStatus(status){
-  const el = document.getElementById("statusPedido");
-  const map = {
-    aberto: "📝 Pedido recebido",
-    enviado: "📨 Pedido enviado",
-    aceito: "👨‍🍳 Em preparo",
-    pronto: "🍽️ Pedido pronto",
-    aguardando_pagamento: "💰 Aguardando pagamento",
-    conta_solicitada: "🧾 Conta solicitada"
-  };
-  el.innerText = map[status] || "";
+if(!mesaId || !appId){
+  alert("Sessão inválida");
+  location.href = "mesas.html";
 }
 
-/* ================= CARREGAR PEDIDO ================= */
-async function carregarPedido(){
+let pedidoAtual = null;
+let produtosBar = [];
+let produtosCozinha = [];
 
-  const { data: pedido } = await sb
+/* ================= MESA ================= */
+async function carregarMesa(){
+  const { data } = await sb
+    .from("mesas")
+    .select("numero_mesa")
+    .eq("id", mesaId)
+    .single();
+
+  document.getElementById("tituloMesa").innerText =
+    data ? `🍽️ Mesa ${data.numero_mesa}` : "🍽️ Mesa";
+}
+
+/* ================= GARANTIR PEDIDO ================= */
+async function garantirPedido(){
+  const { data } = await sb
     .from("pedidos")
-    .select("id,status")
-    .eq("app_id", appId)
+    .select("*")
     .eq("mesa_id", mesaId)
-    .order("created_at", { ascending:false })
-    .limit(1)
+    .eq("app_id", appId)
+    .eq("status", "aberto")
     .maybeSingle();
 
-  /* 🔓 PEDIDO ENCERRADO → LIBERA MESA */
-  if(pedido && (pedido.status === "pago" || pedido.status === "finalizado")){
-    pedidoAtual = null;
-    document.getElementById("pedido").innerHTML = "<p>Nenhuma mesa ocupada</p>";
-    document.getElementById("statusPedido").innerHTML = "";
-    return;
-  }
+  if(data) return data;
 
-  /* 🔁 PEDIDO ATIVO → MANTÉM OCUPADA */
-  if(pedido){
-    pedidoAtual = pedido;
-  } else {
-    pedidoAtual = null;
-    document.getElementById("pedido").innerHTML = "<p>Nenhuma mesa ocupada</p>";
-    return;
-  }
+  const { data: novo } = await sb
+    .from("pedidos")
+    .insert({
+      app_id: appId,
+      mesa_id: mesaId,
+      origem: "mesa",
+      status: "aberto"
+    })
+    .select()
+    .single();
 
-  renderStatus(pedido.status);
+  return novo;
+}
 
-  const { data: itens } = await sb
+/* ================= PRODUTOS ================= */
+async function carregarProdutos(){
+  const { data } = await sb
+    .from("produtos")
+    .select("id,nome,preco,destino")
+    .eq("app_id", appId)
+    .eq("ativo", true)
+    .order("nome");
+
+  produtosBar = data.filter(p => p.destino === "bar");
+  produtosCozinha = data.filter(p => p.destino === "cozinha");
+
+  renderBar(produtosBar);
+  renderCozinha(produtosCozinha);
+}
+
+function renderBar(lista){
+  const div = document.getElementById("listaBar");
+  div.innerHTML = "";
+  lista.forEach(p=>{
+    div.innerHTML += `
+      <div class="produto">
+        <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
+        <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
+      </div>
+    `;
+  });
+}
+
+function renderCozinha(lista){
+  const div = document.getElementById("listaCozinha");
+  div.innerHTML = "";
+  lista.forEach(p=>{
+    div.innerHTML += `
+      <div class="produto">
+        <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
+        <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
+      </div>
+    `;
+  });
+}
+
+function filtrarBar(txt){
+  txt = (txt || "").toLowerCase();
+  renderBar(produtosBar.filter(p => p.nome.toLowerCase().includes(txt)));
+}
+
+function filtrarCozinha(txt){
+  txt = (txt || "").toLowerCase();
+  renderCozinha(produtosCozinha.filter(p => p.nome.toLowerCase().includes(txt)));
+}
+
+/* ================= PEDIDO ================= */
+async function carregarPedido(){
+  const { data } = await sb
     .from("pedido_itens")
     .select("id,nome_produto,quantidade")
-    .eq("pedido_id", pedido.id)
-    .eq("app_id", appId);
+    .eq("pedido_id", pedidoAtual.id);
 
   const div = document.getElementById("pedido");
   div.innerHTML = "";
 
-  if(!itens?.length){
+  if(!data || !data.length){
     div.innerHTML = "<p>Nenhum item</p>";
     return;
   }
 
-  itens.forEach(i=>{
+  data.forEach(i=>{
     div.innerHTML += `
       <div class="item">
         <strong>${i.nome_produto}</strong>
@@ -139,33 +223,69 @@ async function carregarPedido(){
   });
 }
 
-/* ================= ALTERAR QUANTIDADE ================= */
-async function alterarQtd(id,delta){
-  if(!pedidoAtual) return;
-
-  const { data:item } = await sb
+/* ================= ADD PRODUTO ================= */
+async function addProduto(p){
+  const { data } = await sb
     .from("pedido_itens")
-    .select("quantidade")
-    .eq("id", id)
-    .eq("app_id", appId)
+    .select("id,quantidade")
+    .eq("pedido_id", pedidoAtual.id)
+    .eq("produto_id", p.id)
     .maybeSingle();
 
-  if(!item) return;
-
-  const nova = item.quantidade + delta;
-  if(nova < 1) return;
-
-  await sb.from("pedido_itens")
-    .update({ quantidade:nova })
-    .eq("id", id)
-    .eq("app_id", appId);
+  if(data){
+    await sb.from("pedido_itens")
+      .update({ quantidade: data.quantidade + 1 })
+      .eq("id", data.id);
+  } else {
+    await sb.from("pedido_itens").insert({
+      app_id: appId,
+      pedido_id: pedidoAtual.id,
+      produto_id: p.id,
+      nome_produto: p.nome,
+      preco: p.preco,
+      quantidade: 1,
+      destino: p.destino
+    });
+  }
 
   carregarPedido();
 }
 
-/* ================= AUTO REFRESH ================= */
-carregarPedido();
-setInterval(carregarPedido, 3000);
+/* ================= QTD ================= */
+async function alterarQtd(id,delta){
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("quantidade")
+    .eq("id", id)
+    .single();
+
+  const nova = data.quantidade + delta;
+
+  if(nova <= 0){
+    await sb.from("pedido_itens").delete().eq("id", id);
+  } else {
+    await sb.from("pedido_itens").update({ quantidade:nova }).eq("id", id);
+  }
+
+  carregarPedido();
+}
+
+/* ================= PEDIR CONTA ================= */
+async function pedirConta(){
+  await sb.from("pedidos")
+    .update({ status:"conta_solicitada" })
+    .eq("id", pedidoAtual.id);
+
+  alert("Conta solicitada. Aguarde o garçom.");
+}
+
+/* ================= START ================= */
+(async ()=>{
+  await carregarMesa();
+  pedidoAtual = await garantirPedido();
+  await carregarProdutos();
+  await carregarPedido();
+})();
 </script>
 
 </body>
