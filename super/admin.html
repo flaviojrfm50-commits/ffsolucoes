@@ -133,6 +133,12 @@ hr{
   <h2>👥 Admins Criados</h2>
   <div id="listaAdmins"></div>
 
+  <hr>
+
+  <!-- INTERESSADOS -->
+  <h2>💬 Interessados (Chat)</h2>
+  <div id="interessados"></div>
+
 </div>
 </div>
 
@@ -156,6 +162,7 @@ window.login = function(){
     painel.style.display="block";
     carregarNegocios();
     carregarAdmins();
+    carregarInteressados();
   }else{
     alert("Senha incorreta");
   }
@@ -167,7 +174,7 @@ window.logout = function(){
 };
 
 /* ===============================
-   BASE DO SITE PÚBLICO (LOCAL/PROD)
+   BASE SITE PÚBLICO
 ================================ */
 function getBasePublica(){
   const isLocal =
@@ -181,35 +188,24 @@ function getBasePublica(){
   return "https://seusite.com/locadora/Locadora/public";
 }
 
-/* ===============================
-   GERAR LINK PÚBLICO
-================================ */
 function gerarLinkPublico(app){
-  const base = getBasePublica();
-  return `${base}/index.html?app=${app.id}`;
+  return `${getBasePublica()}/index.html?app=${app.id}`;
 }
 
 /* ===============================
-   CRIAR NEGÓCIO
+   NEGÓCIOS
 ================================ */
 window.criarNegocio = async function(){
   const nome = nomeApp.value.trim();
   const tipo = tipoApp.value;
   if(!nome) return alert("Informe o nome");
 
-  const { data:app, error } = await supabase
+  const { data:app } = await supabase
     .from("apps")
     .insert({ nome, tipo })
     .select()
     .single();
 
-  if(error){
-    alert("Erro ao criar negócio");
-    console.error(error);
-    return;
-  }
-
-  /* CONFIG PADRÃO (SEM QUEBRAR SE JÁ EXISTIR) */
   await supabase.from("config_app").upsert({
     app_id: app.id,
     whatsapp: "",
@@ -221,26 +217,16 @@ window.criarNegocio = async function(){
   carregarNegocios();
 };
 
-/* ===============================
-   LISTAR NEGÓCIOS
-================================ */
 async function carregarNegocios(){
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("apps")
     .select("*")
     .order("created_at",{ascending:false});
-
-  if(error){
-    console.error(error);
-    return;
-  }
 
   listaApps.innerHTML="";
   appAdmin.innerHTML=`<option value="">Selecione o negócio</option>`;
 
   data.forEach(app=>{
-    const linkPublico = gerarLinkPublico(app);
-
     listaApps.innerHTML += `
       <div class="card">
         <div>
@@ -248,24 +234,17 @@ async function carregarNegocios(){
           <span class="tag">${app.tipo}</span><br>
           <small>
             🆔 ${app.id}<br>
-            🌍 <a href="${linkPublico}" target="_blank">Abrir site público</a>
+            🌍 <a href="${gerarLinkPublico(app)}" target="_blank">Abrir site público</a>
           </small>
         </div>
         <button onclick="excluirNegocio('${app.id}')">Excluir</button>
       </div>
     `;
 
-    appAdmin.innerHTML += `
-      <option value="${app.id}">
-        ${app.nome} (${app.tipo})
-      </option>
-    `;
+    appAdmin.innerHTML += `<option value="${app.id}">${app.nome}</option>`;
   });
 }
 
-/* ===============================
-   EXCLUIR NEGÓCIO
-================================ */
 window.excluirNegocio = async function(appId){
   if(!confirm("Excluir este negócio?")) return;
 
@@ -275,8 +254,8 @@ window.excluirNegocio = async function(appId){
     .eq("app_id", appId)
     .limit(1);
 
-  if(admins && admins.length > 0){
-    alert("❌ Não é possível excluir. Existem admins vinculados.");
+  if(admins.length){
+    alert("❌ Existem admins vinculados.");
     return;
   }
 
@@ -285,7 +264,7 @@ window.excluirNegocio = async function(appId){
 };
 
 /* ===============================
-   CRIAR ADMIN
+   ADMINS
 ================================ */
 window.criarAdminInicial = async function(){
   const usuario = usuarioAdmin.value.trim().toLowerCase();
@@ -294,27 +273,12 @@ window.criarAdminInicial = async function(){
   const app_id = appAdmin.value;
 
   if(!usuario || !senha || !app_id){
-    alert("Preencha todos os campos");
-    return;
-  }
-
-  const { data:existe } = await supabase
-    .from("admins")
-    .select("id")
-    .eq("usuario",usuario)
-    .maybeSingle();
-
-  if(existe){
-    alert("Usuário já existe");
+    alert("Preencha tudo");
     return;
   }
 
   await supabase.from("admins").insert({
-    usuario,
-    senha,
-    permissao,
-    app_id,
-    ativo:true
+    usuario, senha, permissao, app_id, ativo:true
   });
 
   usuarioAdmin.value="";
@@ -322,44 +286,30 @@ window.criarAdminInicial = async function(){
   carregarAdmins();
 };
 
-/* ===============================
-   LISTAR ADMINS
-================================ */
 async function carregarAdmins(){
   const { data } = await supabase
     .from("admins")
-    .select("id, usuario, permissao, ativo, app_id")
+    .select("*")
     .order("usuario");
 
   listaAdmins.innerHTML="";
 
   for(const a of data){
     let appNome="Sem negócio";
-    let appTipo="?";
-
     if(a.app_id){
       const { data:app } = await supabase
         .from("apps")
-        .select("nome, tipo")
+        .select("nome")
         .eq("id",a.app_id)
         .maybeSingle();
-
-      if(app){
-        appNome=app.nome;
-        appTipo=app.tipo;
-      }
+      if(app) appNome=app.nome;
     }
 
     listaAdmins.innerHTML += `
       <div class="card">
         <div>
-          <b>${a.usuario}</b>
-          <span class="tag">${appTipo}</span><br>
-          <small>
-            🏢 ${appNome}<br>
-            🔐 ${a.permissao} |
-            ${a.ativo ? "🟢 ativo" : "🔴 inativo"}
-          </small>
+          <b>${a.usuario}</b><br>
+          <small>🏢 ${appNome}</small>
         </div>
         <button onclick="excluirAdmin('${a.id}')">Excluir</button>
       </div>
@@ -367,13 +317,53 @@ async function carregarAdmins(){
   }
 }
 
-/* ===============================
-   EXCLUIR ADMIN
-================================ */
 window.excluirAdmin = async function(id){
-  if(!confirm("Excluir este admin?")) return;
+  if(!confirm("Excluir admin?")) return;
   await supabase.from("admins").delete().eq("id",id);
   carregarAdmins();
+};
+
+/* ===============================
+   INTERESSADOS (CHAT)
+================================ */
+async function carregarInteressados(){
+  const { data } = await supabase
+    .from("chat_admin")
+    .select("app_id, apps(nome)")
+    .eq("remetente","admin")
+    .eq("lida",false);
+
+  const box = document.getElementById("interessados");
+  box.innerHTML="";
+
+  if(!data || data.length===0){
+    box.innerHTML="<small>✅ Nenhuma mensagem pendente</small>";
+    return;
+  }
+
+  const mapa = {};
+  data.forEach(m=>{
+    if(!mapa[m.app_id]){
+      mapa[m.app_id]={ nome:m.apps?.nome || "Negócio", total:0 };
+    }
+    mapa[m.app_id].total++;
+  });
+
+  Object.entries(mapa).forEach(([app_id,info])=>{
+    box.innerHTML += `
+      <div class="card">
+        <div>
+          <b>${info.nome}</b><br>
+          <small>💬 ${info.total} nova(s)</small>
+        </div>
+        <button onclick="abrirChatAdmin('${app_id}')">Abrir Chat</button>
+      </div>
+    `;
+  });
+}
+
+window.abrirChatAdmin = function(app_id){
+  window.open(`chat-super-admin.html?app=${app_id}`,"_blank");
 };
 </script>
 
