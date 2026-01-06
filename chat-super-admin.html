@@ -67,22 +67,17 @@ button{
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
+/* ================= SUPABASE ================= */
 const supabase = createClient(
-  "SUA_URL",
-  "SUA_KEY_PUBLICA"
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
-
-const usuario = window.usuario;
-if(!usuario || usuario.role !== "super_admin"){
-  alert("Acesso negado");
-  throw new Error("Não é super admin");
-}
 
 const appSelect = document.getElementById("appSelect");
 const chatBox = document.getElementById("chatBox");
 let channel;
 
-/* carregar apps */
+/* ================= CARREGAR APPS ================= */
 async function carregarApps(){
   const { data } = await supabase.from("apps").select("id,nome");
   data.forEach(a=>{
@@ -91,7 +86,7 @@ async function carregarApps(){
 }
 carregarApps();
 
-/* carregar histórico */
+/* ================= CARREGAR MENSAGENS ================= */
 async function carregarMensagens(){
   chatBox.innerHTML="";
   if(!appSelect.value) return;
@@ -112,9 +107,16 @@ async function carregarMensagens(){
   });
 
   chatBox.scrollTop = chatBox.scrollHeight;
+
+  /* 🔑 MARCA COMO LIDA */
+  await supabase
+    .from("chat_admin")
+    .update({ lida: true })
+    .eq("app_id", appSelect.value)
+    .eq("remetente", "admin");
 }
 
-/* realtime */
+/* ================= REALTIME ================= */
 function iniciarRealtime(){
   if(channel) supabase.removeChannel(channel);
 
@@ -147,14 +149,15 @@ appSelect.addEventListener("change", ()=>{
   iniciarRealtime();
 });
 
-/* enviar */
+/* ================= ENVIAR ================= */
 window.enviar = async function(){
   if(!appSelect.value || !mensagem.value.trim()) return;
 
   await supabase.from("chat_admin").insert({
     app_id: appSelect.value,
     remetente: "super_admin",
-    mensagem: mensagem.value.trim()
+    mensagem: mensagem.value.trim(),
+    lida: true
   });
 
   mensagem.value="";
