@@ -13,18 +13,15 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 input{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:10px}
 .produto,.item{background:#0f172a;border-radius:14px;padding:14px;margin-bottom:12px}
 .produto{display:flex;justify-content:space-between;align-items:center}
-.controls{display:flex;gap:8px;margin-top:8px}
 button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
-.pay{width:100%;padding:16px;border:none;border-radius:12px;font-size:16px;font-weight:bold;background:#2563eb;color:#fff;margin-bottom:10px}
-.conta{width:100%;padding:16px;border:none;border-radius:12px;font-size:16px;font-weight:bold;background:#16a34a;color:#fff}
+.pay,.conta{width:100%;padding:16px;border-radius:12px;font-size:16px;font-weight:bold}
+.pay{background:#2563eb;color:#fff}
+.conta{background:#16a34a;color:#fff;margin-top:10px}
 .total{font-size:18px;font-weight:bold;margin:16px 0}
 .tag{font-size:13px;font-weight:bold;padding:4px 10px;border-radius:8px}
 .bar{background:#38bdf8;color:#000}
 .cozinha{background:#22c55e;color:#000}
 .bloqueado{opacity:.5;pointer-events:none}
-.filtros{display:flex;gap:8px;margin-bottom:16px}
-.filtros button{flex:1;background:#1e293b;color:#fff}
-.filtros button.ativo{background:#2563eb}
 </style>
 </head>
 
@@ -35,17 +32,7 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 <div class="container">
   <input placeholder="🔍 Buscar produto..." oninput="filtrarProdutos()">
 
-  <!-- FILTRO DESTINO -->
-  <div class="filtros">
-    <button id="fTodos" class="ativo" onclick="filtrarDestino('todos')">🔁 Todos</button>
-    <button id="fCozinha" onclick="filtrarDestino('cozinha')">🍳 Cozinha</button>
-    <button id="fBar" onclick="filtrarDestino('bar')">🍹 Bar</button>
-  </div>
-
-  <h3>Produtos</h3>
   <div id="listaProdutos"></div>
-
-  <h3>Pedidos da mesa</h3>
   <div id="pedido"></div>
 
   <div class="total" id="totalPedido">Total: R$ 0,00</div>
@@ -55,169 +42,91 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 </div>
 
 <script>
-/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===== CONTEXTO ===== */
 const params = new URLSearchParams(location.search);
 const mesaId = params.get("mesa");
-const appId  = params.get("app_id");
+const appId = params.get("app_id");
 
-let pedidoAtual = null;
-let produtosCache = [];
-let destinoSelecionado = "todos";
+let pedidoAtual=null;
+let produtosCache=[];
 
-/* ===== MESA ===== */
-async function carregarMesa(){
-  const { data } = await sb
-    .from("mesas")
-    .select("numero_mesa")
-    .eq("id",mesaId)
-    .single();
-
-  document.getElementById("tituloMesa").innerText =
-    `🍽️ Mesa ${data.numero_mesa}`;
-}
-
-/* ===== GARANTIR PEDIDO ABERTO (ANTI 409) ===== */
 async function garantirPedidoAberto(){
-  const { data: existente } = await sb
+  const { data } = await sb
     .from("pedidos")
     .select("*")
-    .eq("mesa_id",mesaId)
-    .eq("app_id",appId)
-    .eq("status","aberto")
+    .eq("mesa_id", mesaId)
+    .eq("app_id", appId)
+    .not("status","in",'("finalizado","pago")')
     .maybeSingle();
 
-  if(existente) return existente;
+  if(data) return data;
 
-  const { data: novo, error } = await sb
-    .from("pedidos")
-    .insert({
-      app_id:appId,
-      mesa_id:mesaId,
-      status:"aberto",
-      origem:"mesa"
-    })
-    .select()
-    .single();
-
-  if(error){
-    console.error("Erro ao criar pedido:",error);
-    return null;
-  }
+  const { data: novo } = await sb.from("pedidos").insert({
+    app_id:appId,
+    mesa_id:mesaId,
+    status:"aberto",
+    origem:"mesa"
+  }).select().single();
 
   return novo;
 }
 
-/* ===== PRODUTOS ===== */
 async function carregarProdutos(){
-  const { data } = await sb
-    .from("produtos")
+  const { data } = await sb.from("produtos")
     .select("id,nome,preco,destino")
     .eq("app_id",appId)
-    .eq("ativo",true)
-    .order("nome");
+    .eq("ativo",true);
 
-  produtosCache = data || [];
-  aplicarFiltros();
+  produtosCache=data||[];
+  renderProdutos(produtosCache);
 }
 
 function renderProdutos(lista){
-  const div = document.getElementById("listaProdutos");
-  div.innerHTML = "";
-
+  const div=document.getElementById("listaProdutos");
+  div.innerHTML="";
   lista.forEach(p=>{
-    div.innerHTML += `
-      <div class="produto ${!pedidoAtual || pedidoAtual.status!=="aberto"?'bloqueado':''}">
-        <span>
-          ${p.nome} - R$ ${p.preco.toFixed(2)}
-          <span class="tag ${p.destino}">${p.destino.toUpperCase()}</span>
-        </span>
+    div.innerHTML+=`
+      <div class="produto">
+        ${p.nome} - R$ ${p.preco.toFixed(2)}
+        <span class="tag ${p.destino||'bar'}">${(p.destino||'bar').toUpperCase()}</span>
         <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
-      </div>
-    `;
+      </div>`;
   });
 }
 
-/* ===== FILTROS ===== */
 function filtrarProdutos(){
-  aplicarFiltros();
+  const txt=document.querySelector("input").value.toLowerCase();
+  renderProdutos(produtosCache.filter(p=>p.nome.toLowerCase().includes(txt)));
 }
 
-function filtrarDestino(destino){
-  destinoSelecionado = destino;
-
-  document.querySelectorAll(".filtros button")
-    .forEach(b=>b.classList.remove("ativo"));
-
-  if(destino==="todos") document.getElementById("fTodos").classList.add("ativo");
-  if(destino==="cozinha") document.getElementById("fCozinha").classList.add("ativo");
-  if(destino==="bar") document.getElementById("fBar").classList.add("ativo");
-
-  aplicarFiltros();
-}
-
-function aplicarFiltros(){
-  const texto = document.querySelector("input").value.toLowerCase();
-
-  let lista = produtosCache.filter(p =>
-    p.nome.toLowerCase().includes(texto)
-  );
-
-  if(destinoSelecionado !== "todos"){
-    lista = lista.filter(p => p.destino === destinoSelecionado);
-  }
-
-  renderProdutos(lista);
-}
-
-/* ===== PEDIDOS ===== */
 async function carregarPedido(){
-  const { data: pedidos } = await sb
-    .from("pedidos")
-    .select("id,status")
-    .eq("mesa_id",mesaId)
-    .eq("app_id",appId)
-    .order("created_at");
+  const { data: itens } = await sb
+    .from("pedido_itens")
+    .select("*")
+    .eq("pedido_id",pedidoAtual.id);
 
-  const div = document.getElementById("pedido");
-  div.innerHTML = "";
-  let total = 0;
+  let total=0;
+  const div=document.getElementById("pedido");
+  div.innerHTML="";
 
-  for(const p of pedidos){
-    const { data: itens } = await sb
-      .from("pedido_itens")
-      .select("*")
-      .eq("pedido_id",p.id);
+  itens.forEach(i=>{
+    total+=i.preco*i.quantidade;
+    div.innerHTML+=`
+      <div class="item">
+        ${i.nome_produto} x${i.quantidade}
+        <span class="tag ${i.destino||'bar'}">${(i.destino||'bar').toUpperCase()}</span>
+      </div>`;
+  });
 
-    itens.forEach(i=>{
-      total += i.preco * i.quantidade;
-      div.innerHTML += `
-        <div class="item ${p.status!=="aberto"?'bloqueado':''}">
-          <strong>${i.nome_produto}</strong>
-          <span class="tag ${i.destino}">${i.destino.toUpperCase()}</span>
-          <div class="controls">
-            <span>${i.quantidade}</span>
-          </div>
-        </div>
-      `;
-    });
-  }
-
-  document.getElementById("totalPedido").innerText =
-    `Total: R$ ${total.toFixed(2)}`;
+  document.getElementById("totalPedido").innerText=`Total: R$ ${total.toFixed(2)}`;
 }
 
-/* ===== ADD PRODUTO ===== */
 async function addProduto(p){
-  if(!pedidoAtual || pedidoAtual.status!=="aberto") return;
-
-  const { data } = await sb
-    .from("pedido_itens")
+  const { data } = await sb.from("pedido_itens")
     .select("id,quantidade")
     .eq("pedido_id",pedidoAtual.id)
     .eq("produto_id",p.id)
@@ -242,32 +151,19 @@ async function addProduto(p){
   carregarPedido();
 }
 
-/* ===== AÇÕES ===== */
 async function enviarPedido(){
-  if(!pedidoAtual || pedidoAtual.status!=="aberto") return;
-
-  await sb.from("pedidos")
-    .update({status:"enviado"})
-    .eq("id",pedidoAtual.id);
-
-  pedidoAtual = await garantirPedidoAberto();
-  carregarPedido();
-  alert("Pedido enviado!");
+  alert("Pedido enviado para cozinha/bar!");
 }
 
 async function pedirConta(){
   await sb.from("pedidos")
     .update({status:"finalizado"})
-    .eq("mesa_id",mesaId)
-    .eq("app_id",appId);
+    .eq("id",pedidoAtual.id);
 
   alert("Conta solicitada!");
-  carregarPedido();
 }
 
-/* ===== START ===== */
 (async()=>{
-  await carregarMesa();
   pedidoAtual = await garantirPedidoAberto();
   await carregarProdutos();
   await carregarPedido();
