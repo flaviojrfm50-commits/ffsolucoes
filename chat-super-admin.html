@@ -88,8 +88,9 @@ carregarApps();
 
 /* ================= CARREGAR MENSAGENS ================= */
 async function carregarMensagens(){
-  chatBox.innerHTML="";
   if(!appSelect.value) return;
+
+  chatBox.innerHTML="";
 
   const { data } = await supabase
     .from("chat_admin")
@@ -118,6 +119,7 @@ async function carregarMensagens(){
 
 /* ================= REALTIME ================= */
 function iniciarRealtime(){
+  if(!appSelect.value) return; // ✅ CORREÇÃO PRINCIPAL (EVITA 400)
   if(channel) supabase.removeChannel(channel);
 
   channel = supabase
@@ -144,7 +146,9 @@ function iniciarRealtime(){
     .subscribe();
 }
 
+/* ✅ CORREÇÃO AQUI TAMBÉM */
 appSelect.addEventListener("change", ()=>{
+  if(!appSelect.value) return; // 🔒 evita channel vazio
   carregarMensagens();
   iniciarRealtime();
 });
