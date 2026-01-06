@@ -90,7 +90,7 @@ body {
   color: var(--primary);
 }
 
-/* ===== CHAT PÚBLICO ===== */
+/* ===== CHAT ===== */
 #chatButton {
   position: fixed;
   bottom: 10px;
@@ -136,17 +136,18 @@ body {
   border-bottom: 1px solid rgba(255,255,255,.1);
 }
 
-.hidden { display: none; }
-
 /* ===== FORM ORÇAMENTO ===== */
 #formOrcamento {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.55);
-  display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+}
+
+#formOrcamento.active {
+  display: flex;
 }
 
 #formOrcamento .box {
@@ -166,6 +167,10 @@ body {
   margin-top: 8px;
   border-radius: 10px;
   border: none;
+}
+
+.hidden {
+  display: none !important;
 }
 </style>
 </head>
@@ -190,7 +195,7 @@ body {
   </div>
 
   <div class="container">
-    <img src="ff.png" class="logo">
+    <img src="ff.png" class="logo" id="logoSecreto">
     <span class="tagline">Transformando ideias em sistemas</span>
   </div>
 
@@ -207,12 +212,11 @@ body {
 
 </div>
 
-<!-- BOTÃO CHAT -->
+<!-- CHAT -->
 <div id="chatButton" onclick="toggleChat()">
   <i class="fa-solid fa-comments"></i>
 </div>
 
-<!-- CHAT PÚBLICO -->
 <div id="chatPanel" class="hidden">
   <div style="padding:10px;font-weight:600">📢 Avisos</div>
   <div id="chatPublicoMsgs"></div>
@@ -221,7 +225,7 @@ body {
   </button>
 </div>
 
-<!-- FORMULÁRIO (ESCONDIDO) -->
+<!-- FORM ORÇAMENTO (COMEÇA ESCONDIDO) -->
 <div id="formOrcamento" class="hidden">
   <div class="box">
     <h3>Solicitar orçamento</h3>
@@ -243,7 +247,7 @@ const supabase = createClient(
 
 const appId = new URLSearchParams(location.search).get("app");
 
-/* ===== CHAT PÚBLICO ===== */
+/* ===== CHAT ===== */
 async function carregarChatPublico(){
   const { data } = await supabase
     .from("chat_publico")
@@ -253,24 +257,27 @@ async function carregarChatPublico(){
 
   chatPublicoMsgs.innerHTML="";
   data.forEach(m=>{
-    chatPublicoMsgs.innerHTML+=`
-      <div class="chat-msg">${m.mensagem}</div>
-    `;
+    chatPublicoMsgs.innerHTML += `<div class="chat-msg">${m.mensagem}</div>`;
   });
 }
 
 supabase.channel("chat-publico")
   .on("postgres_changes",{ event:"INSERT", table:"chat_publico" },payload=>{
     if(!payload.new.app_id || payload.new.app_id === appId){
-      chatPublicoMsgs.innerHTML+=`
-        <div class="chat-msg">${payload.new.mensagem}</div>
-      `;
+      chatPublicoMsgs.innerHTML += `<div class="chat-msg">${payload.new.mensagem}</div>`;
     }
   }).subscribe();
 
 /* ===== FORM ===== */
-window.abrirFormulario = ()=>formOrcamento.classList.remove("hidden");
-window.fecharFormulario = ()=>formOrcamento.classList.add("hidden");
+window.abrirFormulario = ()=>{
+  formOrcamento.classList.remove("hidden");
+  formOrcamento.classList.add("active");
+};
+
+window.fecharFormulario = ()=>{
+  formOrcamento.classList.remove("active");
+  formOrcamento.classList.add("hidden");
+};
 
 window.enviarOrcamento = async ()=>{
   if(!orcTel.value.trim()){
