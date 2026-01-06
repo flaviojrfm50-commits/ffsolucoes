@@ -74,27 +74,6 @@ hr{
   justify-content:space-between;
   align-items:center;
 }
-
-/* ===== CHAT (NOVO, ISOLADO) ===== */
-.chat-box{
-  background:#020617;
-  border-radius:14px;
-  padding:14px;
-  height:260px;
-  overflow:auto;
-  margin-top:10px;
-}
-.chat-msg{
-  margin-bottom:8px;
-}
-.chat-input{
-  display:flex;
-  gap:10px;
-  margin-top:10px;
-}
-.chat-input input{
-  flex:1;
-}
 </style>
 </head>
 
@@ -135,22 +114,6 @@ hr{
 
   <hr>
 
-  <!-- CHAT (NOVO) -->
-  <h2>💬 Chat com Admin do Negócio</h2>
-
-  <select id="chatApp">
-    <option value="">Selecione o negócio</option>
-  </select>
-
-  <div class="chat-box" id="chatBox"></div>
-
-  <div class="chat-input">
-    <input id="chatTexto" placeholder="Digite a mensagem">
-    <button onclick="enviarChat()">Enviar</button>
-  </div>
-
-  <hr>
-
   <!-- CRIAR ADMIN -->
   <h2>👤 Criar Admin Inicial</h2>
   <input id="usuarioAdmin" placeholder="Usuário do admin">
@@ -184,7 +147,7 @@ const supabase = createClient(
 const SENHA_SUPER = "super123";
 
 /* ===============================
-   LOGIN / LOGOUT (SEM ALTERAÇÃO)
+   LOGIN / LOGOUT
 ================================ */
 window.login = function(){
   if(senhaSuper.value === SENHA_SUPER){
@@ -193,7 +156,6 @@ window.login = function(){
     painel.style.display="block";
     carregarNegocios();
     carregarAdmins();
-    carregarAppsChat(); // 🔹 ADIÇÃO
   }else{
     alert("Senha incorreta");
   }
@@ -204,48 +166,214 @@ window.logout = function(){
   loginBox.style.display="block";
 };
 
-/* ===== CHAT (NOVO) ===== */
-async function carregarAppsChat(){
-  const { data } = await supabase.from("apps").select("id,nome");
-  chatApp.innerHTML = `<option value="">Selecione o negócio</option>`;
-  data.forEach(a=>{
-    chatApp.innerHTML += `<option value="${a.id}">${a.nome}</option>`;
-  });
+/* ===============================
+   BASE DO SITE PÚBLICO (LOCAL/PROD)
+================================ */
+function getBasePublica(){
+  const isLocal =
+    location.hostname === "127.0.0.1" ||
+    location.hostname === "localhost";
+
+  if(isLocal){
+    return "http://127.0.0.1:5500/locadora/Locadora/public";
+  }
+
+  return "https://seusite.com/locadora/Locadora/public";
 }
 
-chatApp.addEventListener("change", carregarMensagens);
+/* ===============================
+   GERAR LINK PÚBLICO
+================================ */
+function gerarLinkPublico(app){
+  const base = getBasePublica();
+  return `${base}/index.html?app=${app.id}`;
+}
 
-async function carregarMensagens(){
-  chatBox.innerHTML="";
-  if(!chatApp.value) return;
+/* ===============================
+   CRIAR NEGÓCIO
+================================ */
+window.criarNegocio = async function(){
+  const nome = nomeApp.value.trim();
+  const tipo = tipoApp.value;
+  if(!nome) return alert("Informe o nome");
 
-  const { data } = await supabase
-    .from("chat_admin")
+  const { data:app, error } = await supabase
+    .from("apps")
+    .insert({ nome, tipo })
+    .select()
+    .single();
+
+  if(error){
+    alert("Erro ao criar negócio");
+    console.error(error);
+    return;
+  }
+
+  /* CONFIG PADRÃO (SEM QUEBRAR SE JÁ EXISTIR) */
+  await supabase.from("config_app").upsert({
+    app_id: app.id,
+    whatsapp: "",
+    cor_primaria: "#e30613",
+    cor_secundaria: "#020617"
+  });
+
+  nomeApp.value="";
+  carregarNegocios();
+};
+
+/* ===============================
+   LISTAR NEGÓCIOS
+================================ */
+async function carregarNegocios(){
+  const { data, error } = await supabase
+    .from("apps")
     .select("*")
-    .eq("app_id",chatApp.value)
-    .order("created_at");
+    .order("created_at",{ascending:false});
 
-  data.forEach(m=>{
-    chatBox.innerHTML += `
-      <div class="chat-msg">
-        <b>${m.remetente}:</b> ${m.mensagem}
-      </div>`;
+  if(error){
+    console.error(error);
+    return;
+  }
+
+  listaApps.innerHTML="";
+  appAdmin.innerHTML=`<option value="">Selecione o negócio</option>`;
+
+  data.forEach(app=>{
+    const linkPublico = gerarLinkPublico(app);
+
+    listaApps.innerHTML += `
+      <div class="card">
+        <div>
+          <b>${app.nome}</b>
+          <span class="tag">${app.tipo}</span><br>
+          <small>
+            🆔 ${app.id}<br>
+            🌍 <a href="${linkPublico}" target="_blank">Abrir site público</a>
+          </small>
+        </div>
+        <button onclick="excluirNegocio('${app.id}')">Excluir</button>
+      </div>
+    `;
+
+    appAdmin.innerHTML += `
+      <option value="${app.id}">
+        ${app.nome} (${app.tipo})
+      </option>
+    `;
   });
-
-  chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-window.enviarChat = async function(){
-  if(!chatApp.value || !chatTexto.value.trim()) return;
+/* ===============================
+   EXCLUIR NEGÓCIO
+================================ */
+window.excluirNegocio = async function(appId){
+  if(!confirm("Excluir este negócio?")) return;
 
-  await supabase.from("chat_admin").insert({
-    app_id: chatApp.value,
-    remetente: "super_admin",
-    mensagem: chatTexto.value.trim()
+  const { data:admins } = await supabase
+    .from("admins")
+    .select("id")
+    .eq("app_id", appId)
+    .limit(1);
+
+  if(admins && admins.length > 0){
+    alert("❌ Não é possível excluir. Existem admins vinculados.");
+    return;
+  }
+
+  await supabase.from("apps").delete().eq("id", appId);
+  carregarNegocios();
+};
+
+/* ===============================
+   CRIAR ADMIN
+================================ */
+window.criarAdminInicial = async function(){
+  const usuario = usuarioAdmin.value.trim().toLowerCase();
+  const senha = senhaAdmin.value.trim();
+  const permissao = permissaoAdmin.value;
+  const app_id = appAdmin.value;
+
+  if(!usuario || !senha || !app_id){
+    alert("Preencha todos os campos");
+    return;
+  }
+
+  const { data:existe } = await supabase
+    .from("admins")
+    .select("id")
+    .eq("usuario",usuario)
+    .maybeSingle();
+
+  if(existe){
+    alert("Usuário já existe");
+    return;
+  }
+
+  await supabase.from("admins").insert({
+    usuario,
+    senha,
+    permissao,
+    app_id,
+    ativo:true
   });
 
-  chatTexto.value="";
-  carregarMensagens();
+  usuarioAdmin.value="";
+  senhaAdmin.value="";
+  carregarAdmins();
+};
+
+/* ===============================
+   LISTAR ADMINS
+================================ */
+async function carregarAdmins(){
+  const { data } = await supabase
+    .from("admins")
+    .select("id, usuario, permissao, ativo, app_id")
+    .order("usuario");
+
+  listaAdmins.innerHTML="";
+
+  for(const a of data){
+    let appNome="Sem negócio";
+    let appTipo="?";
+
+    if(a.app_id){
+      const { data:app } = await supabase
+        .from("apps")
+        .select("nome, tipo")
+        .eq("id",a.app_id)
+        .maybeSingle();
+
+      if(app){
+        appNome=app.nome;
+        appTipo=app.tipo;
+      }
+    }
+
+    listaAdmins.innerHTML += `
+      <div class="card">
+        <div>
+          <b>${a.usuario}</b>
+          <span class="tag">${appTipo}</span><br>
+          <small>
+            🏢 ${appNome}<br>
+            🔐 ${a.permissao} |
+            ${a.ativo ? "🟢 ativo" : "🔴 inativo"}
+          </small>
+        </div>
+        <button onclick="excluirAdmin('${a.id}')">Excluir</button>
+      </div>
+    `;
+  }
+}
+
+/* ===============================
+   EXCLUIR ADMIN
+================================ */
+window.excluirAdmin = async function(id){
+  if(!confirm("Excluir este admin?")) return;
+  await supabase.from("admins").delete().eq("id",id);
+  carregarAdmins();
 };
 </script>
 
