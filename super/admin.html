@@ -51,7 +51,6 @@ hr{
   gap:12px;
 }
 .card small{opacity:.8}
-.card a{color:#22c55e;text-decoration:none}
 .card button{
   width:auto;
   background:#e53935;
@@ -75,7 +74,7 @@ hr{
   align-items:center;
 }
 
-/* ===== CHAT ===== */
+/* CHAT */
 .chat-box{
   background:#020617;
   border-radius:14px;
@@ -84,9 +83,7 @@ hr{
   overflow:auto;
   margin-top:10px;
 }
-.msg{
-  margin-bottom:8px;
-}
+.msg{margin-bottom:8px}
 .msg.admin b{color:#22c55e}
 .msg.super b{color:#60a5fa}
 .chat-input{
@@ -94,9 +91,7 @@ hr{
   gap:8px;
   margin-top:10px;
 }
-.chat-input input{
-  flex:1;
-}
+.chat-input input{flex:1}
 </style>
 </head>
 
@@ -121,13 +116,14 @@ hr{
   </div>
 
   <!-- CRIAR NEGÓCIO -->
-  <h2>🏢 Criar Mercado / Locadora</h2>
+  <h2>🏢 Criar Negócio</h2>
   <input id="nomeApp" placeholder="Nome do negócio">
   <select id="tipoApp">
     <option value="mercado">Mercado</option>
     <option value="locadora">Locadora</option>
     <option value="bar">Bar</option>
     <option value="restaurante">Restaurante</option>
+    <option value="hotel">Hotel</option>
   </select>
   <button onclick="criarNegocio()">Criar Negócio</button>
 
@@ -137,9 +133,8 @@ hr{
 
   <hr>
 
-  <!-- CHAT PRIVADO -->
+  <!-- CHAT -->
   <h2>💬 Chat com Admin do Negócio</h2>
-
   <select id="chatAppSelect" onchange="abrirChat()">
     <option value="">Selecione o negócio</option>
   </select>
@@ -154,7 +149,7 @@ hr{
   <hr>
 
   <!-- CRIAR ADMIN -->
-  <h2>👤 Criar Admin Inicial</h2>
+  <h2>👤 Criar Admin</h2>
   <input id="usuarioAdmin" placeholder="Usuário do admin">
   <input id="senhaAdmin" type="password" placeholder="Senha">
   <select id="permissaoAdmin">
@@ -186,29 +181,21 @@ const supabase = createClient(
 const SENHA_SUPER = "super123";
 let chatAppAtual = null;
 
-/* ===============================
-   LOGIN / LOGOUT
-================================ */
+/* LOGIN */
 window.login = function(){
   if(senhaSuper.value === SENHA_SUPER){
-    senhaSuper.value="";
     loginBox.style.display="none";
     painel.style.display="block";
     carregarNegocios();
-    carregarAdmins();
+    carregarAdmins(); // AGORA EXISTE
   }else{
     alert("Senha incorreta");
   }
 };
 
-window.logout = function(){
-  painel.style.display="none";
-  loginBox.style.display="block";
-};
+window.logout = ()=>location.reload();
 
-/* ===============================
-   LISTAR NEGÓCIOS (sem alteração)
-================================ */
+/* NEGÓCIOS */
 async function carregarNegocios(){
   const { data } = await supabase.from("apps").select("*").order("created_at",{ascending:false});
   listaApps.innerHTML="";
@@ -216,18 +203,34 @@ async function carregarNegocios(){
   chatAppSelect.innerHTML=`<option value="">Selecione o negócio</option>`;
 
   data.forEach(app=>{
-    chatAppSelect.innerHTML+=`<option value="${app.id}">${app.nome}</option>`;
-    appAdmin.innerHTML+=`<option value="${app.id}">${app.nome}</option>`;
     listaApps.innerHTML+=`
       <div class="card">
         <div><b>${app.nome}</b> <span class="tag">${app.tipo}</span></div>
       </div>`;
+    appAdmin.innerHTML+=`<option value="${app.id}">${app.nome}</option>`;
+    chatAppSelect.innerHTML+=`<option value="${app.id}">${app.nome}</option>`;
   });
 }
 
-/* ===============================
-   CHAT PRIVADO (NOVO)
-================================ */
+/* ✅ FUNÇÃO QUE FALTAVA */
+async function carregarAdmins(){
+  const { data } = await supabase
+    .from("admins")
+    .select("usuario, permissao, ativo");
+
+  listaAdmins.innerHTML="";
+  data.forEach(a=>{
+    listaAdmins.innerHTML+=`
+      <div class="card">
+        <div>
+          <b>${a.usuario}</b><br>
+          <small>${a.permissao} | ${a.ativo ? "🟢 ativo" : "🔴 inativo"}</small>
+        </div>
+      </div>`;
+  });
+}
+
+/* CHAT */
 window.abrirChat = async function(){
   chatAppAtual = chatAppSelect.value;
   chatBox.innerHTML="";
@@ -247,8 +250,8 @@ window.enviarChat = async function(){
 
   await supabase.from("chat_admin").insert({
     app_id: chatAppAtual,
-    remetente: "super_admin",
-    mensagem: chatMsg.value.trim()
+    remetente:"super_admin",
+    mensagem:chatMsg.value
   });
 
   chatMsg.value="";
@@ -261,17 +264,6 @@ function mostrarMsg(m){
     </div>`;
   chatBox.scrollTop = chatBox.scrollHeight;
 }
-
-/* realtime */
-supabase.channel("chat-super")
-  .on("postgres_changes",{
-    event:"INSERT",
-    table:"chat_admin"
-  },payload=>{
-    if(payload.new.app_id === chatAppAtual){
-      mostrarMsg(payload.new);
-    }
-  }).subscribe();
 </script>
 
 </body>
