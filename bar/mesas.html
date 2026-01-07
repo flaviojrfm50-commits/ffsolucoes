@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Mesas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
@@ -13,7 +14,8 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .container{padding:32px;max-width:1200px;margin:auto}
 
 .btn{
-  border:none;padding:10px 16px;border-radius:10px;font-weight:bold;cursor:pointer
+  border:none;padding:10px 16px;border-radius:10px;
+  font-weight:bold;cursor:pointer
 }
 .btn-add{background:#22c55e}
 .btn-avulsa{background:#38bdf8}
@@ -62,10 +64,6 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   display:flex;
   justify-content:center
 }
-.qr canvas{
-  width: 220px !important;
-  height: 220px !important;
-}
 
 .btn-remover{
   margin-top:8px;width:100%;
@@ -78,6 +76,27 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 </head>
 
 <body>
+
+<script>
+/* ===== SUPABASE ===== */
+const sb = supabase.createClient(
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+);
+
+/* ===== SESSÃO ===== */
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
+const app_id = funcionario?.app_id || admin?.app_id;
+
+if(!app_id){
+  alert("Sessão inválida");
+  location.href="../auth/login.html";
+}
+
+const SEGREDO_REMOVER_MESA = "4321";
+let criandoMesa = false;
+</script>
 
 <div class="topo">
   <h2>🪑 Mesas</h2>
@@ -93,33 +112,17 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 </div>
 
 <script>
-const sb = supabase.createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-);
-
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
-const app_id = funcionario?.app_id || admin?.app_id;
-
-if(!app_id){
-  alert("Sessão inválida");
-  location.href="../auth/login.html";
-}
-
-const SEGREDO_REMOVER_MESA = "4321";
-let criandoMesa = false;
-
 async function carregarMesas(){
-  // Carrega mesas ativas
+
+  /* ===== MESAS ===== */
   const { data: mesas } = await sb
     .from("mesas")
-    .select("id,numero_mesa,token,token_expira")
+    .select("id,numero_mesa")
     .eq("app_id", app_id)
     .eq("ativa", true)
     .order("numero_mesa");
 
-  // Carrega pedidos ativos
+  /* ===== PEDIDOS ATIVOS (CORREÇÃO AQUI) ===== */
   const { data: pedidos } = await sb
     .from("pedidos")
     .select("mesa_id,status,created_at")
@@ -165,22 +168,19 @@ async function carregarMesas(){
       ${!pedido ? `<button class="btn-remover">Remover mesa</button>` : ``}
     `;
 
-    // Ao clicar na mesa, abre a página da mesa
     div.onclick=()=>{
-      location.href=`mesas.html?mesa=${m.id}&app_id=${app_id}&token=${encodeURIComponent(m.token)}`;
+      location.href=`mesa.html?mesa=${m.id}&app_id=${app_id}`;
     };
 
     grid.appendChild(div);
 
-    // Gera QR seguro
-    const url = `https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/mesas.html?mesa=${m.id}&app_id=${app_id}&token=${encodeURIComponent(m.token)}`;
-    QRCode.toCanvas(document.getElementById(`qr-${m.id}`), url, {
-      width: 220,
-      margin: 2
-    });
+    QRCode.toCanvas(
+      document.getElementById(`qr-${m.id}`),
+      `https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/mesa.html?mesa=${m.id}&app_id=${app_id}`,
+      { width:120 }
+    );
 
-    // Botão remover
-    const btn = div.querySelector(".btn-remover");
+    const btn=div.querySelector(".btn-remover");
     if(btn){
       btn.onclick=async(e)=>{
         e.stopPropagation();
@@ -197,7 +197,6 @@ async function adicionarMesa(){
   if(criandoMesa) return;
   criandoMesa=true;
 
-  // Pega última mesa
   const { data } = await sb
     .from("mesas")
     .select("numero_mesa")
@@ -206,20 +205,8 @@ async function adicionarMesa(){
     .limit(1)
     .maybeSingle();
 
-  const prox = (data?.numero_mesa || 0) + 1;
-
-  // Gera token seguro para QR
-  const token = crypto.randomUUID(); // se não suportar, use qualquer função UUID JS
-  const token_expira = new Date(Date.now() + 60*60*1000); // 1 hora
-
-  await sb.from("mesas").insert({
-    app_id,
-    numero_mesa: prox,
-    ativa:true,
-    token,
-    token_expira
-  });
-
+  const prox=(data?.numero_mesa||0)+1;
+  await sb.from("mesas").insert({app_id,numero_mesa:prox,ativa:true});
   criandoMesa=false;
   carregarMesas();
 }
@@ -230,15 +217,7 @@ function vendaAvulsa(){
 
 carregarMesas();
 setInterval(carregarMesas,4000);
-
-// Registro do service worker
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
 </script>
 
 </body>
 </html>
-
-
-
