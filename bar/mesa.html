@@ -8,7 +8,15 @@
 
 <style>
 body{margin:0;font-family:Arial;background:#020617;color:#fff}
-.topo{background:#0f172a;padding:16px;font-size:20px;font-weight:bold}
+.topo{
+  background:#0f172a;
+  padding:16px;
+  font-size:20px;
+  font-weight:bold;
+}
+.topo.atencao{background:#92400e}
+.topo.critico{background:#7f1d1d}
+
 .container{max-width:900px;margin:auto;padding:20px}
 input{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:10px}
 .produto,.item{background:#0f172a;border-radius:14px;padding:14px;margin-bottom:12px}
@@ -24,6 +32,11 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 .filtros{display:flex;gap:8px;margin-bottom:16px}
 .filtros button{flex:1;background:#1e293b;color:#fff}
 .filtros button.ativo{background:#2563eb}
+.aviso{
+  margin:10px 0;
+  font-size:14px;
+  font-weight:bold;
+}
 </style>
 </head>
 
@@ -32,9 +45,10 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 <div class="topo" id="tituloMesa">🍽️ Mesa</div>
 
 <div class="container">
+  <div class="aviso" id="avisoMesa"></div>
+
   <input placeholder="🔍 Buscar produto..." oninput="filtrarProdutos()">
 
-  <!-- FILTROS ESSENCIAIS -->
   <div class="filtros">
     <button id="fBar" class="ativo" onclick="filtrarDestino('bar')">🍹 Bar</button>
     <button id="fCozinha" onclick="filtrarDestino('cozinha')">🍳 Cozinha</button>
@@ -53,13 +67,11 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 </div>
 
 <script>
-/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===== CONTEXTO ===== */
 const params = new URLSearchParams(location.search);
 const mesaId = params.get("mesa");
 const appId  = params.get("app_id");
@@ -67,20 +79,23 @@ const appId  = params.get("app_id");
 let pedidoAtual = null;
 let produtosCache = [];
 let destinoSelecionado = "bar";
+let mesaInfo = null;
 
 /* ===== MESA ===== */
 async function carregarMesa(){
   const { data } = await sb
     .from("mesas")
-    .select("numero_mesa")
+    .select("numero_mesa,aberta_em")
     .eq("id",mesaId)
     .single();
+
+  mesaInfo = data;
 
   document.getElementById("tituloMesa").innerText =
     `🍽️ Mesa ${data.numero_mesa}`;
 }
 
-/* ===== GARANTIR PEDIDO (RESPEITA CONSTRAINT) ===== */
+/* ===== PEDIDO ===== */
 async function garantirPedidoAberto(){
   const { data } = await sb
     .from("pedidos")
@@ -106,6 +121,42 @@ async function garantirPedidoAberto(){
   return novo;
 }
 
+/* ===== ALERTA VISUAL ===== */
+async function verificarAvisoMesa(){
+  if(!mesaInfo || !mesaInfo.aberta_em) return;
+
+  const { data: itens } = await sb
+    .from("pedido_itens")
+    .select("id")
+    .eq("pedido_id",pedidoAtual.id);
+
+  if(itens.length > 0){
+    document.getElementById("avisoMesa").innerText = "";
+    document.getElementById("tituloMesa").className = "topo";
+    return;
+  }
+
+  const agora = Date.now();
+  const abertura = new Date(mesaInfo.aberta_em).getTime();
+  const minutos = (agora - abertura) / 60000;
+
+  const topo = document.getElementById("tituloMesa");
+  const aviso = document.getElementById("avisoMesa");
+
+  if(minutos >= 6){
+    topo.className = "topo critico";
+    aviso.innerText = "⚠️ Mesa ocupada há mais de 6 minutos sem pedidos. Pode ser liberada.";
+  }
+  else if(minutos >= 4){
+    topo.className = "topo atencao";
+    aviso.innerText = "⏱️ Mesa aberta há 4 minutos sem pedidos.";
+  }
+  else{
+    topo.className = "topo";
+    aviso.innerText = "";
+  }
+}
+
 /* ===== PRODUTOS ===== */
 async function carregarProdutos(){
   const { data } = await sb
@@ -119,23 +170,22 @@ async function carregarProdutos(){
   aplicarFiltros();
 }
 
+function aplicarFiltros(){
+  const texto = document.querySelector("input").value.toLowerCase();
+  let lista = produtosCache.filter(p => p.nome.toLowerCase().includes(texto));
+  lista = lista.filter(p => (p.destino || "bar") === destinoSelecionado);
+  renderProdutos(lista);
+}
+
 function renderProdutos(lista){
   const div = document.getElementById("listaProdutos");
   div.innerHTML = "";
 
   lista.forEach(p=>{
-    const destino = p.destino || "bar";
-    const bloqueado =
-      pedidoAtual &&
-      (pedidoAtual.status === "conta_solicitada" ||
-       pedidoAtual.status === "finalizado" ||
-       pedidoAtual.status === "pago");
-
     div.innerHTML += `
-      <div class="produto ${bloqueado?'bloqueado':''}">
-        <span>
-          ${p.nome} - R$ ${p.preco.toFixed(2)}
-          <span class="tag ${destino}">${destino.toUpperCase()}</span>
+      <div class="produto">
+        <span>${p.nome} - R$ ${p.preco.toFixed(2)}
+          <span class="tag ${(p.destino||"bar")}">${(p.destino||"bar").toUpperCase()}</span>
         </span>
         <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
       </div>
@@ -143,74 +193,8 @@ function renderProdutos(lista){
   });
 }
 
-/* ===== FILTROS ===== */
-function filtrarProdutos(){
-  aplicarFiltros();
-}
-
-function filtrarDestino(destino){
-  destinoSelecionado = destino;
-
-  document.querySelectorAll(".filtros button")
-    .forEach(b=>b.classList.remove("ativo"));
-
-  if(destino === "bar"){
-    document.getElementById("fBar").classList.add("ativo");
-  } else {
-    document.getElementById("fCozinha").classList.add("ativo");
-  }
-
-  aplicarFiltros();
-}
-
-function aplicarFiltros(){
-  const texto = document.querySelector("input").value.toLowerCase();
-
-  let lista = produtosCache.filter(p =>
-    p.nome.toLowerCase().includes(texto)
-  );
-
-  lista = lista.filter(p => (p.destino || "bar") === destinoSelecionado);
-
-  renderProdutos(lista);
-}
-
-/* ===== PEDIDOS ===== */
-async function carregarPedido(){
-  const { data: itens } = await sb
-    .from("pedido_itens")
-    .select("*")
-    .eq("pedido_id",pedidoAtual.id);
-
-  const div = document.getElementById("pedido");
-  div.innerHTML = "";
-  let total = 0;
-
-  itens.forEach(i=>{
-    const destino = i.destino || "bar";
-    total += i.preco * i.quantidade;
-    div.innerHTML += `
-      <div class="item">
-        <strong>${i.nome_produto}</strong>
-        <span class="tag ${destino}">${destino.toUpperCase()}</span>
-        <div>x ${i.quantidade}</div>
-      </div>
-    `;
-  });
-
-  document.getElementById("totalPedido").innerText =
-    `Total: R$ ${total.toFixed(2)}`;
-}
-
-/* ===== ADD PRODUTO (AJUSTE PRINCIPAL AQUI) ===== */
+/* ===== ADD PRODUTO ===== */
 async function addProduto(p){
-  if(
-    !pedidoAtual ||
-    pedidoAtual.status === "conta_solicitada" ||
-    pedidoAtual.status === "finalizado" ||
-    pedidoAtual.status === "pago"
-  ) return;
-
   const { data } = await sb
     .from("pedido_itens")
     .select("id,quantidade")
@@ -237,18 +221,37 @@ async function addProduto(p){
   carregarPedido();
 }
 
-/* ===== AÇÕES ===== */
-async function enviarPedido(){
-  alert("Pedido enviado!");
+/* ===== PEDIDOS ===== */
+async function carregarPedido(){
+  const { data: itens } = await sb
+    .from("pedido_itens")
+    .select("*")
+    .eq("pedido_id",pedidoAtual.id);
+
+  const div = document.getElementById("pedido");
+  div.innerHTML = "";
+  let total = 0;
+
+  itens.forEach(i=>{
+    total += i.preco * i.quantidade;
+    div.innerHTML += `
+      <div class="item">
+        <strong>${i.nome_produto}</strong>
+        <div>x ${i.quantidade}</div>
+      </div>
+    `;
+  });
+
+  document.getElementById("totalPedido").innerText =
+    `Total: R$ ${total.toFixed(2)}`;
 }
 
+/* ===== AÇÕES ===== */
+async function enviarPedido(){}
 async function pedirConta(){
-  await sb
-    .from("pedidos")
+  await sb.from("pedidos")
     .update({ status:"conta_solicitada" })
     .eq("id",pedidoAtual.id);
-
-  alert("Conta solicitada! Aguarde o garçom 🧾");
 }
 
 /* ===== START ===== */
@@ -257,6 +260,8 @@ async function pedirConta(){
   pedidoAtual = await garantirPedidoAberto();
   await carregarProdutos();
   await carregarPedido();
+  verificarAvisoMesa();
+  setInterval(verificarAvisoMesa, 30000);
 })();
 </script>
 
