@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <title>Painel do bar / Restaurante</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- ✅ PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#020617">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -55,13 +60,11 @@ body{
 
 <body>
 
-<!-- ================= TOPO ================= -->
 <div class="topo">
   <h2>🍻 Painel do bar / Restaurante</h2>
   <button class="sair" onclick="logout()">Sair</button>
 </div>
 
-<!-- ================= CONTEÚDO ================= -->
 <div class="container">
   <p>
     Bem-vindo, <b id="nome"></b><br>
@@ -107,7 +110,6 @@ body{
       <p>Cardápio online</p>
     </div>
 
-    <!-- 🔥 CHAT SUPORTE -->
     <div class="card" onclick="abrirChat()">
       <h3>💬 Suporte</h3>
       <p>Falar com o suporte</p>
@@ -117,29 +119,24 @@ body{
 </div>
 
 <script>
-/* ================= SUPABASE ================= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ================= SESSÃO ================= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 const funcionario = JSON.parse(localStorage.getItem("usuario_bar"));
 
-/* 🚫 BLOQUEIA FUNCIONÁRIO */
 if(funcionario){
   alert("Acesso restrito ao administrador");
   location.href = "login-funcionario.html";
 }
 
-/* 🚫 BLOQUEIA SE NÃO FOR ADMIN */
 if(!admin || (admin.tipo !== "bar" && admin.tipo !== "restaurante")){
   alert("Acesso não autorizado");
   location.href = "../auth/login.html";
 }
 
-/* 🔐 SALVA app_id GLOBAL */
 if(admin.app_id){
   localStorage.setItem("app_id", admin.app_id);
 }else{
@@ -151,23 +148,24 @@ if(admin.app_id){
   throw new Error("admin.app_id ausente");
 }
 
-/* ================= UI ================= */
 document.getElementById("nome").innerText = admin.usuario;
 document.getElementById("appId").innerText = admin.app_id;
 
-/* ================= CHAT ================= */
 function abrirChat(){
   window.open("../chat-admin.html", "_blank");
 }
 
-/* ================= LOGOUT ================= */
 function logout(){
   localStorage.removeItem("admin_logado");
   localStorage.removeItem("app_id");
   location.href = "../auth/login.html";
 }
+
+/* ✅ REGISTRO DO SERVICE WORKER (PWA) */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
 </script>
 
 </body>
 </html>
-
