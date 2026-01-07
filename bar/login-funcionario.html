@@ -5,6 +5,10 @@
 <title>Login do Funcionário</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- ✅ PWA (SOMENTE ISSO) -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#020617">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -103,12 +107,9 @@ async function logar(){
     return;
   }
 
-  /* SALVA SESSÃO DO FUNCIONÁRIO */
   localStorage.setItem("funcionario_logado", JSON.stringify(data));
 
-  /* REDIRECIONA POR FUNÇÃO */
   if(data.tipo === "garcom"){
-    // Garçom vai direto para as MESAS
     location.href = "mesas.html";
   }
   else if(data.tipo === "caixa"){
@@ -121,9 +122,12 @@ async function logar(){
     msg.innerText = "Função inválida";
   }
 }
+
+/* ✅ REGISTRO DO SERVICE WORKER (PWA DO BAR) */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
 </script>
 
 </body>
 </html>
-
-
