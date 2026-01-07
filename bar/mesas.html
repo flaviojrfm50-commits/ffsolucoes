@@ -167,7 +167,7 @@ async function carregarMesas(){
 
     // Ao clicar na mesa, abre a página da mesa
     div.onclick=()=>{
-      location.href=`mesa.html?mesa=${m.id}&app_id=${app_id}&token=${encodeURIComponent(m.token)}`;
+      location.href=`mesas.html?mesa=${m.id}&app_id=${app_id}&token=${encodeURIComponent(m.token)}`;
     };
 
     grid.appendChild(div);
@@ -239,5 +239,6 @@ if ('serviceWorker' in navigator) {
 
 </body>
 </html>
+
 
 
