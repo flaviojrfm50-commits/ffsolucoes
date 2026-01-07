@@ -24,8 +24,10 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   border-radius:18px;
   text-align:center;
   border:2px solid transparent;
+  cursor:pointer;
   transition:.15s
 }
+.card:hover{transform:scale(1.03)}
 
 .card.livre{border-color:#22c55e}
 .card.preparando{border-color:#eab308}
@@ -33,9 +35,7 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   border-color:#fde047;
   box-shadow:0 0 14px rgba(253,224,71,.8);
 }
-.card.atencao{
-  border-color:#f59e0b;
-}
+.card.atencao{border-color:#f59e0b}
 .card.critico{
   border-color:#dc2626;
   box-shadow:0 0 14px rgba(220,38,38,.6);
@@ -55,7 +55,7 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .status.atencao{background:#f59e0b;color:#000}
 .status.critico{background:#dc2626;color:#fff}
 
-button{
+.btn-liberar{
   margin-top:8px;
   width:100%;
   background:#dc2626;
@@ -98,10 +98,10 @@ if(!app_id){
 <script>
 async function carregarMesas(){
 
-  /* ===== MESAS (MESMA CONSULTA QUE FUNCIONA) ===== */
+  /* ===== MESAS (MESMA CONSULTA QUE JÁ FUNCIONAVA) ===== */
   const { data: mesas } = await sb
     .from("mesas")
-    .select("id,numero_mesa")
+    .select("id,numero_mesa,created_at")
     .eq("app_id", app_id)
     .eq("ativa", true)
     .order("numero_mesa");
@@ -135,8 +135,6 @@ async function carregarMesas(){
     let podeLiberar = false;
 
     if(pedido){
-      const minutos = (agora - new Date(pedido.created_at).getTime()) / 60000;
-
       if(pedido.status === "conta_solicitada"){
         classe="conta";
         texto="PEDIU A CONTA";
@@ -144,9 +142,8 @@ async function carregarMesas(){
         classe="preparando";
         texto="OCUPADA";
       }
-
     }else{
-      // mesa sem pedido → lógica 4 / 6 minutos
+      // mesa sem pedido → regra 4 / 6 minutos
       const minutos = (agora - new Date(m.created_at).getTime()) / 60000;
 
       if(minutos >= 6){
@@ -168,19 +165,27 @@ async function carregarMesas(){
 
       ${
         podeLiberar
-        ? `<button onclick="liberarMesa('${m.id}')">
+        ? `<button class="btn-liberar"
+              onclick="liberarMesa('${m.id}', event)">
              🚨 Liberar mesa
            </button>`
         : ``
       }
     `;
 
+    /* 🔥 CLIQUE PARA ENTRAR NA MESA */
+    div.onclick = () => {
+      location.href = `mesa.html?mesa=${m.id}&app_id=${app_id}`;
+    };
+
     grid.appendChild(div);
   });
 }
 
 /* ===== LIBERAR MESA ===== */
-async function liberarMesa(mesaId){
+async function liberarMesa(mesaId, e){
+  e.stopPropagation(); // não entra na mesa
+
   const { data: pedidos } = await sb
     .from("pedidos")
     .select("id")
@@ -198,6 +203,7 @@ async function liberarMesa(mesaId){
   carregarMesas();
 }
 
+/* START */
 carregarMesas();
 setInterval(carregarMesas,4000);
 </script>
