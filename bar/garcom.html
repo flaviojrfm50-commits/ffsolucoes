@@ -2,49 +2,27 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Painel do Garçom</title>
+<title>Garçom - Mesas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npmjs.cloudflare.com/ajax/libs/supabase-js/2.39.3/supabase.min.js"></script>
 
 <style>
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#020617;
-  color:#fff;
-}
-.container{
-  max-width:1100px;
-  margin:auto;
-  padding:24px;
-}
+body{margin:0;font-family:Arial;background:#020617;color:#fff}
+.container{max-width:900px;margin:auto;padding:20px}
 .mesa{
   background:#0f172a;
-  border-radius:16px;
+  border-radius:14px;
   padding:16px;
-  margin-bottom:16px;
+  margin-bottom:14px;
   border-left:6px solid #2563eb;
 }
-.mesa.atencao{
-  border-left-color:#f59e0b;
-}
+.mesa.atencao{border-left-color:#f59e0b}
 .mesa.critico{
   border-left-color:#dc2626;
-  box-shadow:0 0 18px rgba(220,38,38,.6);
+  box-shadow:0 0 14px rgba(220,38,38,.6);
 }
-.top{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-.numero{
-  font-size:22px;
-  font-weight:900;
-}
-.info{
-  font-size:14px;
-  opacity:.9;
-}
+.numero{font-size:22px;font-weight:bold}
+.info{margin-top:6px;font-size:14px}
 button{
   margin-top:10px;
   padding:10px 14px;
@@ -53,18 +31,15 @@ button{
   font-weight:bold;
   cursor:pointer;
 }
-.liberar{
-  background:#dc2626;
-  color:#fff;
-}
+.liberar{background:#dc2626;color:#fff}
 </style>
 </head>
 
 <body>
 
 <div class="container">
-  <h2>🧑‍🍺 Mesas (Garçom)</h2>
-  <div id="lista">Carregando...</div>
+  <h2>🧑‍🍺 Painel do Garçom</h2>
+  <div id="lista">Carregando mesas...</div>
 </div>
 
 <script>
@@ -73,38 +48,29 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
-const appId = funcionario?.app_id;
-
-if(!appId){
-  alert("Sessão inválida");
-  location.href="../auth/login.html";
-}
-
 const lista = document.getElementById("lista");
 
-/* ===== CARREGAR MESAS ===== */
+/* ===== CARREGAR MESAS (SEM DEPENDER DE app_id) ===== */
 async function carregarMesas(){
-  const { data, error } = await sb
+  const { data: mesas, error } = await sb
     .from("mesas")
-    .select("id,numero_mesa,status,created_at")
-    .eq("app_id", appId)
-    .eq("status", "aberta")
+    .select("id,numero_mesa,created_at,status")
     .order("numero_mesa");
 
   if(error){
     lista.innerHTML = "Erro ao carregar mesas";
+    console.error(error);
     return;
   }
 
   lista.innerHTML = "";
 
-  if(!data || data.length === 0){
-    lista.innerHTML = "<p>Nenhuma mesa aberta</p>";
+  if(!mesas || mesas.length === 0){
+    lista.innerHTML = "<p>Nenhuma mesa encontrada</p>";
     return;
   }
 
-  for(const m of data){
+  for(const m of mesas){
     await renderMesa(m);
   }
 }
@@ -114,12 +80,10 @@ async function renderMesa(m){
   const { data: pedidos } = await sb
     .from("pedidos")
     .select("id")
-    .eq("mesa_id", m.id)
-    .not("status","in",'("finalizado","pago")');
+    .eq("mesa_id", m.id);
 
-  const agora = Date.now();
-  const abertura = new Date(m.created_at).getTime();
-  const minutos = (agora - abertura) / 60000;
+  const minutos =
+    (Date.now() - new Date(m.created_at).getTime()) / 60000;
 
   let classe = "";
   let info = "";
@@ -135,9 +99,7 @@ async function renderMesa(m){
 
   lista.innerHTML += `
     <div class="mesa ${classe}">
-      <div class="top">
-        <div class="numero">Mesa ${m.numero_mesa}</div>
-      </div>
+      <div class="numero">Mesa ${m.numero_mesa}</div>
       <div class="info">${info}</div>
 
       ${
@@ -151,16 +113,15 @@ async function renderMesa(m){
   `;
 }
 
-/* ===== LIBERAR MESA ===== */
+/* ===== LIBERAR ===== */
 async function liberarMesa(mesaId){
-  // segurança final
   const { data: pedidos } = await sb
     .from("pedidos")
     .select("id")
     .eq("mesa_id", mesaId);
 
   if(pedidos.length > 0){
-    alert("Mesa possui pedidos. Não pode liberar.");
+    alert("Mesa já tem pedido");
     return;
   }
 
