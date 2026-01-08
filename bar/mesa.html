@@ -91,7 +91,7 @@ async function garantirPedidoAberto(){
 
   if(data){
     pedidoAtual = data;
-    await atualizarLiberacao();
+    atualizarLiberacao();
     return;
   }
 
@@ -107,7 +107,7 @@ async function garantirPedidoAberto(){
     .single();
 
   pedidoAtual = novo;
-  await atualizarLiberacao();
+  atualizarLiberacao();
 }
 
 /* ===== PRODUTOS ===== */
@@ -178,8 +178,19 @@ async function carregarPedido(){
 
     div.innerHTML += `
       <div class="item">
-        ${i.nome_produto} x ${i.quantidade}
-        <span class="tag ${i.destino}">${i.destino.toUpperCase()}</span>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            ${i.nome_produto} x ${i.quantidade}
+            <span class="tag ${i.destino}">${i.destino.toUpperCase()}</span>
+          </div>
+
+          ${i.status === "novo" ? `
+            <div>
+              <button onclick="diminuirItem('${i.id}',${i.quantidade})">➖</button>
+              <button onclick="removerItem('${i.id}')">❌</button>
+            </div>
+          ` : `<span>✔ enviado</span>`}
+        </div>
       </div>
     `;
   });
@@ -187,10 +198,10 @@ async function carregarPedido(){
   document.getElementById("totalPedido").innerText =
     `Total: R$ ${total.toFixed(2)}`;
 
-  await atualizarLiberacao();
+  atualizarLiberacao();
 }
 
-/* ===== ADD PRODUTO (CORRETO) ===== */
+/* ===== ADD / REMOVER / DIMINUIR ===== */
 async function addProduto(produtoId){
   if(pedidoAtual.status === "conta_solicitada") return;
 
@@ -225,7 +236,30 @@ async function addProduto(produtoId){
   carregarPedido();
 }
 
-/* ===== ENVIAR PEDIDO ===== */
+async function diminuirItem(id,q){
+  if(q > 1){
+    await sb.from("pedido_itens")
+      .update({quantidade:q-1})
+      .eq("id",id)
+      .eq("status","novo");
+  }else{
+    await sb.from("pedido_itens")
+      .delete()
+      .eq("id",id)
+      .eq("status","novo");
+  }
+  carregarPedido();
+}
+
+async function removerItem(id){
+  await sb.from("pedido_itens")
+    .delete()
+    .eq("id",id)
+    .eq("status","novo");
+  carregarPedido();
+}
+
+/* ===== ENVIAR / CONTA / LIBERAR ===== */
 async function enviarPedido(){
   await sb.from("pedido_itens")
     .update({status:"confirmado"})
@@ -240,7 +274,6 @@ async function enviarPedido(){
   alert("📨 Pedido enviado!");
 }
 
-/* ===== PEDIR CONTA (SÓ SE TIVER PEDIDO) ===== */
 async function pedirConta(){
   const { count } = await sb
     .from("pedido_itens")
@@ -260,7 +293,6 @@ async function pedirConta(){
   alert("🧾 Conta solicitada!");
 }
 
-/* ===== LIBERAR MESA ===== */
 async function atualizarLiberacao(){
   const btn = document.getElementById("btnLiberar");
 
@@ -269,11 +301,7 @@ async function atualizarLiberacao(){
     .select("*",{count:"exact",head:true})
     .eq("pedido_id",pedidoAtual.id);
 
-  if(count === 0){
-    btn.classList.remove("bloqueado");
-  }else{
-    btn.classList.add("bloqueado");
-  }
+  btn.classList.toggle("bloqueado", count > 0);
 }
 
 async function liberarMesa(){
