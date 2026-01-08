@@ -26,10 +26,11 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 .filtros button{flex:1;background:#1e293b;color:#fff}
 .filtros button.ativo{background:#2563eb}
 
-/* botoes + - no pedido */
-.qtdBtns{display:flex;gap:8px;margin-top:8px}
-.btnMinus{background:#f59e0b;color:#000;font-weight:bold}
-.btnPlus{background:#22c55e;color:#000;font-weight:bold}
+/* controles do item */
+.itemLinha{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.itemBtns{display:flex;gap:8px;align-items:center}
+.btnMenos{background:#f59e0b;color:#000;font-weight:bold}
+.btnRemover{background:#dc2626;color:#fff;font-weight:bold}
 </style>
 </head>
 
@@ -132,13 +133,14 @@ function renderProdutos(lista){
   lista.forEach(p=>{
     const bloqueado = pedidoAtual.status !== "aberto";
 
+    // IMPORTANTE: não usar JSON.stringify no onclick (quebra com aspas/emoji no nome)
     div.innerHTML += `
       <div class="produto ${bloqueado?'bloqueado':''}">
         <span>
-          ${p.nome} - R$ ${p.preco.toFixed(2)}
-          <span class="tag ${p.destino}">${p.destino.toUpperCase()}</span>
+          ${p.nome} - R$ ${Number(p.preco).toFixed(2)}
+          <span class="tag ${p.destino}">${String(p.destino).toUpperCase()}</span>
         </span>
-        <button onclick="addProduto(${p.id})">➕</button>
+        <button onclick="addProduto('${p.id}')">➕</button>
       </div>
     `;
   });
@@ -160,7 +162,7 @@ function aplicarFiltros(){
   const txt = document.querySelector("input").value.toLowerCase();
   renderProdutos(
     produtosCache.filter(p =>
-      p.nome.toLowerCase().includes(txt) &&
+      String(p.nome).toLowerCase().includes(txt) &&
       p.destino === destinoSelecionado
     )
   );
@@ -178,23 +180,25 @@ async function carregarPedido(){
   let total = 0;
 
   data.forEach(i=>{
-    total += i.preco * i.quantidade;
+    total += Number(i.preco) * Number(i.quantidade);
 
     const podeEditar = pedidoAtual.status === "aberto";
 
     div.innerHTML += `
       <div class="item">
-        <div>
-          ${i.nome_produto} x ${i.quantidade}
-          <span class="tag ${i.destino}">${i.destino.toUpperCase()}</span>
-        </div>
-
-        ${podeEditar ? `
-          <div class="qtdBtns">
-            <button class="btnMinus" onclick="diminuirItem(${i.id},${i.quantidade})">➖</button>
-            <button class="btnPlus" onclick="addProduto(${i.produto_id})">➕</button>
+        <div class="itemLinha">
+          <div>
+            ${i.nome_produto} x ${i.quantidade}
+            <span class="tag ${i.destino}">${String(i.destino).toUpperCase()}</span>
           </div>
-        ` : ``}
+
+          ${podeEditar ? `
+            <div class="itemBtns">
+              <button class="btnMenos" onclick="diminuirItem(${i.id}, ${i.quantidade})">➖</button>
+              <button class="btnRemover" onclick="removerItem(${i.id})">Remover</button>
+            </div>
+          ` : ``}
+        </div>
       </div>
     `;
   });
@@ -209,11 +213,12 @@ async function carregarPedido(){
   }
 }
 
-/* ===== ADD PRODUTO (ID) ===== */
+/* ===== ADD PRODUTO ===== */
 async function addProduto(produtoId){
   if(pedidoAtual.status !== "aberto") return;
 
-  const p = produtosCache.find(x => x.id === produtoId);
+  // acha no cache (id pode ser number/uuid/string)
+  const p = produtosCache.find(x => String(x.id) === String(produtoId));
   if(!p) return;
 
   const { data } = await sb
@@ -225,7 +230,7 @@ async function addProduto(produtoId){
 
   if(data){
     await sb.from("pedido_itens")
-      .update({quantidade:data.quantidade+1})
+      .update({quantidade: Number(data.quantidade)+1})
       .eq("id",data.id);
   }else{
     await sb.from("pedido_itens").insert({
@@ -243,19 +248,32 @@ async function addProduto(produtoId){
   carregarPedido();
 }
 
-/* ===== DIMINUI (2->1) e 0 REMOVE ===== */
-async function diminuirItem(itemId,qtd){
+/* ===== REMOVER/DIMINUIR (SÓ ANTES DE ENVIAR) ===== */
+async function diminuirItem(itemId, qtd){
   if(pedidoAtual.status !== "aberto") return;
 
-  if(qtd > 1){
+  const q = Number(qtd);
+  if(q > 1){
     await sb.from("pedido_itens")
-      .update({quantidade:qtd-1})
-      .eq("id",itemId);
+      .update({quantidade: q - 1})
+      .eq("id", itemId);
   }else{
     await sb.from("pedido_itens")
       .delete()
-      .eq("id",itemId);
+      .eq("id", itemId);
   }
+
+  carregarPedido();
+}
+
+async function removerItem(itemId){
+  if(pedidoAtual.status !== "aberto") return;
+
+  if(!confirm("Remover este item do pedido?")) return;
+
+  await sb.from("pedido_itens")
+    .delete()
+    .eq("id", itemId);
 
   carregarPedido();
 }
@@ -268,9 +286,11 @@ async function enviarPedido(){
     .update({status:"enviado"})
     .eq("id",pedidoAtual.id);
 
+  // trava a tela sem precisar recarregar
   pedidoAtual.status = "enviado";
-  alert("Pedido enviado");
-  carregarProdutos();
+
+  alert("📨 Pedido enviado!");
+  aplicarFiltros();
   carregarPedido();
 }
 
@@ -281,7 +301,7 @@ async function pedirConta(){
     .eq("pedido_id",pedidoAtual.id);
 
   if(!data.length){
-    alert("Nao ha pedidos.");
+    alert("Não há pedidos.");
     return;
   }
 
@@ -289,7 +309,7 @@ async function pedirConta(){
     .update({status:"conta_solicitada"})
     .eq("id",pedidoAtual.id);
 
-  alert("Conta solicitada");
+  alert("🧾 Conta solicitada!");
 }
 
 /* ===== LIBERAR MESA ===== */
@@ -300,7 +320,7 @@ async function liberarMesa(){
     .eq("pedido_id",pedidoAtual.id);
 
   if(data.length){
-    alert("Mesa possui pedidos ativos.");
+    alert("🚫 Mesa possui pedidos ativos.");
     return;
   }
 
@@ -310,7 +330,7 @@ async function liberarMesa(){
     .update({status:"finalizado"})
     .eq("id",pedidoAtual.id);
 
-  alert("Mesa liberada");
+  alert("✅ Mesa liberada!");
   location.href="mesas.html";
 }
 
