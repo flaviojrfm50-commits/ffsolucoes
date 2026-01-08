@@ -199,9 +199,9 @@ async function carregarPedido(){
     `Total: R$ ${total.toFixed(2)}`;
 }
 
-/* ===== ADD PRODUTO ===== */
+/* ===== ADD PRODUTO (CORRIGIDO) ===== */
 async function addProduto(produtoId){
-  if(pedidoAtual.status !== "aberto") return;
+  if(pedidoAtual.status === "conta_solicitada") return;
 
   const p = produtosCache.find(x => x.id === produtoId);
   if(!p) return;
