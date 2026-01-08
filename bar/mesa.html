@@ -26,7 +26,7 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 .filtros button{flex:1;background:#1e293b;color:#fff}
 .filtros button.ativo{background:#2563eb}
 
-/* controles do item */
+/* botoes do item */
 .itemRow{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .itemBtns{display:flex;gap:8px;align-items:center}
 .btnMenos{background:#f59e0b;color:#000;font-weight:bold}
@@ -77,13 +77,11 @@ let destinoSelecionado = "bar";
 
 /* ===== MESA ===== */
 async function carregarMesa(){
-  const { data, error } = await sb
+  const { data } = await sb
     .from("mesas")
     .select("numero_mesa")
-    .eq("id", mesaId)
+    .eq("id",mesaId)
     .single();
-
-  if(error){ console.log("carregarMesa:", error); return; }
 
   document.getElementById("tituloMesa").innerText =
     `🍽️ Mesa ${data.numero_mesa}`;
@@ -91,44 +89,38 @@ async function carregarMesa(){
 
 /* ===== PEDIDO ===== */
 async function garantirPedidoAberto(){
-  const { data, error } = await sb
+  const { data } = await sb
     .from("pedidos")
     .select("*")
-    .eq("mesa_id", mesaId)
-    .eq("app_id", appId)
+    .eq("mesa_id",mesaId)
+    .eq("app_id",appId)
     .not("status","in",'("finalizado","pago")')
     .maybeSingle();
 
-  if(error) console.log("garantirPedidoAberto select:", error);
-
   if(data) return data;
 
-  const { data: novo, error: err2 } = await sb
+  const { data: novo } = await sb
     .from("pedidos")
     .insert({
-      app_id: appId,
-      mesa_id: mesaId,
-      status: "aberto",
-      origem: "mesa"
+      app_id:appId,
+      mesa_id:mesaId,
+      status:"aberto",
+      origem:"mesa"
     })
     .select()
     .single();
-
-  if(err2) console.log("garantirPedidoAberto insert:", err2);
 
   return novo;
 }
 
 /* ===== PRODUTOS ===== */
 async function carregarProdutos(){
-  const { data, error } = await sb
+  const { data } = await sb
     .from("produtos")
     .select("id,nome,preco,destino")
-    .eq("app_id", appId)
-    .eq("ativo", true)
+    .eq("app_id",appId)
+    .eq("ativo",true)
     .order("nome");
-
-  if(error) console.log("carregarProdutos:", error);
 
   produtosCache = data || [];
   aplicarFiltros();
@@ -136,16 +128,19 @@ async function carregarProdutos(){
 
 function renderProdutos(lista){
   const div = document.getElementById("listaProdutos");
-  div.innerHTML = "";
+  div.innerHTML="";
 
   lista.forEach(p=>{
     const bloqueado = pedidoAtual.status !== "aberto";
+
     div.innerHTML += `
-      <div class="produto ${bloqueado ? "bloqueado" : ""}">
+      <div class="produto ${bloqueado?'bloqueado':''}">
         <span>
           ${p.nome} - R$ ${Number(p.preco).toFixed(2)}
           <span class="tag ${p.destino}">${String(p.destino).toUpperCase()}</span>
         </span>
+
+        <!-- AQUI: nao usa JSON.stringify (evita quebrar com aspas/emoji no nome) -->
         <button onclick="addProduto('${p.id}')">➕</button>
       </div>
     `;
@@ -176,17 +171,13 @@ function aplicarFiltros(){
 
 /* ===== ITENS ===== */
 async function carregarPedido(){
-  // NÃO listar removidos (quantidade 0)
-  const { data, error } = await sb
+  const { data } = await sb
     .from("pedido_itens")
     .select("*")
-    .eq("pedido_id", pedidoAtual.id)
-    .gt("quantidade", 0);
-
-  if(error) console.log("carregarPedido:", error);
+    .eq("pedido_id",pedidoAtual.id);
 
   const div = document.getElementById("pedido");
-  div.innerHTML = "";
+  div.innerHTML="";
   let total = 0;
 
   const podeEditar = pedidoAtual.status === "aberto";
@@ -204,8 +195,9 @@ async function carregarPedido(){
 
           ${podeEditar ? `
             <div class="itemBtns">
-              <button class="btnMenos" onclick="diminuirItem(${i.id}, ${i.quantidade})">➖</button>
-              <button class="btnRemover" onclick="removerItem(${i.id})">Remover</button>
+              <!-- AQUI: id entre aspas pq pode ser UUID -->
+              <button class="btnMenos" onclick="diminuirItem('${i.id}', ${i.quantidade})">➖</button>
+              <button class="btnRemover" onclick="removerItem('${i.id}')">Remover</button>
             </div>
           ` : ``}
         </div>
@@ -223,63 +215,54 @@ async function carregarPedido(){
   }
 }
 
-/* ===== ADD PRODUTO (por ID) ===== */
+/* ===== ADD PRODUTO ===== */
 async function addProduto(produtoId){
   if(pedidoAtual.status !== "aberto") return;
 
   const p = produtosCache.find(x => String(x.id) === String(produtoId));
   if(!p) return;
 
-  const { data, error } = await sb
+  const { data } = await sb
     .from("pedido_itens")
     .select("id,quantidade")
-    .eq("pedido_id", pedidoAtual.id)
-    .eq("produto_id", p.id)
+    .eq("pedido_id",pedidoAtual.id)
+    .eq("produto_id",p.id)
     .maybeSingle();
 
-  if(error) console.log("addProduto select:", error);
-
   if(data){
-    const { error: errUp } = await sb.from("pedido_itens")
-      .update({ quantidade: Number(data.quantidade) + 1 })
-      .eq("id", data.id);
-
-    if(errUp) console.log("addProduto update:", errUp);
+    await sb.from("pedido_itens")
+      .update({quantidade:Number(data.quantidade)+1})
+      .eq("id",data.id);
   }else{
-    const { error: errIns } = await sb.from("pedido_itens").insert({
-      app_id: appId,
-      pedido_id: pedidoAtual.id,
-      produto_id: p.id,
-      nome_produto: p.nome,
-      preco: p.preco,
-      quantidade: 1,
-      destino: p.destino,
-      status: "novo"
+    await sb.from("pedido_itens").insert({
+      app_id:appId,
+      pedido_id:pedidoAtual.id,
+      produto_id:p.id,
+      nome_produto:p.nome,
+      preco:p.preco,
+      quantidade:1,
+      destino:p.destino,
+      status:"novo"
     });
-
-    if(errIns) console.log("addProduto insert:", errIns);
   }
 
   carregarPedido();
 }
 
-/* ===== DIMINUI / REMOVER (SEM DELETE) ===== */
+/* ===== DIMINUI / REMOVE (SÓ ANTES DE ENVIAR) ===== */
 async function diminuirItem(itemId, qtd){
   if(pedidoAtual.status !== "aberto") return;
 
   const q = Number(qtd);
 
-  // se era 1, "remove" = quantidade 0 (soft remove)
-  const novaQtd = q > 1 ? (q - 1) : 0;
-
-  const { error } = await sb.from("pedido_itens")
-    .update({ quantidade: novaQtd })
-    .eq("id", itemId);
-
-  if(error){
-    console.log("diminuirItem:", error);
-    alert("Nao foi possivel diminuir/remover (ver console).");
-    return;
+  if(q > 1){
+    await sb.from("pedido_itens")
+      .update({ quantidade: q - 1 })
+      .eq("id", itemId);
+  }else{
+    await sb.from("pedido_itens")
+      .delete()
+      .eq("id", itemId);
   }
 
   carregarPedido();
@@ -290,16 +273,9 @@ async function removerItem(itemId){
 
   if(!confirm("Remover este item do pedido?")) return;
 
-  // "remove" = quantidade 0 (soft remove)
-  const { error } = await sb.from("pedido_itens")
-    .update({ quantidade: 0 })
+  await sb.from("pedido_itens")
+    .delete()
     .eq("id", itemId);
-
-  if(error){
-    console.log("removerItem:", error);
-    alert("Nao foi possivel remover (ver console).");
-    return;
-  }
 
   carregarPedido();
 }
@@ -308,19 +284,14 @@ async function removerItem(itemId){
 async function enviarPedido(){
   if(pedidoAtual.status !== "aberto") return;
 
-  const { error } = await sb.from("pedidos")
-    .update({ status: "enviado" })
-    .eq("id", pedidoAtual.id);
+  await sb.from("pedidos")
+    .update({status:"enviado"})
+    .eq("id",pedidoAtual.id);
 
-  if(error){
-    console.log("enviarPedido:", error);
-    alert("Falha ao enviar (ver console).");
-    return;
-  }
-
+  // trava local (sem precisar recarregar)
   pedidoAtual.status = "enviado";
-  alert("📨 Pedido enviado!");
 
+  alert("📨 Pedido enviado!");
   aplicarFiltros();
   carregarPedido();
 }
@@ -329,8 +300,7 @@ async function pedirConta(){
   const { data } = await sb
     .from("pedido_itens")
     .select("id")
-    .eq("pedido_id", pedidoAtual.id)
-    .gt("quantidade", 0);
+    .eq("pedido_id",pedidoAtual.id);
 
   if(!data.length){
     alert("Não há pedidos.");
@@ -338,8 +308,8 @@ async function pedirConta(){
   }
 
   await sb.from("pedidos")
-    .update({ status: "conta_solicitada" })
-    .eq("id", pedidoAtual.id);
+    .update({status:"conta_solicitada"})
+    .eq("id",pedidoAtual.id);
 
   alert("🧾 Conta solicitada!");
 }
@@ -349,8 +319,7 @@ async function liberarMesa(){
   const { data } = await sb
     .from("pedido_itens")
     .select("id")
-    .eq("pedido_id", pedidoAtual.id)
-    .gt("quantidade", 0);
+    .eq("pedido_id",pedidoAtual.id);
 
   if(data.length){
     alert("🚫 Mesa possui pedidos ativos.");
@@ -360,11 +329,11 @@ async function liberarMesa(){
   if(!confirm("Tem certeza que deseja liberar esta mesa?")) return;
 
   await sb.from("pedidos")
-    .update({ status: "finalizado" })
-    .eq("id", pedidoAtual.id);
+    .update({status:"finalizado"})
+    .eq("id",pedidoAtual.id);
 
   alert("✅ Mesa liberada!");
-  location.href = "mesas.html";
+  location.href="mesas.html";
 }
 
 /* ===== START ===== */
