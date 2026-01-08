@@ -55,11 +55,13 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 </div>
 
 <script>
+/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* ===== CONTEXTO ===== */
 const params = new URLSearchParams(location.search);
 const mesaId = params.get("mesa");
 const appId  = params.get("app_id");
@@ -119,7 +121,7 @@ function renderProdutos(lista){
         <span>${p.nome} - R$ ${p.preco.toFixed(2)}
           <span class="tag ${p.destino}">${p.destino.toUpperCase()}</span>
         </span>
-        <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
+        <button onclick="addProduto(${p.id})">➕</button>
       </div>`;
   });
 }
@@ -171,8 +173,11 @@ async function carregarPedido(){
 }
 
 /* ===== AÇÕES ===== */
-async function addProduto(p){
-  if(pedidoAtual.status!=="aberto") return;
+async function addProduto(produtoId){
+  if(pedidoAtual.status !== "aberto") return;
+
+  const p = produtosCache.find(x => x.id === produtoId);
+  if(!p) return;
 
   const { data } = await sb.from("pedido_itens")
     .select("id,quantidade")
@@ -180,13 +185,22 @@ async function addProduto(p){
     .eq("produto_id",p.id)
     .maybeSingle();
 
-  data
-    ? await sb.from("pedido_itens").update({quantidade:data.quantidade+1}).eq("id",data.id)
-    : await sb.from("pedido_itens").insert({
-        app_id:appId,pedido_id:pedidoAtual.id,
-        produto_id:p.id,nome_produto:p.nome,
-        preco:p.preco,quantidade:1,destino:p.destino,status:"novo"
-      });
+  if(data){
+    await sb.from("pedido_itens")
+      .update({quantidade:data.quantidade+1})
+      .eq("id",data.id);
+  }else{
+    await sb.from("pedido_itens").insert({
+      app_id:appId,
+      pedido_id:pedidoAtual.id,
+      produto_id:p.id,
+      nome_produto:p.nome,
+      preco:p.preco,
+      quantidade:1,
+      destino:p.destino,
+      status:"novo"
+    });
+  }
 
   carregarPedido();
 }
@@ -196,7 +210,8 @@ async function alterarQtd(id,delta){
 
   const { data } = await sb.from("pedido_itens")
     .select("quantidade")
-    .eq("id",id).single();
+    .eq("id",id)
+    .single();
 
   const q = data.quantidade + delta;
   q<=0
