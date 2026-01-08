@@ -91,7 +91,7 @@ async function garantirPedidoAberto(){
 
   if(data){
     pedidoAtual = data;
-    atualizarLiberacao();
+    await atualizarLiberacao();
     return;
   }
 
@@ -107,7 +107,7 @@ async function garantirPedidoAberto(){
     .single();
 
   pedidoAtual = novo;
-  atualizarLiberacao();
+  await atualizarLiberacao();
 }
 
 /* ===== PRODUTOS ===== */
@@ -197,9 +197,11 @@ async function carregarPedido(){
 
   document.getElementById("totalPedido").innerText =
     `Total: R$ ${total.toFixed(2)}`;
+
+  await atualizarLiberacao();
 }
 
-/* ===== ADD PRODUTO (CORRIGIDO) ===== */
+/* ===== ADD PRODUTO ===== */
 async function addProduto(produtoId){
   if(pedidoAtual.status === "conta_solicitada") return;
 
@@ -270,7 +272,7 @@ async function enviarPedido(){
     .eq("id",pedidoAtual.id);
 
   pedidoAtual.status = "enviado";
-  atualizarLiberacao();
+  await atualizarLiberacao();
   alert("📨 Pedido enviado!");
 }
 
@@ -280,14 +282,20 @@ async function pedirConta(){
     .eq("id",pedidoAtual.id);
 
   pedidoAtual.status = "conta_solicitada";
-  atualizarLiberacao();
+  await atualizarLiberacao();
   alert("🧾 Conta solicitada!");
 }
 
-/* ===== LIBERAR ===== */
-function atualizarLiberacao(){
+/* ===== LIBERAR (AJUSTE AQUI) ===== */
+async function atualizarLiberacao(){
   const btn = document.getElementById("btnLiberar");
-  if(pedidoAtual.status === "conta_solicitada"){
+
+  const { count } = await sb
+    .from("pedido_itens")
+    .select("*", { count:"exact", head:true })
+    .eq("pedido_id", pedidoAtual.id);
+
+  if(count === 0){
     btn.classList.remove("bloqueado");
   }else{
     btn.classList.add("bloqueado");
@@ -295,7 +303,12 @@ function atualizarLiberacao(){
 }
 
 async function liberarMesa(){
-  if(pedidoAtual.status !== "conta_solicitada") return;
+  const { count } = await sb
+    .from("pedido_itens")
+    .select("*", { count:"exact", head:true })
+    .eq("pedido_id", pedidoAtual.id);
+
+  if(count > 0) return;
 
   await sb.from("pedidos")
     .update({status:"finalizado"})
