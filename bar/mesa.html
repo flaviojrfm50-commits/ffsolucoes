@@ -25,6 +25,12 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 .filtros{display:flex;gap:8px;margin-bottom:16px}
 .filtros button{flex:1;background:#1e293b;color:#fff}
 .filtros button.ativo{background:#2563eb}
+
+/* botoes de ajuste do item (antes de enviar) */
+.itemRow{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.itemBtns{display:flex;gap:8px;align-items:center}
+.btnMenos{background:#f59e0b;color:#000;font-weight:bold}
+.btnRemover{background:#dc2626;color:#fff;font-weight:bold}
 </style>
 </head>
 
@@ -130,10 +136,11 @@ function renderProdutos(lista){
     div.innerHTML += `
       <div class="produto ${bloqueado?'bloqueado':''}">
         <span>
-          ${p.nome} - R$ ${p.preco.toFixed(2)}
-          <span class="tag ${p.destino}">${p.destino.toUpperCase()}</span>
+          ${p.nome} - R$ ${Number(p.preco).toFixed(2)}
+          <span class="tag ${p.destino}">${String(p.destino).toUpperCase()}</span>
         </span>
-        <button onclick='addProduto(${JSON.stringify(p)})'>➕</button>
+        <!-- TROCA IMPORTANTISSIMA: nao usar JSON.stringify aqui -->
+        <button onclick="addProduto('${p.id}')">➕</button>
       </div>
     `;
   });
@@ -155,7 +162,7 @@ function aplicarFiltros(){
   const txt = document.querySelector("input").value.toLowerCase();
   renderProdutos(
     produtosCache.filter(p =>
-      p.nome.toLowerCase().includes(txt) &&
+      String(p.nome).toLowerCase().includes(txt) &&
       p.destino === destinoSelecionado
     )
   );
@@ -172,12 +179,26 @@ async function carregarPedido(){
   div.innerHTML="";
   let total = 0;
 
-  data.forEach(i=>{
-    total += i.preco * i.quantidade;
+  const podeEditar = pedidoAtual.status === "aberto";
+
+  (data || []).forEach(i=>{
+    total += Number(i.preco) * Number(i.quantidade);
+
     div.innerHTML += `
       <div class="item">
-        ${i.nome_produto} x ${i.quantidade}
-        <span class="tag ${i.destino}">${i.destino.toUpperCase()}</span>
+        <div class="itemRow">
+          <div>
+            ${i.nome_produto} x ${i.quantidade}
+            <span class="tag ${i.destino}">${String(i.destino).toUpperCase()}</span>
+          </div>
+
+          ${podeEditar ? `
+            <div class="itemBtns">
+              <button class="btnMenos" onclick="diminuirItem(${i.id}, ${i.quantidade})">➖</button>
+              <button class="btnRemover" onclick="removerItem(${i.id})">Remover</button>
+            </div>
+          ` : ``}
+        </div>
       </div>
     `;
   });
@@ -187,14 +208,18 @@ async function carregarPedido(){
 
   const btn = document.getElementById("btnLiberar");
   if(btn){
-    data.length ? btn.classList.add("bloqueado")
-                : btn.classList.remove("bloqueado");
+    (data && data.length) ? btn.classList.add("bloqueado")
+                          : btn.classList.remove("bloqueado");
   }
 }
 
-/* ===== ADD PRODUTO ===== */
-async function addProduto(p){
+/* ===== ADD PRODUTO (por ID) ===== */
+async function addProduto(produtoId){
   if(pedidoAtual.status !== "aberto") return;
+
+  // acha o produto no cache (id pode vir como number/uuid/string)
+  const p = produtosCache.find(x => String(x.id) === String(produtoId));
+  if(!p) return;
 
   const { data } = await sb
     .from("pedido_itens")
@@ -205,7 +230,7 @@ async function addProduto(p){
 
   if(data){
     await sb.from("pedido_itens")
-      .update({quantidade:data.quantidade+1})
+      .update({quantidade:Number(data.quantidade)+1})
       .eq("id",data.id);
   }else{
     await sb.from("pedido_itens").insert({
@@ -223,6 +248,36 @@ async function addProduto(p){
   carregarPedido();
 }
 
+/* ===== REMOVER/DIMINUIR (SÓ ANTES DE ENVIAR) ===== */
+async function diminuirItem(itemId, qtd){
+  if(pedidoAtual.status !== "aberto") return;
+
+  const q = Number(qtd);
+  if(q > 1){
+    await sb.from("pedido_itens")
+      .update({ quantidade: q - 1 })
+      .eq("id", itemId);
+  }else{
+    await sb.from("pedido_itens")
+      .delete()
+      .eq("id", itemId);
+  }
+
+  carregarPedido();
+}
+
+async function removerItem(itemId){
+  if(pedidoAtual.status !== "aberto") return;
+
+  if(!confirm("Remover este item do pedido?")) return;
+
+  await sb.from("pedido_itens")
+    .delete()
+    .eq("id", itemId);
+
+  carregarPedido();
+}
+
 /* ===== AÇÕES ===== */
 async function enviarPedido(){
   if(pedidoAtual.status !== "aberto") return;
@@ -231,7 +286,14 @@ async function enviarPedido(){
     .update({status:"enviado"})
     .eq("id",pedidoAtual.id);
 
+  // atualiza local pra travar sem recarregar
+  pedidoAtual.status = "enviado";
+
   alert("📨 Pedido enviado!");
+
+  // travar lista de produtos + sumir botoes de remover/diminuir
+  aplicarFiltros();
+  carregarPedido();
 }
 
 async function pedirConta(){
