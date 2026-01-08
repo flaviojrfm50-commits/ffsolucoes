@@ -21,7 +21,7 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 .tag{font-size:13px;font-weight:bold;padding:4px 10px;border-radius:8px}
 .bar{background:#38bdf8;color:#000}
 .cozinha{background:#22c55e;color:#000}
-.bloqueado{opacity:.5;pointer-events:none}
+.bloqueado{opacity:.4;pointer-events:none}
 .filtros{display:flex;gap:8px;margin-bottom:16px}
 .filtros button{flex:1;background:#1e293b;color:#fff}
 .filtros button.ativo{background:#2563eb}
@@ -50,12 +50,7 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 
   <button class="pay" onclick="enviarPedido()">📨 Enviar pedido</button>
   <button class="conta" onclick="pedirConta()">🧾 Pedir conta</button>
-  <button class="liberar"
-    onmousedown="segurarLiberar()"
-    onmouseup="cancelarLiberar()"
-    onmouseleave="cancelarLiberar()">
-    🔓 Liberar mesa (segure)
-  </button>
+  <button class="liberar" id="btnLiberar" onclick="liberarMesa()">🔓 Liberar mesa</button>
 </div>
 
 <script>
@@ -73,8 +68,6 @@ const appId  = params.get("app_id");
 let pedidoAtual = null;
 let produtosCache = [];
 let destinoSelecionado = "bar";
-let timerLiberar = null;
-const SEGREDO = "4321";
 
 /* ===== MESA ===== */
 async function carregarMesa(){
@@ -156,9 +149,7 @@ function filtrarDestino(dest){
   aplicarFiltros();
 }
 
-function filtrarProdutos(){
-  aplicarFiltros();
-}
+function filtrarProdutos(){ aplicarFiltros(); }
 
 function aplicarFiltros(){
   const txt = document.querySelector("input").value.toLowerCase();
@@ -193,6 +184,12 @@ async function carregarPedido(){
 
   document.getElementById("totalPedido").innerText =
     `Total: R$ ${total.toFixed(2)}`;
+
+  const btn = document.getElementById("btnLiberar");
+  if(btn){
+    data.length ? btn.classList.add("bloqueado")
+                : btn.classList.remove("bloqueado");
+  }
 }
 
 /* ===== ADD PRODUTO ===== */
@@ -256,32 +253,25 @@ async function pedirConta(){
 }
 
 /* ===== LIBERAR MESA ===== */
-function segurarLiberar(){
-  timerLiberar = setTimeout(async()=>{
-    const senha = prompt("Código de liberação:");
-    if(senha !== SEGREDO) return alert("Código inválido");
+async function liberarMesa(){
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("id")
+    .eq("pedido_id",pedidoAtual.id);
 
-    const { data } = await sb
-      .from("pedido_itens")
-      .select("id")
-      .eq("pedido_id",pedidoAtual.id);
+  if(data.length){
+    alert("🚫 Mesa possui pedidos ativos.");
+    return;
+  }
 
-    if(data.length){
-      alert("Mesa possui pedidos.");
-      return;
-    }
+  if(!confirm("Tem certeza que deseja liberar esta mesa?")) return;
 
-    await sb.from("pedidos")
-      .update({status:"finalizado"})
-      .eq("id",pedidoAtual.id);
+  await sb.from("pedidos")
+    .update({status:"finalizado"})
+    .eq("id",pedidoAtual.id);
 
-    alert("Mesa liberada!");
-    location.href="mesas.html";
-  },10000);
-}
-
-function cancelarLiberar(){
-  clearTimeout(timerLiberar);
+  alert("✅ Mesa liberada!");
+  location.href="mesas.html";
 }
 
 /* ===== START ===== */
