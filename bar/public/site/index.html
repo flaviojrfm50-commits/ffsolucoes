@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Cardápio</title>
+<title>Site</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="../assets/js/config.js"></script>
@@ -10,41 +10,21 @@
 
 <style>
 body{margin:0;font-family:Arial;background:#020617;color:#fff}
-header{padding:20px;text-align:center;background:#0f172a}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;padding:20px}
-.card{background:#0f172a;padding:16px;border-radius:16px}
-.card img{width:100%;border-radius:12px}
-button{margin-top:10px;width:100%;padding:10px;border:none;border-radius:10px;background:#22c55e;font-weight:bold}
 </style>
 </head>
 
 <body>
 
-<header>
-  <h2>🍔 Cardápio</h2>
-</header>
-
-<div class="grid" id="lista"></div>
+<h1 id="nome">Site Institucional</h1>
 
 <script>
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const params = new URLSearchParams(location.search);
 const app_id = params.get("app");
 
-async function carregar(){
-  const { data } = await sb.from("produtos").select("*").eq("app_id", app_id).eq("ativo", true);
-  lista.innerHTML = data.map(p => `
-    <div class="card">
-      <img src="${p.imagem}">
-      <h3>${p.nome}</h3>
-      <p>${p.descricao}</p>
-      <strong>R$ ${p.preco}</strong>
-    </div>
-  `).join("");
-}
-
-const lista = document.getElementById("lista");
-carregar();
+document.getElementById("nome").innerText = app_id
+  ? "App carregado: " + app_id
+  : "App não informado";
 </script>
 
 </body>
