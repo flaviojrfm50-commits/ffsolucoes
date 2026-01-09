@@ -5,7 +5,6 @@
 <title>Painel do bar / Restaurante</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- ✅ PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#020617">
 
@@ -62,9 +61,7 @@ body{
   gap:10px;
   margin-top:12px;
 }
-.toggle input{
-  transform:scale(1.3);
-}
+.toggle input{ transform:scale(1.3); }
 </style>
 </head>
 
@@ -132,12 +129,12 @@ body{
     </div>
 
     <!-- 🌐 SITE INSTITUCIONAL -->
-    <div class="card" onclick="location.href='site-banners.html'">
+    <div class="card" onclick="location.href='site/index.html?page=banners'">
       <h3>🖼️ Banners do Site</h3>
       <p>Imagens de destaque</p>
     </div>
 
-    <div class="card" onclick="location.href='site-produtos.html'">
+    <div class="card" onclick="location.href='site/index.html?page=produtos'">
       <h3>🧱 Produtos do Site</h3>
       <p>Vitrine institucional</p>
     </div>
@@ -193,11 +190,18 @@ function abrirChat(){
   window.open("../chat-admin.html", "_blank");
 }
 
+/* ✅ CORRIGIDO: caminho certo do GitHub Pages */
 function abrirSite(){
   const appId = localStorage.getItem("app_id");
   const modo = localStorage.getItem("modo_site") || "cardapio";
-  const base = modo === "institucional" ? "../public/site" : "../public/cardapio";
-  window.open(`${base}/index.html?app=${appId}`, "_blank");
+
+  const base = "/ffsolucoes/bar/public";
+
+  const url = modo === "institucional"
+    ? `${base}/site/index.html?app=${appId}`
+    : `${base}/cardapio/index.html?app=${appId}`;
+
+  window.open(url, "_blank");
 }
 
 function alternarModoSite(){
@@ -228,10 +232,6 @@ function logout(){
   localStorage.removeItem("admin_logado");
   localStorage.removeItem("app_id");
   location.href = "../auth/login.html";
-}
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
 }
 </script>
 
