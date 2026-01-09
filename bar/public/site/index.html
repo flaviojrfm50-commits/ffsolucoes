@@ -2,29 +2,90 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Site</title>
+<title>Painel do Site</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<script src="../assets/js/config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
-body{margin:0;font-family:Arial;background:#020617;color:#fff}
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #020617;
+  color: #fff;
+}
+
+header {
+  background: #0f172a;
+  padding: 16px;
+  display: flex;
+  gap: 10px;
+}
+
+header button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #00b4ff;
+  color: #020617;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#conteudo {
+  width: 100%;
+  height: calc(100vh - 70px);
+}
+iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
 </style>
 </head>
 
 <body>
 
-<h1 id="nome">Site Institucional</h1>
+<header>
+  <button onclick="ir('home')">🏠 Início</button>
+  <button onclick="ir('banners')">🖼️ Banners</button>
+  <button onclick="ir('produtos')">📦 Produtos</button>
+  <button onclick="ir('config')">⚙️ Configurações</button>
+</header>
+
+<div id="conteudo"></div>
 
 <script>
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const params = new URLSearchParams(location.search);
-const app_id = params.get("app");
+const app = params.get("app");
+const page = params.get("page") || "home";
 
-document.getElementById("nome").innerText = app_id
-  ? "App carregado: " + app_id
-  : "App não informado";
+if (!app) {
+  document.body.innerHTML = "<h2 style='padding:20px'>App não informado</h2>";
+  throw new Error("app ausente");
+}
+
+function ir(p) {
+  location.href = `index.html?page=${p}&app=${app}`;
+}
+
+const conteudo = document.getElementById("conteudo");
+
+if (page === "banners") {
+  conteudo.innerHTML = `<iframe src="page-banners.html?app=${app}"></iframe>`;
+}
+else if (page === "produtos") {
+  conteudo.innerHTML = `<iframe src="page-produtos.html?app=${app}"></iframe>`;
+}
+else if (page === "config") {
+  conteudo.innerHTML = `<iframe src="page-config.html?app=${app}"></iframe>`;
+}
+else {
+  conteudo.innerHTML = `
+    <div style="padding:24px">
+      <h2>Painel do Site</h2>
+      <p>Escolha uma opção acima.</p>
+    </div>
+  `;
+}
 </script>
 
 </body>
