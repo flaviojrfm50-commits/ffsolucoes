@@ -54,14 +54,6 @@ body{
 .card:hover{ transform:scale(1.03) }
 .card h3{ margin:0 0 10px }
 .card p{ opacity:.8; font-size:14px }
-
-.toggle{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-top:12px;
-}
-.toggle input{ transform:scale(1.3); }
 </style>
 </head>
 
@@ -114,36 +106,7 @@ body{
 
     <div class="card" onclick="location.href='config-site.html'">
       <h3>🌐 Site Público</h3>
-      <p>Configuração geral</p>
-    </div>
-
-    <!-- 🔀 MODO DO SITE -->
-    <div class="card">
-      <h3>🔀 Modo do Site</h3>
-      <p>Ative apenas um tipo</p>
-
-      <div class="toggle">
-        <input type="checkbox" id="toggleSite" onchange="alternarModoSite()">
-        <span id="labelModo">Usar Cardápio (Delivery)</span>
-      </div>
-    </div>
-
-    <!-- 🖼️ BANNERS DO SITE -->
-    <div class="card" onclick="location.href='../bar/public/site/site-banners.html'">
-      <h3>🖼️ Banners do Site</h3>
-      <p>Imagens de destaque</p>
-    </div>
-
-    <!-- 🧱 PRODUTOS DO SITE -->
-    <div class="card" onclick="location.href='../bar/public/site/site-produtos.html'">
-      <h3>🧱 Produtos do Site</h3>
-      <p>Vitrine institucional</p>
-    </div>
-
-    <!-- 🌍 ABRIR SITE -->
-    <div class="card" onclick="abrirSite()">
-      <h3>🌍 Abrir Site</h3>
-      <p>Visualizar site ativo</p>
+      <p>Cardápio online</p>
     </div>
 
     <div class="card" onclick="abrirChat()">
@@ -173,12 +136,14 @@ if(!admin || (admin.tipo !== "bar" && admin.tipo !== "restaurante")){
   location.href = "../auth/login.html";
 }
 
+/* ✅ AJUSTE-CHAVE AQUI */
 if(admin.app_id){
   localStorage.setItem("app_id", admin.app_id);
+  localStorage.setItem("BAR_ATIVO", admin.app_id); // 🔥 ESSENCIAL PRA MESAS
 }else{
   document.body.innerHTML = `
     <h2 style="text-align:center;margin-top:60px">
-      ❌ Sessão inválida<br>
+      ❌ Sessão do admin inválida<br>
       <small>Faça login novamente</small>
     </h2>`;
   throw new Error("admin.app_id ausente");
@@ -191,51 +156,17 @@ function abrirChat(){
   window.open("../chat-admin.html", "_blank");
 }
 
-/* 🔥 LINK CORRETO PARA GITHUB PAGES */
-function abrirSite(){
-  const appId = localStorage.getItem("app_id");
-  const modo = localStorage.getItem("modo_site") || "cardapio";
-
-  const base = "/ffsolucoes/bar/public";
-
-  const url = modo === "institucional"
-    ? `${base}/site/index.html?app=${appId}`
-    : `${base}/cardapio/index.html?app=${appId}`;
-
-  window.open(url, "_blank");
-}
-
-function alternarModoSite(){
-  const toggle = document.getElementById("toggleSite");
-  const label = document.getElementById("labelModo");
-
-  if(toggle.checked){
-    localStorage.setItem("modo_site", "institucional");
-    label.innerText = "Usar Site Institucional (Divulgação)";
-  }else{
-    localStorage.setItem("modo_site", "cardapio");
-    label.innerText = "Usar Cardápio (Delivery)";
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const modo = localStorage.getItem("modo_site") || "cardapio";
-  const toggle = document.getElementById("toggleSite");
-  const label = document.getElementById("labelModo");
-
-  if(modo === "institucional"){
-    toggle.checked = true;
-    label.innerText = "Usar Site Institucional (Divulgação)";
-  }
-});
-
 function logout(){
   localStorage.removeItem("admin_logado");
   localStorage.removeItem("app_id");
+  localStorage.removeItem("BAR_ATIVO");
   location.href = "../auth/login.html";
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
 }
 </script>
 
 </body>
 </html>
-
