@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Site Institucional</title>
+<title>Cardápio</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="../assets/js/config.js"></script>
@@ -10,83 +10,41 @@
 
 <style>
 body{margin:0;font-family:Arial;background:#020617;color:#fff}
-header{padding:24px;text-align:center;background:#0f172a}
-.section{max-width:1000px;margin:40px auto;padding:0 16px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
+header{padding:20px;text-align:center;background:#0f172a}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;padding:20px}
 .card{background:#0f172a;padding:16px;border-radius:16px}
 .card img{width:100%;border-radius:12px}
-footer{padding:24px;text-align:center;background:#0f172a}
+button{margin-top:10px;width:100%;padding:10px;border:none;border-radius:10px;background:#22c55e;font-weight:bold}
 </style>
 </head>
 
 <body>
 
 <header>
-  <h1 id="nome">Estabelecimento</h1>
-  <p id="descricao"></p>
+  <h2>🍔 Cardápio</h2>
 </header>
 
-<div id="banners"></div>
-
-<div class="section">
-  <h2>Destaques</h2>
-  <div class="grid" id="produtos"></div>
-</div>
-
-<footer>
-  <p id="endereco"></p>
-  <a id="whatsapp" target="_blank">WhatsApp</a>
-</footer>
+<div class="grid" id="lista"></div>
 
 <script>
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const params = new URLSearchParams(location.search);
 const app_id = params.get("app");
 
-if(!app_id){
-  document.body.innerHTML = "<h2>App inválido</h2>";
-  throw new Error("app_id ausente");
-}
-
-async function carregarConfig(){
-  const { data } = await sb.from("site_config").select("*").eq("app_id", app_id).single();
-  if(!data) return;
-
-  nome.innerText = data.nome || "";
-  descricao.innerText = data.descricao || "";
-  endereco.innerText = data.endereco || "";
-
-  if(data.whatsapp){
-    whatsapp.href = `https://wa.me/55${data.whatsapp}`;
-  }
-}
-
-async function carregarBanners(){
-  const { data } = await sb.from("banners_site").select("*").eq("app_id", app_id);
-  banners.innerHTML = data.map(b => `<img src="${b.imagem}" style="width:100%;border-radius:16px;margin:20px 0">`).join("");
-}
-
-async function carregarProdutos(){
-  const { data } = await sb.from("produtos_site").select("*").eq("app_id", app_id);
-  produtos.innerHTML = data.map(p => `
+async function carregar(){
+  const { data } = await sb.from("produtos").select("*").eq("app_id", app_id).eq("ativo", true);
+  lista.innerHTML = data.map(p => `
     <div class="card">
       <img src="${p.imagem}">
       <h3>${p.nome}</h3>
       <p>${p.descricao}</p>
+      <strong>R$ ${p.preco}</strong>
     </div>
   `).join("");
 }
 
-const nome = document.getElementById("nome");
-const descricao = document.getElementById("descricao");
-const endereco = document.getElementById("endereco");
-const whatsapp = document.getElementById("whatsapp");
-const banners = document.getElementById("banners");
-const produtos = document.getElementById("produtos");
-
-carregarConfig();
-carregarBanners();
-carregarProdutos();
+const lista = document.getElementById("lista");
+carregar();
 </script>
 
 </body>
