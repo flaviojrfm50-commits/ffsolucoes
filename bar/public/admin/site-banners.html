@@ -4,15 +4,11 @@
   <meta charset="UTF-8">
   <title>Banner do Site</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- ✅ CSS NA MESMA PASTA (CONFORME PRINT) -->
   <link rel="stylesheet" href="./admin.css">
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
-
   <div class="topo">
     <h2>🖼️ Banner do Site</h2>
     <button class="sair" onclick="voltar()">Voltar</button>
@@ -25,7 +21,6 @@
     </p>
 
     <input type="file" id="bannerInput" accept="image/*">
-
     <button class="botao" onclick="salvarBanner()">Salvar Banner</button>
 
     <div id="previewBox" style="display:none; margin-top:20px;">
@@ -44,7 +39,7 @@ const sb = supabase.createClient(
 /* ===== SESSÃO ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
-if (!admin || !admin.app_id) {
+if (!admin || !admin.user_id || !admin.app_id) {
   alert("Sessão inválida. Faça login novamente.");
   location.href = "../auth/login.html";
 }
@@ -73,20 +68,35 @@ async function salvarBanner() {
     return;
   }
 
-  const { error } = await sb.storage
-    .from("sites") // ✅ bucket correto
-    .upload(`${appId}/banner.jpg`, file, {
-      upsert: true,
-      contentType: file.type
-    });
+  try {
+    const { data, error } = await sb.storage
+      .from("sites")
+      .upload(`${appId}/banner.jpg`, file, {
+        upsert: true,
+        contentType: file.type
+      });
 
-  if (error) {
-    console.error(error);
-    alert("Erro ao salvar banner");
-    return;
+    if (error) {
+      console.error(error);
+      alert("Erro ao salvar banner: " + error.message);
+      return;
+    }
+
+    alert("Banner salvo com sucesso ✅");
+
+    // Atualiza preview com URL pública do Supabase
+    const { data: publicUrl } = sb.storage
+      .from("sites")
+      .getPublicUrl(`${appId}/banner.jpg`);
+
+    if (publicUrl && publicUrl.publicUrl) {
+      previewImg.src = publicUrl.publicUrl;
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Erro ao salvar banner: " + err.message);
   }
-
-  alert("Banner salvo com sucesso ✅");
 }
 
 /* ===== VOLTAR ===== */
