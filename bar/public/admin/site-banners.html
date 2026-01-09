@@ -25,7 +25,7 @@
 
     <div id="previewBox" style="display:none; margin-top:20px;">
       <p>Preview atual:</p>
-      <img id="previewImg" style="max-width:100%;border-radius:12px;margin-top:10px;">
+      <img id="previewImg" style="max-width:100%;border-radius:12px;margin-top:10px;" src="./placeholder.jpg">
     </div>
   </div>
 
@@ -46,11 +46,35 @@ if (!admin || !admin.user_id || !admin.app_id) {
 
 const appId = admin.app_id;
 
-/* ===== PREVIEW ===== */
+/* ===== ELEMENTOS ===== */
 const input = document.getElementById("bannerInput");
 const previewBox = document.getElementById("previewBox");
 const previewImg = document.getElementById("previewImg");
 
+/* ===== CARREGAR BANNER EXISTENTE ===== */
+async function carregarBannerAtual() {
+  try {
+    const { data: publicUrl, error } = sb.storage
+      .from("sites")
+      .getPublicUrl(`${appId}/banner.jpg`);
+
+    if (!error && publicUrl?.publicUrl) {
+      // Verifica se a URL realmente existe
+      const res = await fetch(publicUrl.publicUrl);
+      if (res.ok) {
+        previewImg.src = publicUrl.publicUrl;
+        previewBox.style.display = "block";
+      }
+    }
+  } catch (err) {
+    console.log("Banner ainda não existe");
+  }
+}
+
+/* Chama ao abrir a página */
+carregarBannerAtual();
+
+/* ===== PREVIEW DO UPLOAD ===== */
 input.addEventListener("change", () => {
   const file = input.files[0];
   if (!file) return;
@@ -62,11 +86,7 @@ input.addEventListener("change", () => {
 /* ===== SALVAR BANNER ===== */
 async function salvarBanner() {
   const file = input.files[0];
-
-  if (!file) {
-    alert("Selecione uma imagem");
-    return;
-  }
+  if (!file) return alert("Selecione uma imagem");
 
   try {
     const { data, error } = await sb.storage
@@ -84,12 +104,12 @@ async function salvarBanner() {
 
     alert("Banner salvo com sucesso ✅");
 
-    // Atualiza preview com URL pública do Supabase
+    // Atualiza preview com URL pública
     const { data: publicUrl } = sb.storage
       .from("sites")
       .getPublicUrl(`${appId}/banner.jpg`);
 
-    if (publicUrl && publicUrl.publicUrl) {
+    if (publicUrl?.publicUrl) {
       previewImg.src = publicUrl.publicUrl;
     }
 
