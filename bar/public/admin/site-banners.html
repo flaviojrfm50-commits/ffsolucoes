@@ -5,38 +5,10 @@
 <title>Banner do Site</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- CSS ADMIN -->
-<link rel="stylesheet" href="../assets/admin.css">
+<!-- ✅ CSS ABSOLUTO (GitHub Pages) -->
+<link rel="stylesheet" href="/ffsolucoes/bar/public/assets/admin.css">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<style>
-.preview{
-  margin-top:20px;
-  background:#0f172a;
-  padding:16px;
-  border-radius:16px;
-  text-align:center;
-}
-.preview img{
-  max-width:100%;
-  border-radius:14px;
-  margin-top:10px;
-}
-input[type="file"]{
-  margin-top:12px;
-}
-.botao{
-  margin-top:16px;
-  background:#00b4ff;
-  color:#000;
-  border:none;
-  padding:12px 18px;
-  border-radius:12px;
-  font-weight:700;
-  cursor:pointer;
-}
-</style>
 </head>
 
 <body>
@@ -59,7 +31,7 @@ input[type="file"]{
 
   <div class="preview" id="previewBox" style="display:none">
     <p>Preview atual:</p>
-    <img id="previewImg">
+    <img id="previewImg" style="max-width:100%;border-radius:14px;margin-top:10px;">
   </div>
 
 </div>
@@ -103,19 +75,18 @@ async function salvarBanner(){
     return;
   }
 
-  // 🔑 BUCKET CORRETO: sites
   const filePath = `${appId}/banner.jpg`;
 
   const { error } = await sb.storage
-    .from("sites")
+    .from("sites")   // ✅ bucket correto
     .upload(filePath, file, {
       upsert: true,
       contentType: file.type
     });
 
   if(error){
-    alert("Erro ao salvar banner");
     console.error(error);
+    alert("Erro ao salvar banner");
     return;
   }
 
