@@ -5,7 +5,9 @@
 <title>Banner do Site</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="admin.css">
+<!-- CSS ADMIN (corrigido) -->
+<link rel="stylesheet" href="../assets/admin.css">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -24,7 +26,7 @@
 input[type="file"]{
   margin-top:12px;
 }
-button{
+.botao{
   margin-top:16px;
   background:#00b4ff;
   color:#000;
@@ -47,13 +49,13 @@ button{
 <div class="container">
 
   <p>
-    Aqui você define o <b>banner principal</b> do site de divulgação.<br>
+    Aqui você configura o <b>banner principal</b> do site de divulgação.<br>
     <small style="opacity:.7">Esse banner aparece para o público.</small>
   </p>
 
   <input type="file" id="bannerInput" accept="image/*">
 
-  <button onclick="salvarBanner()">Salvar Banner</button>
+  <button class="botao" onclick="salvarBanner()">Salvar Banner</button>
 
   <div class="preview" id="previewBox" style="display:none">
     <p>Preview atual:</p>
@@ -73,7 +75,7 @@ const sb = supabase.createClient(
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
 if(!admin || !admin.app_id){
-  alert("Sessão inválida");
+  alert("Sessão inválida. Faça login novamente.");
   location.href = "../auth/login.html";
 }
 
@@ -106,8 +108,8 @@ async function salvarBanner(){
   const { error } = await sb.storage
     .from("public")
     .upload(filePath, file, {
-      upsert:true,
-      contentType:file.type
+      upsert: true,
+      contentType: file.type
     });
 
   if(error){
@@ -116,7 +118,7 @@ async function salvarBanner(){
     return;
   }
 
-  alert("Banner atualizado com sucesso 🔥");
+  alert("Banner atualizado com sucesso ✅");
 }
 
 /* ===== VOLTAR ===== */
