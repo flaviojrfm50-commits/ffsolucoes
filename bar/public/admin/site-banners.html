@@ -1,40 +1,38 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Banner do Site</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Banner do Site</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- ✅ CSS ABSOLUTO (GitHub Pages) -->
-<link rel="stylesheet" href="/ffsolucoes/bar/public/assets/admin.css">
+  <!-- ✅ CSS NA MESMA PASTA (CONFORME PRINT) -->
+  <link rel="stylesheet" href="./admin.css">
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
 
-<div class="topo">
-  <h2>🖼️ Banner do Site</h2>
-  <button class="sair" onclick="voltar()">Voltar</button>
-</div>
-
-<div class="container">
-
-  <p>
-    Aqui você define o <b>banner principal</b> do site de divulgação.<br>
-    <small style="opacity:.7">Esse banner aparece para o público.</small>
-  </p>
-
-  <input type="file" id="bannerInput" accept="image/*">
-
-  <button class="botao" onclick="salvarBanner()">Salvar Banner</button>
-
-  <div class="preview" id="previewBox" style="display:none">
-    <p>Preview atual:</p>
-    <img id="previewImg" style="max-width:100%;border-radius:14px;margin-top:10px;">
+  <div class="topo">
+    <h2>🖼️ Banner do Site</h2>
+    <button class="sair" onclick="voltar()">Voltar</button>
   </div>
 
-</div>
+  <div class="container">
+    <p>
+      Aqui você define o <b>banner principal</b> do site de divulgação.<br>
+      <small style="opacity:.7">Esse banner aparece para o público.</small>
+    </p>
+
+    <input type="file" id="bannerInput" accept="image/*">
+
+    <button class="botao" onclick="salvarBanner()">Salvar Banner</button>
+
+    <div id="previewBox" style="display:none; margin-top:20px;">
+      <p>Preview atual:</p>
+      <img id="previewImg" style="max-width:100%;border-radius:12px;margin-top:10px;">
+    </div>
+  </div>
 
 <script>
 /* ===== SUPABASE ===== */
@@ -46,7 +44,7 @@ const sb = supabase.createClient(
 /* ===== SESSÃO ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
-if(!admin || !admin.app_id){
+if (!admin || !admin.app_id) {
   alert("Sessão inválida. Faça login novamente.");
   location.href = "../auth/login.html";
 }
@@ -60,41 +58,39 @@ const previewImg = document.getElementById("previewImg");
 
 input.addEventListener("change", () => {
   const file = input.files[0];
-  if(!file) return;
+  if (!file) return;
 
   previewImg.src = URL.createObjectURL(file);
   previewBox.style.display = "block";
 });
 
 /* ===== SALVAR BANNER ===== */
-async function salvarBanner(){
+async function salvarBanner() {
   const file = input.files[0];
 
-  if(!file){
+  if (!file) {
     alert("Selecione uma imagem");
     return;
   }
 
-  const filePath = `${appId}/banner.jpg`;
-
   const { error } = await sb.storage
-    .from("sites")   // ✅ bucket correto
-    .upload(filePath, file, {
+    .from("sites") // ✅ bucket correto
+    .upload(`${appId}/banner.jpg`, file, {
       upsert: true,
       contentType: file.type
     });
 
-  if(error){
+  if (error) {
     console.error(error);
     alert("Erro ao salvar banner");
     return;
   }
 
-  alert("Banner atualizado com sucesso ✅");
+  alert("Banner salvo com sucesso ✅");
 }
 
 /* ===== VOLTAR ===== */
-function voltar(){
+function voltar() {
   location.href = "index.html";
 }
 </script>
