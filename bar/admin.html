@@ -5,6 +5,7 @@
 <title>Painel do bar / Restaurante</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#020617">
 
@@ -54,6 +55,7 @@ body{
 .card:hover{ transform:scale(1.03) }
 .card h3{ margin:0 0 10px }
 .card p{ opacity:.8; font-size:14px }
+
 .toggle{
   display:flex;
   align-items:center;
@@ -81,9 +83,10 @@ body{
 
   <div class="grid">
 
-    <div class="card" onclick="location.href='/ffsolucoes/bar/public/produtos.html'">
-      <h3>🍔 Produtos</h3>
-      <p>Cadastro do cardápio</p>
+    <!-- ✅ PRODUTOS DO BAR (INTERNO) -->
+    <div class="card" onclick="location.href='/ffsolucoes/bar/produtos.html'">
+      <h3>📦 Produtos do Bar</h3>
+      <p>Cadastro geral interno do bar</p>
     </div>
 
     <div class="card" onclick="location.href='categorias.html'">
@@ -111,9 +114,11 @@ body{
       <p>Usuários e permissões</p>
     </div>
 
+    <!-- 🔀 MODO DO SITE -->
     <div class="card">
       <h3>🔀 Modo do Site</h3>
       <p>Escolha o que fica ativo</p>
+
       <div class="toggle">
         <input type="checkbox" id="toggleSite">
         <span id="labelModo">Usar Cardápio (Delivery)</span>
@@ -151,6 +156,7 @@ localStorage.setItem("app_id", admin.app_id);
 document.getElementById("nome").innerText = admin.usuario;
 document.getElementById("appId").innerText = admin.app_id;
 
+/* ========= MODO SITE ========= */
 const toggle = document.getElementById("toggleSite");
 const label = document.getElementById("labelModo");
 
@@ -169,8 +175,10 @@ toggle.addEventListener("change", () => {
   );
   syncModo();
 });
+
 syncModo();
 
+/* ========= NAVEGAÇÃO ========= */
 function abrirBanners(){
   const app = localStorage.getItem("app_id");
   location.href = `/ffsolucoes/bar/public/admin/site-banners.html?app=${app}`;
