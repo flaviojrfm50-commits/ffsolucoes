@@ -2,23 +2,73 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Produtos</title>
+<title>Produtos do Site</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body {
   margin: 0;
-  padding: 24px;
-  font-family: Arial;
-  background: #020617;
+  font-family: system-ui, Arial;
+  background: #0b1220;
   color: #fff;
+}
+
+header {
+  padding: 16px;
+  background: #101a33;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.container {
+  padding: 20px;
+}
+
+.produto {
+  background: #151f3d;
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 12px;
 }
 </style>
 </head>
+
 <body>
 
-<h2>📦 Produtos Vitrine</h2>
-<p>Aqui ficam os produtos do site (sem preço).</p>
+<header>🛒 Produtos do Site</header>
+
+<div class="container" id="produtos">
+  Carregando produtos...
+</div>
+
+<script>
+const barId = localStorage.getItem("BAR_ATIVO");
+
+if (!barId) {
+  alert("Nenhum bar ativo encontrado.");
+  window.location.href = "/painel";
+}
+
+// SIMULAÇÃO (troca depois por API)
+const produtosFake = [
+  { nome: "Hambúrguer Artesanal", preco: "R$ 25,00" },
+  { nome: "Batata Frita", preco: "R$ 12,00" }
+];
+
+const container = document.getElementById("produtos");
+container.innerHTML = "";
+
+produtosFake.forEach(p => {
+  const div = document.createElement("div");
+  div.className = "produto";
+  div.innerHTML = `
+    <strong>${p.nome}</strong><br>
+    <span>${p.preco}</span><br>
+    <small>Bar: ${barId}</small>
+  `;
+  container.appendChild(div);
+});
+</script>
 
 </body>
 </html>
