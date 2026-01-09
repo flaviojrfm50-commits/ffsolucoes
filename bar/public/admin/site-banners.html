@@ -2,121 +2,58 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Banner do Site</title>
+  <title>Site Público - Banner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="./admin.css">
+  <link rel="stylesheet" href="./style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
-  <div class="topo">
-    <h2>🖼️ Banner do Site</h2>
-    <button class="sair" onclick="voltar()">Voltar</button>
-  </div>
-
   <div class="container">
-    <p>
-      Aqui você define o <b>banner principal</b> do seu site.<br>
-      <small style="opacity:.7">Esse banner aparece apenas para o público do seu site.</small>
-    </p>
+    <h1>🖼️ Banner do Site</h1>
+    <p>Este banner é público e corresponde ao site correto.</p>
 
-    <input type="file" id="bannerInput" accept="image/*">
-    <button class="botao" onclick="salvarBanner()">Salvar Banner</button>
-
-    <div id="previewBox" style="display:none; margin-top:20px;">
-      <p>Preview atual:</p>
-      <img id="previewImg" style="max-width:100%;border-radius:12px;margin-top:10px;" src="./placeholder.jpg">
+    <div id="bannerBox" style="margin-top:20px;">
+      <img id="bannerImg" style="max-width:100%; border-radius:12px;" src="./placeholder.jpg" alt="Banner do site">
     </div>
   </div>
 
 <script>
-/* ===== SUPABASE ===== */
+/* ===== SUPABASE PUBLIC ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===== SESSÃO ===== */
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-if (!admin || !admin.user_id || !admin.app_id) {
-  alert("Sessão inválida. Faça login novamente.");
-  location.href = "../auth/login.html";
-}
+/* ===== PEGAR appId DA QUERY STRING ===== */
+const params = new URLSearchParams(window.location.search);
+const appId = params.get("app");
 
-const appId = admin.app_id;
+const bannerImg = document.getElementById("bannerImg");
 
-/* ===== ELEMENTOS ===== */
-const input = document.getElementById("bannerInput");
-const previewBox = document.getElementById("previewBox");
-const previewImg = document.getElementById("previewImg");
+/* ===== CARREGAR BANNER PÚBLICO ===== */
+async function carregarBanner() {
+  if (!appId) return; // Nenhum appId definido, usa placeholder
 
-/* ===== CARREGAR BANNER ATUAL ===== */
-async function carregarBannerAtual() {
+  // URL pública do banner no Supabase Storage
+  const bannerUrl = `https://pdajixsoowcyhnjwhgpc.supabase.co/storage/v1/object/public/sites/${appId}/banner.jpg`;
+
   try {
-    const { data: publicUrl, error } = sb.storage
-      .from("sites")
-      .getPublicUrl(`${appId}/banner.jpg`);
-
-    if (publicUrl?.publicUrl) {
-      const res = await fetch(publicUrl.publicUrl);
-      if (res.ok) {
-        previewImg.src = publicUrl.publicUrl;
-        previewBox.style.display = "block";
-        return;
-      }
+    const res = await fetch(bannerUrl);
+    if (res.ok) {
+      bannerImg.src = bannerUrl; // Banner existe
+    } else {
+      console.log("Banner não encontrado, usando placeholder");
+      bannerImg.src = "./placeholder.jpg";
     }
-    // Se não existe ou fetch falhar, usa placeholder
-    previewImg.src = "./placeholder.jpg";
-    previewBox.style.display = "block";
   } catch (err) {
-    console.log("Banner ainda não existe");
-    previewImg.src = "./placeholder.jpg";
-    previewBox.style.display = "block";
+    console.log("Erro ao carregar banner, usando placeholder", err);
+    bannerImg.src = "./placeholder.jpg";
   }
 }
 
-/* ===== CHAMA AO ABRIR A PÁGINA ===== */
-carregarBannerAtual();
-
-/* ===== PREVIEW DO UPLOAD ===== */
-input.addEventListener("change", () => {
-  const file = input.files[0];
-  if (!file) return;
-  previewImg.src = URL.createObjectURL(file);
-  previewBox.style.display = "block";
-});
-
-/* ===== SALVAR BANNER ===== */
-async function salvarBanner() {
-  const file = input.files[0];
-  if (!file) return alert("Selecione uma imagem");
-
-  try {
-    const { error } = await sb.storage
-      .from("sites")
-      .upload(`${appId}/banner.jpg`, file, {
-        upsert: true,
-        contentType: file.type
-      });
-
-    if (error) {
-      console.error(error);
-      return alert("Erro ao salvar banner: " + error.message);
-    }
-
-    alert("Banner salvo com sucesso ✅");
-    carregarBannerAtual(); // Atualiza preview
-
-  } catch (err) {
-    console.error(err);
-    alert("Erro ao salvar banner: " + err.message);
-  }
-}
-
-/* ===== VOLTAR ===== */
-function voltar() {
-  location.href = "index.html";
-}
+/* ===== INICIAR ===== */
+carregarBanner();
 </script>
 
 </body>
