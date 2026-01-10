@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Mapa das Mesas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  margin:0;
+  background:#020617;
+  font-family:Arial;
+  color:#fff;
+}
+
+.topo{
+  background:#0f172a;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.mapa{
+  position:relative;
+  width:100%;
+  height:calc(100vh - 64px);
+  background:#020617;
+  overflow:hidden;
+}
+
+/* BAR */
+.bar{
+  position:absolute;
+  left:40px;
+  top:160px;
+  width:140px;
+  height:160px;
+  border:3px solid #ef4444;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  border-radius:12px;
+}
+
+/* MESAS */
+.mesa{
+  position:absolute;
+  width:60px;
+  height:60px;
+  border-radius:10px;
+  border:3px solid #22c55e;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  cursor:grab;
+  user-select:none;
+}
+
+.mesa:active{cursor:grabbing}
+
+/* cores exemplo */
+.livre{border-color:#22c55e}
+.preparando{border-color:#eab308}
+.ocupada{border-color:#ef4444}
+</style>
+</head>
+
+<body>
+
+<div class="topo">
+  <h3>🗺️ Mapa das Mesas (teste)</h3>
+  <button onclick="history.back()">Voltar</button>
+</div>
+
+<div class="mapa" id="mapa">
+
+  <!-- BAR -->
+  <div class="bar">BAR</div>
+
+  <!-- MESAS -->
+  <div class="mesa livre" style="left:260px;top:60px;">1</div>
+  <div class="mesa ocupada" style="left:340px;top:60px;">2</div>
+  <div class="mesa preparando" style="left:420px;top:60px;">3</div>
+
+  <div class="mesa livre" style="left:260px;top:160px;">4</div>
+  <div class="mesa livre" style="left:340px;top:160px;">5</div>
+
+  <div class="mesa ocupada" style="left:300px;top:260px;">6</div>
+  <div class="mesa livre" style="left:380px;top:260px;">7</div>
+
+  <div class="mesa preparando" style="left:260px;top:360px;">8</div>
+  <div class="mesa livre" style="left:340px;top:360px;">9</div>
+  <div class="mesa ocupada" style="left:420px;top:360px;">10</div>
+
+</div>
+
+<script>
+// drag simples (modo admin)
+document.querySelectorAll('.mesa').forEach(mesa=>{
+  let offsetX, offsetY, dragging=false;
+
+  mesa.addEventListener('mousedown',e=>{
+    dragging=true;
+    offsetX=e.offsetX;
+    offsetY=e.offsetY;
+  });
+
+  document.addEventListener('mousemove',e=>{
+    if(!dragging) return;
+    mesa.style.left=(e.pageX-offsetX)+'px';
+    mesa.style.top=(e.pageY-offsetY-64)+'px';
+  });
+
+  document.addEventListener('mouseup',()=>{
+    dragging=false;
+  });
+});
+</script>
+
+</body>
+</html>
