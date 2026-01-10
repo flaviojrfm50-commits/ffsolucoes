@@ -1,128 +1,20 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Configurações do Site</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<style>
-body {
-  margin: 0;
-  padding: 24px;
-  font-family: Arial, sans-serif;
-  background: #020617;
-  color: #fff;
-}
-
-.card {
-  background: #0f172a;
-  border-radius: 12px;
-  padding: 16px;
-  max-width: 520px;
-}
-
-label {
-  display: block;
-  margin-top: 14px;
-}
-
-input, textarea {
-  width: 100%;
-  margin-top: 6px;
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-}
-
-button {
-  margin-top: 18px;
-  width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  border: none;
-  background: #2563eb;
-  color: #fff;
-  font-weight: bold;
-}
-</style>
+<title>Teste</title>
 </head>
 
 <body>
 
-<h2>⚙️ Configurações do Site</h2>
+<h1>TESTE PURO</h1>
 
-<div class="card">
-  <label>Nome do site</label>
-  <input id="nome">
-
-  <label>Descrição</label>
-  <textarea id="descricao"></textarea>
-
-  <label>Promoção</label>
-  <textarea id="promo"></textarea>
-
-  <button onclick="salvar()">Salvar</button>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<button onclick="salvar()">Clique</button>
 
 <script>
-/* ===== CONFIG ===== */
-var SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co",
-var SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-
-var client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-/* ===== APP ID ===== */
-var params = new URLSearchParams(window.location.search);
-var appId = params.get("app");
-
-if (!appId) {
-  alert("App não encontrado");
-}
-
-/* ===== ELEMENTOS ===== */
-var nomeEl = document.getElementById("nome");
-var descricaoEl = document.getElementById("descricao");
-var promoEl = document.getElementById("promo");
-
-/* ===== CARREGAR ===== */
-function carregar() {
-  client
-    .from("sites")
-    .select("nome, descricao, promo")
-    .eq("id", appId)
-    .single()
-    .then(function(res) {
-      if (res.data) {
-        nomeEl.value = res.data.nome || "";
-        descricaoEl.value = res.data.descricao || "";
-        promoEl.value = res.data.promo || "";
-      }
-    });
-}
-
-/* ===== SALVAR ===== */
 function salvar() {
-  client
-    .from("sites")
-    .update({
-      nome: nomeEl.value,
-      descricao: descricaoEl.value,
-      promo: promoEl.value
-    })
-    .eq("id", appId)
-    .then(function(res) {
-      if (res.error) {
-        alert("Erro ao salvar");
-        console.error(res.error);
-      } else {
-        alert("Salvo com sucesso ✅");
-      }
-    });
+  alert("JS FUNCIONOU");
 }
-
-carregar();
 </script>
 
 </body>
