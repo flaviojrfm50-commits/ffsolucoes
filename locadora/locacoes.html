@@ -23,9 +23,18 @@ header{background:#0f172a;padding:18px 24px;font-size:22px;font-weight:700}
 .recusar{background:#ef4444;color:#fff}
 .pdf{background:#2563eb;color:#fff}
 .whats{background:#16a34a;color:#022c22}
+.excluir{background:#475569;color:#fff}
 hr{opacity:.2}
-input,textarea{width:100%;padding:10px;border-radius:10px;border:none;margin-top:6px}
+
+#modal{
+  display:none;position:fixed;inset:0;background:#0009;z-index:999
+}
+#modal .box{
+  background:#0b1220;padding:20px;border-radius:16px;
+  max-width:650px;margin:5% auto
+}
 label{font-weight:700;margin-top:10px;display:block}
+input,textarea{width:100%;padding:10px;border-radius:10px;border:none;margin-top:6px}
 </style>
 </head>
 
@@ -37,19 +46,48 @@ label{font-weight:700;margin-top:10px;display:block}
   <div class="grid" id="lista"></div>
 </div>
 
+<!-- MODAL LOCADORA -->
+<div id="modal">
+  <div class="box">
+    <h3>🏢 Dados da Locadora</h3>
+
+    <label>Nome da Locadora</label>
+    <input id="mNome">
+
+    <label>Endereço</label>
+    <input id="mEndereco">
+
+    <label>CNPJ</label>
+    <input id="mCnpj">
+
+    <label>Telefone</label>
+    <input id="mTelefone">
+
+    <label>Cláusulas do Contrato</label>
+    <textarea id="mClausulas" rows="6"></textarea>
+
+    <div style="margin-top:16px;display:flex;gap:10px">
+      <button class="btn aprovar" onclick="confirmar()">✔ Aprovar</button>
+      <button class="btn excluir" onclick="fechar()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <script>
-/* ================= AUTH ================= */
+/* AUTH */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 if(!admin || admin.tipo!=="locadora"){ location.href="../auth/login.html"; }
 const appId = admin.app_id;
 
-/* ================= SUPABASE ================= */
+/* SUPABASE */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ================= LOAD ================= */
+let locacaoAtual = null;
+
+/* LOAD */
 async function carregar(){
   const { data:locacoes } = await sb.from("locacoes")
     .select("*").eq("app_id",appId).order("created_at",{ascending:false});
@@ -57,118 +95,135 @@ async function carregar(){
   const { data:veiculos } = await sb.from("veiculos")
     .select("*").eq("app_id",appId);
 
-  const mapa = {};
-  veiculos.forEach(v=>mapa[v.id]=v);
-
+  const mapa={}; veiculos.forEach(v=>mapa[v.id]=v);
   lista.innerHTML="";
-  if(!locacoes.length){
-    lista.innerHTML="<p>Nenhuma locação.</p>"; return;
-  }
 
   locacoes.forEach(l=>{
     const v = mapa[l.veiculo_id] || {};
     lista.innerHTML+=`
-    <div class="card">
-      <h3>${v.modelo || "Veículo"}</h3>
-      <p><b>Cliente:</b> ${l.nome}</p>
-      <p><b>Telefone:</b> ${l.telefone}</p>
-      <p><b>Dias:</b> ${l.dias}</p>
-      <p><b>Total:</b> R$ ${l.total}</p>
+      <div class="card">
+        <h3>${v.modelo || "Veículo"}</h3>
+        <p><b>Cliente:</b> ${l.nome}</p>
+        <p><b>Telefone:</b> ${l.telefone}</p>
+        <p><b>Dias:</b> ${l.dias}</p>
+        <p><b>Total:</b> R$ ${l.total}</p>
 
-      <span class="badge ${l.status}">${l.status.toUpperCase()}</span>
-      <hr>
+        <span class="badge ${l.status}">${l.status.toUpperCase()}</span>
+        <hr>
 
-      <button class="btn pdf" onclick="baixarContrato('${l.id}')">📄 Baixar contrato</button>
-      <button class="btn whats" onclick="enviarWhats('${l.id}')">📲 WhatsApp</button>
+        <button class="btn pdf" onclick="baixar('${l.id}')">📄 PDF</button>
+        <button class="btn whats" onclick="whats('${l.id}')">📲 Whats</button>
 
-      ${l.status==="solicitada"?`
-        <button class="btn aprovar" onclick="aprovar('${l.id}','${l.veiculo_id}')">✔ Aprovar</button>
-        <button class="btn recusar" onclick="recusar('${l.id}')">✖ Recusar</button>
-      `:""}
-    </div>`;
+        ${l.status==="solicitada"?`
+          <button class="btn aprovar" onclick="abrir('${l.id}')">✔ Aprovar</button>
+          <button class="btn recusar" onclick="recusar('${l.id}')">✖ Recusar</button>
+        `:""}
+      </div>
+    `;
   });
 }
 
-/* ================= PDF ================= */
+/* MODAL */
+async function abrir(id){
+  locacaoAtual=id;
+  const { data:cfg } = await sb.from("config_site")
+    .select("*").eq("app_id",appId).single();
+
+  mNome.value = cfg?.nome_site || "";
+  mEndereco.value = cfg?.endereco || "";
+  mCnpj.value = cfg?.cnpj || "";
+  mTelefone.value = cfg?.telefone || "";
+  mClausulas.value = cfg?.clausulas_pdf || "";
+
+  modal.style.display="block";
+}
+function fechar(){ modal.style.display="none"; }
+
+/* CONFIRMAR */
+async function confirmar(){
+  await sb.from("config_site").upsert({
+    app_id:appId,
+    nome_site:mNome.value,
+    endereco:mEndereco.value,
+    cnpj:mCnpj.value,
+    telefone:mTelefone.value,
+    clausulas_pdf:mClausulas.value
+  });
+
+  const { data:l } = await sb.from("locacoes")
+    .select("veiculo_id").eq("id",locacaoAtual).single();
+
+  await sb.from("locacoes").update({status:"ativa"}).eq("id",locacaoAtual);
+  await sb.from("veiculos").update({status:"alugado"}).eq("id",l.veiculo_id);
+
+  fechar();
+  carregar();
+}
+
+/* PDF */
 async function gerarPDF(id){
   const { jsPDF } = window.jspdf;
 
   const { data:l } = await sb.from("locacoes").select("*").eq("id",id).single();
   const { data:v } = await sb.from("veiculos").select("*").eq("id",l.veiculo_id).single();
-  const { data:cfg } = await sb.from("config_site")
-    .select("*").eq("app_id",appId).single();
+  const { data:cfg } = await sb.from("config_site").select("*").eq("app_id",appId).single();
 
   const pdf = new jsPDF();
+  let y=20;
 
   if(cfg?.logo_url){
-    pdf.addImage(cfg.logo_url,"PNG",10,10,50,20);
+    const res = await fetch(cfg.logo_url);
+    const blob = await res.blob();
+    const reader = new FileReader();
+    const base64 = await new Promise(r=>{reader.onload=()=>r(reader.result);reader.readAsDataURL(blob)});
+    pdf.addImage(base64,"PNG",10,10,45,20);
+    y=40;
   }
 
   pdf.setFontSize(14);
-  pdf.text(cfg?.nome_site || "Locadora",70,18);
+  pdf.text(cfg?.nome_site||"Locadora",70,18);
   pdf.setFontSize(11);
 
-  let y=40;
   pdf.text("1. DADOS DO LOCATÁRIO",10,y); y+=6;
   pdf.text(`Nome: ${l.nome}`,10,y); y+=6;
   pdf.text(`Telefone: ${l.telefone}`,10,y); y+=8;
 
   pdf.text("2. DADOS DO LOCADOR",10,y); y+=6;
-  pdf.text(cfg?.nome_site||"",10,y); y+=8;
+  pdf.text(`Empresa: ${cfg?.nome_site||"-"}`,10,y); y+=6;
+  pdf.text(`CNPJ: ${cfg?.cnpj||"-"}`,10,y); y+=6;
+  pdf.text(`Telefone: ${cfg?.telefone||"-"}`,10,y); y+=6;
+  pdf.text(`Endereço: ${cfg?.endereco||"-"}`,10,y); y+=8;
 
   pdf.text("3. VEÍCULO",10,y); y+=6;
-  pdf.text(`Modelo: ${v.modelo}`,10,y); y+=6;
-  if(v.placa) pdf.text(`Placa: ${v.placa}`,10,y+=6);
-  if(v.chassi) pdf.text(`Chassi: ${v.chassi}`,10,y+=6);
+  pdf.text(`Modelo: ${v.modelo}`,10,y); y+=8;
 
-  y+=8;
   pdf.text("4. VALOR",10,y); y+=6;
   pdf.text(`Dias: ${l.dias}`,10,y); y+=6;
-  pdf.text(`Total: R$ ${l.total}`,10,y);
+  pdf.text(`Total: R$ ${l.total}`,10,y); y+=8;
 
-  y+=10;
   pdf.text("CLÁUSULAS",10,y); y+=6;
-  pdf.text(cfg?.clausulas_pdf || "Sem cláusulas.",10,y,{maxWidth:180});
+  pdf.text(cfg?.clausulas_pdf||"Sem cláusulas.",10,y,{maxWidth:180});
 
   return pdf;
 }
 
-/* ================= STORAGE ================= */
-async function salvarPDF(pdf,id){
+/* AÇÕES */
+async function baixar(id){ (await gerarPDF(id)).save("contrato.pdf"); }
+async function whats(id){
+  const pdf = await gerarPDF(id);
   const blob = pdf.output("blob");
-  const path = `contratos/${id}.pdf`;
-  await sb.storage.from("contratos").upload(path,blob,{upsert:true});
-  return sb.storage.from("contratos").getPublicUrl(path).data.publicUrl;
-}
-
-/* ================= AÇÕES ================= */
-async function baixarContrato(id){
-  const pdf = await gerarPDF(id);
-  pdf.save("contrato-locacao.pdf");
-}
-
-async function enviarWhats(id){
-  const pdf = await gerarPDF(id);
-  const url = await salvarPDF(pdf,id);
+  await sb.storage.from("contratos").upload(`contratos/${id}.pdf`,blob,{upsert:true});
+  const url = sb.storage.from("contratos").getPublicUrl(`contratos/${id}.pdf`).data.publicUrl;
 
   const { data:l } = await sb.from("locacoes").select("telefone").eq("id",id).single();
-  const tel = l.telefone.replace(/\D/g,"");
-
-  window.open(`https://wa.me/55${tel}?text=${encodeURIComponent("Contrato de locação: "+url)}`);
+  window.open(`https://wa.me/55${l.telefone.replace(/\D/g,"")}?text=Contrato: ${url}`);
 }
-
-async function aprovar(id,veiculoId){
-  await sb.from("locacoes").update({status:"ativa"}).eq("id",id);
-  await sb.from("veiculos").update({status:"alugado"}).eq("id",veiculoId);
-  carregar();
-}
-
 async function recusar(id){
   await sb.from("locacoes").update({status:"recusada"}).eq("id",id);
   carregar();
 }
 
-/* ================= INIT ================= */
+/* INIT */
 carregar();
 </script>
 
