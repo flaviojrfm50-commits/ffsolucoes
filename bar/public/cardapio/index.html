@@ -13,7 +13,7 @@
   --text:#2e1f14;
   --border:#e6ded5;
 }
-*{box-sizing:border-box;}
+*{box-sizing:border-box}
 body{
   margin:0;
   font-family:system-ui;
@@ -47,10 +47,7 @@ body{
   color:#fff;
   text-align:center;
 }
-.logo{
-  max-height:70px;
-  margin-bottom:10px;
-}
+.logo{max-height:70px;margin-bottom:10px}
 
 /* GRID */
 .container{
@@ -63,11 +60,11 @@ body{
 }
 
 /* CATEGORIA */
-.categoria-titulo{
-  grid-column:1 / -1;
+.categoria{
+  grid-column:1/-1;
   font-size:20px;
   font-weight:800;
-  margin:30px 0 10px;
+  margin:28px 0 10px;
   padding-bottom:6px;
   border-bottom:2px solid var(--border);
 }
@@ -88,23 +85,17 @@ body{
   object-fit:cover;
   border-radius:12px;
 }
-.produto b{
-  font-size:15px;
-}
-.preco{
-  font-weight:800;
-}
+.produto b{font-size:15px}
+.preco{font-weight:800}
 
 /* BOTÃO */
 .add-btn{
   margin-top:auto;
-  width:100%;
   padding:10px;
-  border-radius:12px;
   border:none;
+  border-radius:12px;
   background:var(--primary);
   color:#fff;
-  font-size:18px;
   font-weight:900;
 }
 
@@ -185,39 +176,27 @@ button{
 </div>
 
 <script>
-/* SUPABASE */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* PARAMS */
-const params = new URLSearchParams(location.search);
-const app_id = params.get("app_id");
-if(!app_id){
-  document.body.innerHTML="Indisponível";
-  throw "";
-}
+const params=new URLSearchParams(location.search);
+const app_id=params.get("app")||params.get("app_id");
+if(!app_id){document.body.innerHTML="Indisponível";throw""}
 
-/* STATE */
-let produtos=[];
-let carrinho=[];
+let produtos=[], carrinho=[];
 
 /* CONFIG */
 async function carregarConfig(){
-  const {data}=await sb
-    .from("config_site")
-    .select("*")
-    .eq("app_id",app_id)
-    .single();
-
+  const {data}=await sb.from("config_site").select("*").eq("app_id",app_id).single();
   if(!data) return;
   nome.innerText=data.nome_site||"Cardápio";
-  if(data.logo_url){logo.src=data.logo_url;logo.style.display="block";}
-  if(data.banner_url){banner.src=data.banner_url;banner.style.display="block";}
+  if(data.logo_url){logo.src=data.logo_url;logo.style.display="block"}
+  if(data.banner_url){banner.src=data.banner_url;banner.style.display="block"}
 }
 
-/* PRODUTOS COM CATEGORIA */
+/* PRODUTOS */
 async function carregarProdutos(){
   const {data}=await sb
     .from("produtos")
@@ -229,16 +208,16 @@ async function carregarProdutos(){
 
   produtos=data||[];
   conteudo.innerHTML="";
-
   const grupos={};
+
   produtos.forEach(p=>{
-    const cat=(p.categoria && p.categoria.trim()) ? p.categoria : "Outros";
+    const cat=(p.categoria&&p.categoria.trim())?p.categoria:"Outros";
     if(!grupos[cat]) grupos[cat]=[];
     grupos[cat].push(p);
   });
 
   Object.keys(grupos).forEach(cat=>{
-    conteudo.innerHTML+=`<div class="categoria-titulo">${cat}</div>`;
+    conteudo.innerHTML+=`<div class="categoria">${cat}</div>`;
     grupos[cat].forEach(p=>{
       conteudo.innerHTML+=`
         <div class="produto">
@@ -280,6 +259,15 @@ function abrirCarrinho(){
       <b>Total</b><b>R$ ${total.toFixed(2)}</b>
     </div>
   `;
+}
+
+/* PEDIDO */
+async function enviarPedido(){
+  if(!carrinho.length){alert("Carrinho vazio");return}
+  alert("Pedido enviado com sucesso ✅");
+  carrinho=[];
+  qtd.innerText=0;
+  modal.style.display="none";
 }
 
 /* START */
