@@ -14,96 +14,30 @@
   --text:#ffffff;
   --muted:#94a3b8;
 }
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui;}
+body{background:var(--bg);color:var(--text);}
 
-*{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-  font-family:system-ui,Segoe UI,Arial;
-}
-
-body{
-  background:var(--bg);
-  color:var(--text);
-}
-
-/* ===== HERO ===== */
 .hero{
-  width:100%;
   min-height:60vh;
-  position:relative;
   display:flex;
   align-items:center;
   justify-content:center;
   text-align:center;
-  overflow:hidden;
-}
-
-.hero img{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  opacity:.35;
-  display:none;
-}
-
-.hero-content{
-  position:relative;
-  z-index:2;
   padding:20px;
-  max-width:720px;
 }
-
-.hero h1{
-  font-size:2.3rem;
-  margin-bottom:10px;
-}
-
-.hero p{
-  font-size:1.1rem;
-  color:var(--muted);
-  margin-bottom:22px;
-}
-
-.btn{
-  display:inline-block;
-  padding:14px 28px;
-  background:var(--primary);
-  color:#022c22;
-  border-radius:14px;
-  font-weight:700;
-  text-decoration:none;
-}
-
-/* ===== FOOTER ===== */
-footer{
-  padding:18px;
-  text-align:center;
-  font-size:.85rem;
-  color:var(--muted);
-}
+h1{font-size:2.4rem;}
+p{color:var(--muted);margin-top:10px;}
 </style>
 </head>
 
 <body>
 
-<!-- ===== BANNER ===== -->
 <section class="hero">
-  <img id="banner">
-  <div class="hero-content">
-    <h1 id="titulo"></h1>
-    <p id="subtitulo"></p>
-    <a id="btn-whatsapp" class="btn" target="_blank" style="display:none">
-      Falar no WhatsApp
-    </a>
+  <div>
+    <h1 id="titulo">Carregando…</h1>
+    <p id="subtitulo">Site público</p>
   </div>
 </section>
-
-<footer>
-  © Site Público
-</footer>
 
 <script>
 // ================= SUPABASE =================
@@ -112,67 +46,35 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-// ================= APP_ID (COMPATÍVEL COM TUDO) =================
+// ================= UUID DA URL =================
 const params = new URLSearchParams(location.search);
+let site_id = params.get("app_id");
 
-// tenta app_id normal
-let app_id = params.get("app_id");
-
-// fallback: primeiro UUID solto
-if(!app_id){
+// fallback UUID solto
+if(!site_id){
   const raw = location.search.replace("?", "").split("&")[0];
-  if(raw && raw.length >= 30) app_id = raw;
+  if(raw && raw.length >= 30) site_id = raw;
 }
 
-// erro amigável
-if(!app_id){
-  document.getElementById("titulo").innerText = "App ID não informado";
-  document.getElementById("subtitulo").innerText =
-    "URL inválida";
-  throw new Error("app_id ausente");
+if(!site_id){
+  document.getElementById("titulo").innerText = "Site não encontrado";
+  throw new Error("UUID ausente");
 }
 
-// ================= LOAD CONFIG =================
+// ================= LOAD SITE =================
 (async()=>{
   const { data, error } = await sb
-    .from("config_site_publico")
-    .select("*")
-    .eq("app_id", app_id)
+    .from("sites")
+    .select("id, name")
+    .eq("id", site_id)
     .maybeSingle();
 
   if(error || !data){
     document.getElementById("titulo").innerText = "Site indisponível";
-    document.getElementById("subtitulo").innerText =
-      "Configuração não encontrada";
     return;
   }
 
-  // Banner
-  if(data.banner_url){
-    const img = document.getElementById("banner");
-    img.src = data.banner_url;
-    img.style.display = "block";
-  }
-
-  // Textos
-  document.getElementById("titulo").innerText =
-    data.titulo || "Bem-vindo";
-  document.getElementById("subtitulo").innerText =
-    data.subtitulo || "";
-
-  // Cor principal
-  if(data.cor_primaria){
-    document.documentElement
-      .style
-      .setProperty("--primary", data.cor_primaria);
-  }
-
-  // WhatsApp
-  if(data.whatsapp){
-    const btn = document.getElementById("btn-whatsapp");
-    btn.href = `https://wa.me/55${data.whatsapp.replace(/\D/g,"")}`;
-    btn.style.display = "inline-block";
-  }
+  document.getElementById("titulo").innerText = data.name;
 })();
 </script>
 
