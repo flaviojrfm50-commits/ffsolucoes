@@ -54,20 +54,48 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 </div>
 
 <script>
+/* ================= SUPABASE ================= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* ================= PARAMS ================= */
 const params = new URLSearchParams(location.search);
 const mesaId = params.get("mesa");
 const appId  = params.get("app_id");
 
+/* ================= 🔐 TRAVA POR QR ================= */
+if(!mesaId || !appId){
+  alert("Acesso inválido");
+  location.href = "index.html";
+}
+
+const mesaSessao = localStorage.getItem("mesa_sessao");
+
+if(!mesaSessao){
+  // primeira entrada (QR)
+  localStorage.setItem("mesa_sessao", mesaId);
+}else{
+  // tentativa de trocar mesa
+  if(mesaSessao !== mesaId){
+    alert("Sessão já vinculada a outra mesa");
+    location.href = `mesa.html?mesa=${mesaSessao}&app_id=${appId}`;
+  }
+}
+
+// trava botão voltar
+history.pushState(null, null, location.href);
+window.onpopstate = function(){
+  history.pushState(null, null, location.href);
+};
+
+/* ================= VARIÁVEIS ================= */
 let pedidoAtual = null;
 let produtosCache = [];
 let destinoSelecionado = "bar";
 
-/* ===== MESA ===== */
+/* ================= MESA ================= */
 async function carregarMesa(){
   const { data } = await sb
     .from("mesas")
@@ -79,7 +107,7 @@ async function carregarMesa(){
     `🍽️ Mesa ${data.numero_mesa}`;
 }
 
-/* ===== PEDIDO ===== */
+/* ================= PEDIDO ================= */
 async function garantirPedidoAberto(){
   const { data } = await sb
     .from("pedidos")
@@ -110,7 +138,7 @@ async function garantirPedidoAberto(){
   atualizarLiberacao();
 }
 
-/* ===== PRODUTOS ===== */
+/* ================= PRODUTOS ================= */
 async function carregarProdutos(){
   const { data } = await sb
     .from("produtos")
@@ -140,7 +168,7 @@ function renderProdutos(lista){
   });
 }
 
-/* ===== FILTROS ===== */
+/* ================= FILTROS ================= */
 function filtrarDestino(dest){
   destinoSelecionado = dest;
   document.querySelectorAll(".filtros button")
@@ -162,7 +190,7 @@ function aplicarFiltros(){
   );
 }
 
-/* ===== ITENS ===== */
+/* ================= ITENS ================= */
 async function carregarPedido(){
   const { data } = await sb
     .from("pedido_itens")
@@ -201,7 +229,7 @@ async function carregarPedido(){
   atualizarLiberacao();
 }
 
-/* ===== ADD / REMOVER / DIMINUIR ===== */
+/* ================= ADD / REMOVER ================= */
 async function addProduto(produtoId){
   if(pedidoAtual.status === "conta_solicitada") return;
 
@@ -259,7 +287,7 @@ async function removerItem(id){
   carregarPedido();
 }
 
-/* ===== ENVIAR / CONTA / LIBERAR ===== */
+/* ================= AÇÕES ================= */
 async function enviarPedido(){
   await sb.from("pedido_itens")
     .update({status:"confirmado"})
@@ -316,10 +344,12 @@ async function liberarMesa(){
     .update({status:"finalizado"})
     .eq("id",pedidoAtual.id);
 
+  localStorage.removeItem("mesa_sessao");
+
   location.href="mesas.html";
 }
 
-/* ===== START ===== */
+/* ================= START ================= */
 (async()=>{
   await carregarMesa();
   await garantirPedidoAberto();
