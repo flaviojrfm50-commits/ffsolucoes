@@ -5,6 +5,8 @@
 <title>Mapa das Mesas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 body{
   margin:0;
@@ -32,24 +34,24 @@ body{
 /* BAR */
 .bar{
   position:absolute;
-  left:40px;
-  top:160px;
-  width:140px;
-  height:160px;
+  width:160px;
+  height:180px;
   border:3px solid #ef4444;
+  border-radius:14px;
   display:flex;
   align-items:center;
   justify-content:center;
   font-weight:bold;
-  border-radius:12px;
+  cursor:grab;
+  user-select:none;
 }
 
-/* MESAS */
+/* MESA */
 .mesa{
   position:absolute;
   width:60px;
   height:60px;
-  border-radius:10px;
+  border-radius:12px;
   border:3px solid #22c55e;
   display:flex;
   align-items:center;
@@ -59,65 +61,99 @@ body{
   user-select:none;
 }
 
-.mesa:active{cursor:grabbing}
-
-/* cores exemplo */
-.livre{border-color:#22c55e}
-.preparando{border-color:#eab308}
-.ocupada{border-color:#ef4444}
+.mesa:active,
+.bar:active{
+  cursor:grabbing;
+}
 </style>
 </head>
 
 <body>
 
+<script>
+const sb = supabase.createClient(
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+);
+
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
+const app_id = funcionario?.app_id || admin?.app_id;
+
+if(!app_id){
+  alert("Sessão inválida");
+  location.href="../auth/login.html";
+}
+</script>
+
 <div class="topo">
-  <h3>🗺️ Mapa das Mesas (teste)</h3>
+  <h3>🗺️ Mapa das Mesas</h3>
   <button onclick="history.back()">Voltar</button>
 </div>
 
 <div class="mapa" id="mapa">
-
-  <!-- BAR -->
-  <div class="bar">BAR</div>
-
-  <!-- MESAS -->
-  <div class="mesa livre" style="left:260px;top:60px;">1</div>
-  <div class="mesa ocupada" style="left:340px;top:60px;">2</div>
-  <div class="mesa preparando" style="left:420px;top:60px;">3</div>
-
-  <div class="mesa livre" style="left:260px;top:160px;">4</div>
-  <div class="mesa livre" style="left:340px;top:160px;">5</div>
-
-  <div class="mesa ocupada" style="left:300px;top:260px;">6</div>
-  <div class="mesa livre" style="left:380px;top:260px;">7</div>
-
-  <div class="mesa preparando" style="left:260px;top:360px;">8</div>
-  <div class="mesa livre" style="left:340px;top:360px;">9</div>
-  <div class="mesa ocupada" style="left:420px;top:360px;">10</div>
-
+  <div class="bar" id="bar" style="left:40px;top:140px;">BAR</div>
 </div>
 
 <script>
-// drag simples (modo admin)
-document.querySelectorAll('.mesa').forEach(mesa=>{
-  let offsetX, offsetY, dragging=false;
+const mapa = document.getElementById("mapa");
 
-  mesa.addEventListener('mousedown',e=>{
-    dragging=true;
-    offsetX=e.offsetX;
-    offsetY=e.offsetY;
+/* 🔹 Drag genérico */
+function drag(el){
+  let offX=0, offY=0, ativo=false;
+
+  el.addEventListener("mousedown",e=>{
+    ativo=true;
+    offX=e.offsetX;
+    offY=e.offsetY;
   });
 
-  document.addEventListener('mousemove',e=>{
-    if(!dragging) return;
-    mesa.style.left=(e.pageX-offsetX)+'px';
-    mesa.style.top=(e.pageY-offsetY-64)+'px';
+  document.addEventListener("mousemove",e=>{
+    if(!ativo) return;
+    el.style.left=(e.pageX-offX)+"px";
+    el.style.top=(e.pageY-offY-64)+"px";
   });
 
-  document.addEventListener('mouseup',()=>{
-    dragging=false;
+  document.addEventListener("mouseup",()=>ativo=false);
+}
+
+/* BAR arrastável */
+drag(document.getElementById("bar"));
+
+/* 🔹 Carrega mesas reais */
+async function carregarMesas(){
+  const { data: mesas } = await sb
+    .from("mesas")
+    .select("id,numero_mesa")
+    .eq("app_id",app_id)
+    .eq("ativa",true)
+    .order("numero_mesa");
+
+  let x=260, y=60;
+  const maxCol=4;
+  let col=0;
+
+  mesas.forEach(m=>{
+    const div=document.createElement("div");
+    div.className="mesa";
+    div.innerText=m.numero_mesa;
+    div.style.left=x+"px";
+    div.style.top=y+"px";
+
+    mapa.appendChild(div);
+    drag(div);
+
+    col++;
+    x+=80;
+    if(col>=maxCol){
+      col=0;
+      x=260;
+      y+=90;
+    }
   });
-});
+}
+
+carregarMesas();
 </script>
 
 </body>
