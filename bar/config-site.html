@@ -2,162 +2,23 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Vitrine</title>
+<title>Configurações</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-  body {
-    margin: 0;
-    font-family: system-ui, sans-serif;
-    background: #f2f2f2;
-    color: #111;
-  }
-
-  header {
-    background: #000;
-    color: #fff;
-    padding: 20px;
-    text-align: center;
-  }
-
-  header img {
-    max-height: 80px;
-    margin-bottom: 10px;
-  }
-
-  .banner {
-    width: 100%;
-    height: 220px;
-    background-size: cover;
-    background-position: center;
-  }
-
-  main {
-    max-width: 700px;
-    margin: auto;
-    padding: 20px;
-  }
-
-  .post {
-    background: #fff;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 16px;
-  }
-
-  .post img {
-    width: 100%;
-    border-radius: 10px;
-    margin-top: 10px;
-  }
-
-  .post small {
-    opacity: 0.6;
-  }
+body {
+  margin: 0;
+  padding: 24px;
+  font-family: Arial;
+  background: #020617;
+  color: #fff;
+}
 </style>
 </head>
-
 <body>
 
-<header>
-  <img id="logo" style="display:none">
-  <h1 id="nome"></h1>
-  <p id="descricao"></p>
-</header>
-
-<div id="banner" class="banner"></div>
-
-<main>
-  <h2>Atualizações</h2>
-  <div id="feed"></div>
-</main>
-
-<!-- SUPABASE -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<!-- JS DO SITE -->
-<script>
-  // 🔑 CONFIGURAÇÃO
-  const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  const SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-
-  const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
-
-  // 🔍 SLUG DA URL
-  const slug = location.pathname.split("/").filter(Boolean).pop()
-
-  async function carregarSite() {
-    const { data: site } = await client
-      .from("sites")
-      .select("*")
-      .eq("slug", slug)
-      .single()
-
-    if (!site) {
-      document.body.innerHTML = "Site não encontrado"
-      return
-    }
-
-    nome.innerText = site.nome || ""
-    descricao.innerText = site.descricao || ""
-
-    // LOGO
-    const { data: logo } = await client
-      .from("logos")
-      .select("url")
-      .eq("site_id", site.id)
-      .single()
-
-    if (logo?.url) {
-      const img = document.getElementById("logo")
-      img.src = logo.url
-      img.style.display = "block"
-    }
-
-    // BANNER
-    const { data: banner } = await client
-      .from("banners")
-      .select("url")
-      .eq("site_id", site.id)
-      .eq("ativo", true)
-      .single()
-
-    if (banner?.url) {
-      document.getElementById("banner").style.backgroundImage =
-        `url(${banner.url})`
-    }
-
-    // POSTS
-    const { data: posts } = await client
-      .from("posts")
-      .select("*")
-      .eq("site_id", site.id)
-      .eq("ativo", true)
-      .order("created_at", { ascending: false })
-
-    const feed = document.getElementById("feed")
-    feed.innerHTML = ""
-
-    if (!posts || posts.length === 0) {
-      feed.innerHTML = "<p>Nenhuma atualização ainda.</p>"
-      return
-    }
-
-    posts.forEach(p => {
-      const div = document.createElement("div")
-      div.className = "post"
-      div.innerHTML = `
-        <strong>${p.titulo || ""}</strong><br>
-        <small>${new Date(p.created_at).toLocaleDateString()}</small>
-        <p>${p.conteudo || ""}</p>
-        ${p.imagem_url ? `<img src="${p.imagem_url}">` : ""}
-      `
-      feed.appendChild(div)
-    })
-  }
-
-  carregarSite()
-</script>
+<h2>⚙️ Configurações do Site</h2>
+<p>Nome, descrição, endereço, etc.</p>
 
 </body>
 </html>
