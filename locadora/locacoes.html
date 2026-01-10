@@ -21,7 +21,6 @@ header{background:#0f172a;padding:18px 24px;font-size:22px;font-weight:700}
 .btn{padding:10px 14px;border-radius:12px;border:none;font-weight:700;cursor:pointer}
 .aprovar{background:#22c55e}
 .recusar{background:#ef4444;color:#fff}
-.pdf{background:#2563eb;color:#fff}
 hr{opacity:.2}
 
 #modal{
@@ -29,7 +28,7 @@ hr{opacity:.2}
 }
 #modal .box{
   background:#0b1220;padding:20px;border-radius:16px;
-  max-width:650px;margin:5% auto
+  max-width:700px;margin:4% auto
 }
 label{font-weight:700;margin-top:10px;display:block}
 input,textarea{width:100%;padding:10px;border-radius:10px;border:none;margin-top:6px}
@@ -44,10 +43,10 @@ input,textarea{width:100%;padding:10px;border-radius:10px;border:none;margin-top
   <div class="grid" id="lista"></div>
 </div>
 
-<!-- MODAL LOCADORA -->
+<!-- MODAL -->
 <div id="modal">
   <div class="box">
-    <h3>🏢 Dados da Locadora</h3>
+    <h3>🏢 Dados da Locadora (para o contrato)</h3>
 
     <label>Nome da Locadora</label>
     <input id="mNome">
@@ -60,6 +59,9 @@ input,textarea{width:100%;padding:10px;border-radius:10px;border:none;margin-top
 
     <label>Telefone</label>
     <input id="mTelefone">
+
+    <label>URL do Logo (PNG/JPG)</label>
+    <input id="mLogo" placeholder="https://.../logo.png">
 
     <label>Cláusulas do Contrato</label>
     <textarea id="mClausulas" rows="6"></textarea>
@@ -146,6 +148,7 @@ function abrir(id){
     mEndereco.value = salvo.endereco || "";
     mCnpj.value = salvo.cnpj || "";
     mTelefone.value = salvo.telefone || "";
+    mLogo.value = salvo.logo || "";
     mClausulas.value = salvo.clausulas || "";
     salvarLocal.checked = true;
   }else{
@@ -153,6 +156,7 @@ function abrir(id){
     mEndereco.value="";
     mCnpj.value="";
     mTelefone.value="";
+    mLogo.value="";
     mClausulas.value="";
     salvarLocal.checked = false;
   }
@@ -182,11 +186,18 @@ async function gerarPDF(id){
     endereco: mEndereco.value,
     cnpj: mCnpj.value,
     telefone: mTelefone.value,
+    logo: mLogo.value,
     clausulas: mClausulas.value
   };
 
   const pdf = new jsPDF();
-  let y=20;
+  let y = 20;
+
+  // LOGO – CHARME FINO
+  if(locadora.logo){
+    pdf.addImage(locadora.logo,"PNG",10,10,40,20);
+    y = 40;
+  }
 
   pdf.setFontSize(14);
   pdf.text(locadora.nome || "Locadora",10,y); y+=10;
@@ -208,12 +219,7 @@ async function gerarPDF(id){
   pdf.text(`Modelo: ${v.modelo}`,10,y); y+=10;
 
   pdf.text("CLÁUSULAS CONTRATUAIS",10,y); y+=6;
-  pdf.text(
-    locadora.clausulas || "Sem cláusulas.",
-    10,
-    y,
-    { maxWidth:180 }
-  );
+  pdf.text(locadora.clausulas || "Sem cláusulas.",10,y,{maxWidth:180});
 
   return pdf;
 }
@@ -227,6 +233,7 @@ async function confirmar(){
       endereco: mEndereco.value,
       cnpj: mCnpj.value,
       telefone: mTelefone.value,
+      logo: mLogo.value,
       clausulas: mClausulas.value
     }));
   }
