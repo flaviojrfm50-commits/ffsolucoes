@@ -2,23 +2,102 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Configurações</title>
+<title>Configurações do Site</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body {
   margin: 0;
   padding: 24px;
-  font-family: Arial;
+  font-family: system-ui, Arial;
   background: #020617;
   color: #fff;
 }
+
+h2 {
+  margin-bottom: 4px;
+}
+
+p {
+  opacity: 0.7;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: #0f172a;
+  border-radius: 12px;
+  padding: 16px;
+  max-width: 500px;
+}
+
+label {
+  display: block;
+  margin-top: 12px;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+input, textarea {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  font-size: 15px;
+}
+
+textarea {
+  height: 80px;
+  resize: none;
+}
+
+button {
+  margin-top: 16px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
 </style>
 </head>
+
 <body>
 
 <h2>⚙️ Configurações do Site</h2>
-<p>Nome, descrição, endereço, etc.</p>
+<p>Edite as informações da vitrine</p>
+
+<div class="card">
+
+  <label>Nome do site</label>
+  <input id="nome" placeholder="Ex: Lanchonete da Júlia">
+
+  <label>Descrição</label>
+  <textarea id="descricao" placeholder="Fale sobre o estabelecimento"></textarea>
+
+  <label>Texto de promoção</label>
+  <textarea id="promo" placeholder="Ex: Promoção da semana"></textarea>
+
+  <button onclick="salvar()">Salvar (teste)</button>
+
+</div>
+
+<script>
+function salvar() {
+  const dados = {
+    nome: document.getElementById("nome").value,
+    descricao: document.getElementById("descricao").value,
+    promo: document.getElementById("promo").value
+  }
+
+  console.log("DADOS DIGITADOS:", dados)
+  alert("Funcionou! Veja no console (F12)")
+}
+</script>
 
 </body>
 </html>
