@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <title>Site Público</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -16,17 +15,15 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui;}
 body{background:var(--bg);color:var(--text);}
-
 .hero{
   min-height:60vh;
   display:flex;
   align-items:center;
   justify-content:center;
   text-align:center;
-  padding:20px;
 }
 h1{font-size:2.4rem;}
-p{color:var(--muted);margin-top:10px;}
+p{margin-top:10px;color:var(--muted);}
 </style>
 </head>
 
@@ -46,31 +43,39 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-// ================= UUID DA URL =================
+// ================= UUID DA URL (ROBUSTO) =================
 const params = new URLSearchParams(location.search);
+
+// 1️⃣ tenta app_id
 let site_id = params.get("app_id");
 
-// fallback UUID solto
+// 2️⃣ fallback: primeiro parâmetro cru
 if(!site_id){
   const raw = location.search.replace("?", "").split("&")[0];
-  if(raw && raw.length >= 30) site_id = raw;
+  if(raw){
+    // se vier tipo app=UUID → pega só o UUID
+    site_id = raw.includes("=") ? raw.split("=")[1] : raw;
+  }
 }
 
-if(!site_id){
-  document.getElementById("titulo").innerText = "Site não encontrado";
-  throw new Error("UUID ausente");
+// validação final
+if(!site_id || site_id.length < 30){
+  document.getElementById("titulo").innerText = "Site indisponível";
+  document.getElementById("subtitulo").innerText = "URL inválida";
+  throw new Error("UUID inválido");
 }
 
 // ================= LOAD SITE =================
 (async()=>{
   const { data, error } = await sb
     .from("sites")
-    .select("id, name")
+    .select("id,name")
     .eq("id", site_id)
     .maybeSingle();
 
   if(error || !data){
     document.getElementById("titulo").innerText = "Site indisponível";
+    document.getElementById("subtitulo").innerText = "Configuração não encontrada";
     return;
   }
 
