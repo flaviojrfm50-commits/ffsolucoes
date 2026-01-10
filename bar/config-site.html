@@ -1,168 +1,171 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Configuração do Site</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<title>Vitrine</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #f5f5f5;
-      margin: 0;
-      padding: 20px;
-    }
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #f2f2f2;
+    color: #111;
+  }
 
-    h1 {
-      margin-bottom: 20px;
-    }
+  header {
+    background: #000;
+    color: #fff;
+    padding: 20px;
+    text-align: center;
+  }
 
-    .card {
-      background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-    }
+  header img {
+    max-height: 80px;
+    margin-bottom: 10px;
+  }
 
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 10px;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      font-size: 15px;
-    }
+  .banner {
+    width: 100%;
+    height: 240px;
+    background-size: cover;
+    background-position: center;
+  }
 
-    button {
-      background: #111;
-      color: #fff;
-      font-weight: 600;
-      cursor: pointer;
-    }
+  main {
+    max-width: 680px;
+    margin: auto;
+    padding: 20px;
+  }
 
-    img {
-      width: 100%;
-      border-radius: 10px;
-      margin-top: 10px;
-    }
-  </style>
+  .post {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .post img {
+    width: 100%;
+    border-radius: 10px;
+    margin-top: 10px;
+  }
+
+  .post h3 {
+    margin: 0 0 6px;
+  }
+
+  .post small {
+    opacity: 0.6;
+  }
+</style>
 </head>
+
 <body>
 
-<h1>Configurar Site</h1>
+<header>
+  <img id="logo" style="display:none">
+  <h1 id="nome"></h1>
+  <p id="descricao"></p>
+</header>
 
-<div class="card">
-  <h3>Banner do site</h3>
-  <input type="file" id="bannerFile" accept="image/*" />
-  <button onclick="salvarBanner()">Salvar banner</button>
+<div id="banner" class="banner"></div>
 
-  <img id="preview" />
-</div>
+<main>
+  <h2>Atualizações</h2>
+  <div id="feed"></div>
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // ⚠️ NÃO DECLARAR DUAS VEZES
-  const client = supabase.createClient(
-    "https://pdajixsoowcyhnjwhgpc.supabase.co",
-    "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-  )
+  // 🔑 CONFIG
+  const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  const SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 
-  const appId = new URLSearchParams(location.search).get('app')
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
 
-  const nome = document.getElementById('nome')
-  const descricao = document.getElementById('descricao')
-  const bannerInput = document.getElementById('banner')
-  const preview = document.getElementById('preview')
+  // 🔍 SLUG DA URL
+  const slug = location.pathname.split("/").filter(Boolean).pop()
 
-  if (!appId) {
-    alert('App não encontrado')
-    throw new Error('Sem app_id')
+  if (!slug) {
+    document.body.innerHTML = "Site não encontrado"
+    throw new Error("Sem slug")
   }
 
-  // 🔹 carregar dados
-  async function carregarDados() {
+  async function carregarSite() {
+
+    // 🔹 SITE
     const { data: site } = await client
-      .from('sites')
-      .select('*')
-      .eq('id', appId)
+      .from("sites")
+      .select("*")
+      .eq("slug", slug)
       .single()
 
-    if (site) {
-      nome.value = site.nome || ''
-      descricao.value = site.descricao || ''
-    }
-
-    const { data: banner } = await client
-      .from('banners')
-      .select('*')
-      .eq('site_id', appId)
-      .eq('ativo', true)
-      .single()
-
-    if (banner) preview.src = banner.url
-  }
-
-  // 🔹 salvar texto
-  async function salvarDados() {
-    await client
-      .from('sites')
-      .update({
-        nome: nome.value,
-        descricao: descricao.value
-      })
-      .eq('id', appId)
-
-    alert('Dados salvos ✅')
-  }
-
-  // 🔹 salvar banner
-  async function salvarBanner() {
-    const file = bannerInput.files[0]
-    if (!file) return alert('Selecione uma imagem')
-
-    const path = `banners/${appId}/${Date.now()}-${file.name}`
-
-    const { error } = await client
-      .storage
-      .from('public')
-      .upload(path, file)
-
-    if (error) {
-      alert('Erro no upload')
+    if (!site) {
+      document.body.innerHTML = "Site não encontrado"
       return
     }
 
-    const { data } = client
-      .storage
-      .from('public')
-      .getPublicUrl(path)
+    document.getElementById("nome").innerText = site.nome || ""
+    document.getElementById("descricao").innerText = site.descricao || ""
 
-    await client
-      .from('banners')
-      .update({ ativo: false })
-      .eq('site_id', appId)
+    // 🔹 LOGO
+    const { data: logo } = await client
+      .from("logos")
+      .select("*")
+      .eq("site_id", site.id)
+      .single()
 
-    await client
-      .from('banners')
-      .insert({
-        site_id: appId,
-        url: data.publicUrl,
-        ativo: true
-      })
+    if (logo?.url) {
+      const img = document.getElementById("logo")
+      img.src = logo.url
+      img.style.display = "block"
+    }
 
-    preview.src = data.publicUrl
-    alert('Banner atualizado 🔥')
+    // 🔹 BANNER
+    const { data: banner } = await client
+      .from("banners")
+      .select("*")
+      .eq("site_id", site.id)
+      .eq("ativo", true)
+      .single()
+
+    if (banner?.url) {
+      document.getElementById("banner").style.backgroundImage =
+        `url(${banner.url})`
+    }
+
+    // 🔹 POSTS
+    const { data: posts } = await client
+      .from("posts")
+      .select("*")
+      .eq("site_id", site.id)
+      .eq("ativo", true)
+      .order("created_at", { ascending: false })
+
+    const feed = document.getElementById("feed")
+    feed.innerHTML = ""
+
+    if (!posts || posts.length === 0) {
+      feed.innerHTML = "<p>Nenhuma postagem ainda.</p>"
+      return
+    }
+
+    posts.forEach(p => {
+      const div = document.createElement("div")
+      div.className = "post"
+      div.innerHTML = `
+        <h3>${p.titulo || ""}</h3>
+        <small>${new Date(p.created_at).toLocaleDateString()}</small>
+        <p>${p.conteudo || ""}</p>
+        ${p.imagem_url ? `<img src="${p.imagem_url}">` : ""}
+      `
+      feed.appendChild(div)
+    })
   }
 
-  // ⚠️ EXPOR FUNÇÕES PRO HTML
-  window.salvarBanner = salvarBanner
-  window.salvarDados = salvarDados
-
-  carregarDados()
+  carregarSite()
 </script>
-
 
 </body>
 </html>
-
-
