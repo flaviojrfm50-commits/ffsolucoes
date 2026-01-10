@@ -193,7 +193,7 @@ function abrirSite(){
   const modo = localStorage.getItem("modo_site") || "cardapio";
 
   if(modo === "institucional"){
-    window.open(`/ffsolucoes/bar/public/index.html?app=${app}`, "_blank");
+    window.open(`/ffsolucoes/bar/public/site/index.html?app=${app}`, "_blank");
   } else {
     window.open(`/ffsolucoes/bar/public/cardapio/index.html?app=${app}`, "_blank");
   }
@@ -207,6 +207,7 @@ function logout(){
 
 </body>
 </html>
+
 
 
 
