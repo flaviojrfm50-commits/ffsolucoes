@@ -24,6 +24,7 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .btn-add{background:#22c55e}
 .btn-avulsa{background:#38bdf8}
 .btn-voltar{background:#1e293b;color:#fff}
+.btn-mapa{background:#6366f1}
 
 .grid{
   display:grid;
@@ -103,6 +104,7 @@ let criandoMesa = false;
 <div class="topo">
   <h2>🪑 Mesas</h2>
   <div>
+    <button class="btn btn-mapa" onclick="abrirMapa()">🗺️ Mapa das Mesas</button>
     <button class="btn btn-avulsa" onclick="vendaAvulsa()">💳 Venda Avulsa</button>
     <button class="btn btn-add" onclick="adicionarMesa()">➕ Mesa</button>
     <button class="btn btn-voltar" onclick="history.back()">Voltar</button>
@@ -213,6 +215,10 @@ async function adicionarMesa(){
 
 function vendaAvulsa(){
   location.href=`venda-avulsa.html?app_id=${app_id}`;
+}
+
+function abrirMapa(){
+  location.href = `mapa-mesas.html?app_id=${app_id}`;
 }
 
 carregarMesas();
