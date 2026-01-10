@@ -77,66 +77,80 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  const supabase = supabase.createClient(
-    "https://pdajixsoowcyhnjwhgpc.supabase.co",
-    "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-  )
+const sb = supabase.createClient(
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+)
 
-  const slug = window.location.pathname.split('/')[1]
+const slug = window.location.pathname
+  .split('/')
+  .filter(Boolean)
+  .pop()
 
-  async function loadVitrine() {
-    const { data: site } = await supabase
-      .from('sites')
-      .select('*')
-      .eq('slug', slug)
-      .single()
+async function loadVitrine() {
+  const { data: site, error: siteErr } = await sb
+    .from('sites')
+    .select('*')
+    .eq('slug', slug)
+    .maybeSingle()
 
-    const { data: logo } = await supabase
-      .from('logos')
-      .select('*')
-      .eq('site_id', site.id)
-      .single()
-
-    const { data: banner } = await supabase
-      .from('banners')
-      .select('*')
-      .eq('site_id', site.id)
-      .eq('ativo', true)
-      .single()
-
-    const { data: promos } = await supabase
-      .from('banners')
-      .select('*')
-      .eq('site_id', site.id)
-
-    const { data: fotos } = await supabase
-      .from('documentos')
-      .select('*')
-      .eq('site_id', site.id)
-
-    document.getElementById('nome').innerText = site.nome
-    document.getElementById('descricao').innerText = site.descricao
-    document.getElementById('logo').src = logo.url
-    document.getElementById('banner').style.backgroundImage = `url(${banner.url})`
-
-    const promoDiv = document.getElementById('promos')
-    promos.forEach(p => {
-      const div = document.createElement('div')
-      div.className = 'promo'
-      div.innerHTML = `<strong>${p.titulo}</strong><p>${p.descricao}</p>`
-      promoDiv.appendChild(div)
-    })
-
-    const galeria = document.getElementById('galeria')
-    fotos.forEach(f => {
-      const img = document.createElement('img')
-      img.src = f.url
-      galeria.appendChild(img)
-    })
+  if (!site || siteErr) {
+    document.body.innerHTML = '<h2>Site não encontrado</h2>'
+    return
   }
 
-  loadVitrine()
+  const { data: logo } = await sb
+    .from('logos')
+    .select('*')
+    .eq('site_id', site.id)
+    .maybeSingle()
+
+  const { data: banner } = await sb
+    .from('banners')
+    .select('*')
+    .eq('site_id', site.id)
+    .eq('ativo', true)
+    .maybeSingle()
+
+  const { data: promos = [] } = await sb
+    .from('banners')
+    .select('*')
+    .eq('site_id', site.id)
+    .eq('tipo', 'promo')
+
+  const { data: fotos = [] } = await sb
+    .from('documentos')
+    .select('*')
+    .eq('site_id', site.id)
+
+  document.getElementById('nome').innerText = site.nome
+  document.getElementById('descricao').innerText = site.descricao
+
+  if (logo) document.getElementById('logo').src = logo.url
+  if (banner)
+    document.getElementById('banner').style.backgroundImage =
+      `url(${banner.url})`
+
+  const promoDiv = document.getElementById('promos')
+  promos.forEach(p => {
+    const div = document.createElement('div')
+    div.className = 'promo'
+    div.innerHTML = `<strong>${p.titulo}</strong><p>${p.descricao}</p>`
+    promoDiv.appendChild(div)
+  })
+
+  const galeria = document.getElementById('galeria')
+  fotos.forEach(f => {
+    const img = document.createElement('img')
+    img.src = f.url
+    galeria.appendChild(img)
+  })
+}
+
+loadVitrine()
 </script>
+
 
 </body>
 </html>
+
