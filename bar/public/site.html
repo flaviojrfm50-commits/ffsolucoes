@@ -30,6 +30,7 @@
       height: 240px;
       background-size: cover;
       background-position: center;
+      background-color: #ddd;
     }
 
     .container {
@@ -57,6 +58,7 @@
     }
   </style>
 </head>
+
 <body>
 
 <header>
@@ -75,63 +77,81 @@
   <div class="gallery" id="galeria"></div>
 </div>
 
+<!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
-const sb = supabase.createClient(
+/* ================= SUPABASE CLIENT ================= */
+const sb = window.supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 )
 
+/* ================= SLUG SEGURO ================= */
 const slug = window.location.pathname
   .split('/')
   .filter(Boolean)
   .pop()
 
+/* ================= LOAD ================= */
 async function loadVitrine() {
-  const { data: site, error: siteErr } = await sb
+
+  /* SITE */
+  const { data: site } = await sb
     .from('sites')
     .select('*')
     .eq('slug', slug)
     .maybeSingle()
 
-  if (!site || siteErr) {
-    document.body.innerHTML = '<h2>Site não encontrado</h2>'
+  if (!site) {
+    document.body.innerHTML = '<h2 style="padding:20px">Site não encontrado</h2>'
     return
   }
 
+  /* LOGO */
   const { data: logo } = await sb
     .from('logos')
     .select('*')
     .eq('site_id', site.id)
     .maybeSingle()
 
+  /* BANNER PRINCIPAL */
   const { data: banner } = await sb
     .from('banners')
     .select('*')
     .eq('site_id', site.id)
+    .eq('tipo', 'banner')
     .eq('ativo', true)
     .maybeSingle()
 
+  /* PROMOS */
   const { data: promos = [] } = await sb
     .from('banners')
     .select('*')
     .eq('site_id', site.id)
     .eq('tipo', 'promo')
 
+  /* GALERIA */
   const { data: fotos = [] } = await sb
     .from('documentos')
     .select('*')
     .eq('site_id', site.id)
 
-  document.getElementById('nome').innerText = site.nome
-  document.getElementById('descricao').innerText = site.descricao
+  /* ===== RENDER ===== */
+  document.getElementById('nome').innerText = site.nome || ''
+  document.getElementById('descricao').innerText = site.descricao || ''
 
-  if (logo) document.getElementById('logo').src = logo.url
-  if (banner)
+  if (logo?.url) {
+    document.getElementById('logo').src = logo.url
+  }
+
+  if (banner?.url) {
     document.getElementById('banner').style.backgroundImage =
       `url(${banner.url})`
+  }
 
   const promoDiv = document.getElementById('promos')
+  promoDiv.innerHTML = ''
   promos.forEach(p => {
     const div = document.createElement('div')
     div.className = 'promo'
@@ -140,6 +160,7 @@ async function loadVitrine() {
   })
 
   const galeria = document.getElementById('galeria')
+  galeria.innerHTML = ''
   fotos.forEach(f => {
     const img = document.createElement('img')
     img.src = f.url
@@ -150,7 +171,5 @@ async function loadVitrine() {
 loadVitrine()
 </script>
 
-
 </body>
 </html>
-
