@@ -29,6 +29,22 @@ header{background:#0f172a;padding:18px 24px;font-size:22px;font-weight:700}
 
 details summary{cursor:pointer;font-weight:700;margin:10px 0}
 hr{opacity:.2;margin:14px 0}
+
+/* MODAL */
+#modalContrato{
+  display:none;position:fixed;inset:0;background:#0009;z-index:999
+}
+#modalContrato .box{
+  background:#0b1220;
+  padding:20px;
+  border-radius:16px;
+  max-width:700px;
+  margin:5% auto
+}
+#modalContrato label{display:block;margin-top:12px;font-weight:700}
+#modalContrato input,#modalContrato textarea{
+  width:100%;padding:10px;border-radius:10px;border:none;margin-top:6px
+}
 </style>
 </head>
 
@@ -38,6 +54,33 @@ hr{opacity:.2;margin:14px 0}
 
 <div class="container">
   <div class="grid" id="lista"></div>
+</div>
+
+<!-- MODAL CONTRATO -->
+<div id="modalContrato">
+  <div class="box">
+    <h3>🏢 Dados da Locadora (salvos automaticamente)</h3>
+
+    <label>Nome da Locadora</label>
+    <input id="mNome">
+
+    <label>Endereço</label>
+    <input id="mEndereco">
+
+    <label>CNPJ</label>
+    <input id="mCnpj">
+
+    <label>Telefone</label>
+    <input id="mTelefone">
+
+    <label>Cláusulas do Contrato</label>
+    <textarea id="mClausulas" rows="6"></textarea>
+
+    <div style="margin-top:16px;display:flex;gap:10px">
+      <button class="btn pdf" onclick="confirmarContrato()">✔ Gerar contrato</button>
+      <button class="btn excluir" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -53,6 +96,8 @@ const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
+
+let contratoIdAtual = null;
 
 /* ================= LOAD ================= */
 async function carregar(){
@@ -86,7 +131,7 @@ async function carregar(){
       <span class="badge ${l.status}">${l.status.toUpperCase()}</span>
 
       <details open>
-        <summary>👤 Dados completos do cliente</summary>
+        <summary>👤 Dados do Cliente</summary>
         <p><b>Nome:</b> ${l.nome}</p>
         <p><b>Telefone:</b> ${l.telefone}</p>
         ${l.cpf ? `<p><b>CPF:</b> ${l.cpf}</p>` : ""}
@@ -97,7 +142,7 @@ async function carregar(){
       </details>
 
       <details>
-        <summary>🚘 Dados do veículo</summary>
+        <summary>🚘 Dados do Veículo</summary>
         <p><b>Modelo:</b> ${v.modelo || "-"}</p>
         ${v.placa ? `<p><b>Placa:</b> ${v.placa}</p>` : ""}
         ${v.chassi ? `<p><b>Chassi:</b> ${v.chassi}</p>` : ""}
@@ -116,7 +161,7 @@ async function carregar(){
         <button class="btn whats" onclick="enviarWhats('${l.id}')">📲 WhatsApp</button>
 
         ${l.status==="solicitada"?`
-          <button class="btn aprovar" onclick="aprovar('${l.id}','${l.veiculo_id}')">✔ Aprovar</button>
+          <button class="btn aprovar" onclick="abrirModal('${l.id}')">✔ Aprovar</button>
           <button class="btn recusar" onclick="recusar('${l.id}')">✖ Recusar</button>
         `:""}
 
@@ -127,8 +172,56 @@ async function carregar(){
   });
 }
 
+/* ================= MODAL ================= */
+async function abrirModal(id){
+  contratoIdAtual = id;
+
+  const { data:cfg } = await sb
+    .from("config_site")
+    .select("nome_site,endereco,cnpj,telefone,clausulas_pdf")
+    .eq("app_id",appId)
+    .single();
+
+  mNome.value      = cfg?.nome_site || "";
+  mEndereco.value  = cfg?.endereco || "";
+  mCnpj.value      = cfg?.cnpj || "";
+  mTelefone.value  = cfg?.telefone || "";
+  mClausulas.value = cfg?.clausulas_pdf || "";
+
+  modalContrato.style.display="block";
+}
+function fecharModal(){
+  modalContrato.style.display="none";
+}
+
+/* ================= CONFIRMAR ================= */
+async function confirmarContrato(){
+  await sb.from("config_site").upsert({
+    app_id: appId,
+    nome_site: mNome.value,
+    endereco: mEndereco.value,
+    cnpj: mCnpj.value,
+    telefone: mTelefone.value,
+    clausulas_pdf: mClausulas.value
+  });
+
+  await gerarContratoFinal(contratoIdAtual);
+
+  const { data:l } = await sb
+    .from("locacoes")
+    .select("veiculo_id")
+    .eq("id",contratoIdAtual)
+    .single();
+
+  await sb.from("locacoes").update({status:"ativa"}).eq("id",contratoIdAtual);
+  await sb.from("veiculos").update({status:"alugado"}).eq("id",l.veiculo_id);
+
+  fecharModal();
+  carregar();
+}
+
 /* ================= PDF ================= */
-async function gerarPDF(id){
+async function gerarContratoFinal(id){
   const { jsPDF } = window.jspdf;
 
   const { data:l } = await sb.from("locacoes").select("*").eq("id",id).single();
@@ -159,48 +252,23 @@ async function gerarPDF(id){
   if(v.placa) pdf.text(`Placa: ${v.placa}`,10,y+=6);
 
   y+=8;
-  pdf.text("VALORES",10,y); y+=6;
-  pdf.text(`Dias: ${l.dias}`,10,y); y+=6;
-  pdf.text(`Total: R$ ${l.total}`,10,y);
-
-  y+=10;
   pdf.text("CLÁUSULAS",10,y); y+=6;
   pdf.text(cfg?.clausulas_pdf || "Cláusulas contratuais.",10,y,{maxWidth:180});
 
-  return pdf;
+  pdf.save(`contrato-${l.nome}.pdf`);
 }
 
-/* ================= AÇÕES ================= */
+/* ================= OUTRAS ================= */
 async function baixarContrato(id){
-  const pdf = await gerarPDF(id);
-  pdf.save("contrato-locacao.pdf");
+  await gerarContratoFinal(id);
 }
-
 async function enviarWhats(id){
-  const pdf = await gerarPDF(id);
-  const blob = pdf.output("blob");
-  const path = `contratos/${id}.pdf`;
-
-  await sb.storage.from("contratos").upload(path,blob,{upsert:true});
-  const url = sb.storage.from("contratos").getPublicUrl(path).data.publicUrl;
-
-  const { data:l } = await sb.from("locacoes").select("telefone").eq("id",id).single();
-  const tel = l.telefone.replace(/\D/g,"");
-
-  window.open(`https://wa.me/55${tel}?text=${encodeURIComponent("Contrato de locação: "+url)}`);
+  const pdf = await gerarContratoFinal(id);
 }
-
-async function aprovar(id,veiculoId){
-  await sb.from("locacoes").update({status:"ativa"}).eq("id",id);
-  await sb.from("veiculos").update({status:"alugado"}).eq("id",veiculoId);
-  carregar();
-}
-
 async function recusar(id){
   await sb.from("locacoes").update({status:"recusada"}).eq("id",id);
   carregar();
 }
-
 async function excluir(id){
   if(confirm("Excluir locação?")){
     await sb.from("locacoes").delete().eq("id",id);
@@ -208,7 +276,7 @@ async function excluir(id){
   }
 }
 
-/* ================= INIT ================= */
+/* INIT */
 carregar();
 </script>
 
