@@ -42,7 +42,7 @@ body{margin:0;background:var(--bg)}
 .status.disponivel{color:#16a34a}
 .status.alugado{color:#e30613}
 
-label{display:block;margin-top:12px;font-weight:600}
+label{display:block;margin-top:14px;font-weight:600}
 input{
   width:100%;
   padding:12px;
@@ -52,7 +52,7 @@ input{
 }
 
 .btn{
-  margin-top:12px;
+  margin-top:14px;
   background:var(--primaria);
   color:#fff;
   padding:12px;
@@ -63,7 +63,7 @@ input{
 }
 .btn-sec{background:#222}
 
-video, canvas, img.preview{
+video, img.preview, canvas{
   width:100%;
   margin-top:8px;
   border-radius:10px;
@@ -79,7 +79,9 @@ video, canvas, img.preview{
 <div class="container">
   <div class="card">
 
-    <div class="hero"><img id="imgVeiculo"></div>
+    <div class="hero">
+      <img id="imgVeiculo">
+    </div>
 
     <h2 id="modelo"></h2>
     <div class="preco" id="preco"></div>
@@ -89,7 +91,7 @@ video, canvas, img.preview{
       Alugar este veículo
     </div>
 
-    <!-- FORM -->
+    <!-- FORMULÁRIO -->
     <div id="formSolicitacao" style="display:none">
 
       <label>Nome</label>
@@ -117,12 +119,12 @@ video, canvas, img.preview{
 </div>
 
 <script>
-/* PARAMS */
+/* ================= PARAMS ================= */
 const params = new URLSearchParams(window.location.search);
 const appId = params.get("app_id");
 const veiculoId = params.get("id");
 
-/* SUPABASE */
+/* ================= SUPABASE ================= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
@@ -132,7 +134,7 @@ let DIARIA = 0;
 let arquivos = {};
 let stream = null;
 
-/* INIT */
+/* ================= INIT ================= */
 if(!appId || !veiculoId){
   document.body.innerHTML =
     "<h2 style='padding:30px;text-align:center'>Acesso inválido</h2>";
@@ -140,7 +142,7 @@ if(!appId || !veiculoId){
   carregarVeiculo();
 }
 
-/* LOAD VEÍCULO */
+/* ================= LOAD VEÍCULO ================= */
 async function carregarVeiculo(){
   const { data:v } = await sb
     .from("veiculos")
@@ -174,7 +176,7 @@ async function carregarVeiculo(){
   criarCameras();
 }
 
-/* FORM */
+/* ================= FORM ================= */
 function abrirFormulario(){
   formSolicitacao.style.display = "block";
   acaoAlugar.style.display = "none";
@@ -184,13 +186,14 @@ function calcularTotal(){
   fTotal.value = Number(fDias.value || 0) * DIARIA;
 }
 
-/* CAMERAS */
+/* ================= CÂMERAS ================= */
 function criarCameras(){
   const tipos = [
     ["selfie","user"],
     ["rg_frente","environment"],
     ["rg_verso","environment"],
-    ["cpf_doc","environment"]
+    ["cpf_doc","environment"],
+    ["cnh","environment"]
   ];
 
   const docs = document.getElementById("docs");
@@ -199,13 +202,36 @@ function criarCameras(){
   tipos.forEach(([t,f])=>{
     docs.innerHTML += `
       <label>${t.replace("_"," ").toUpperCase()}</label>
-      <button class="btn btn-sec" onclick="abrirCamera('${t}','${f}')">Abrir câmera</button>
+
+      <button type="button"
+        class="btn btn-sec"
+        onclick="abrirCamera('${t}','${f}')">
+        Abrir câmera
+      </button>
+
       <video id="video-${t}"></video>
-      <button class="btn btn-sec" id="cap-${t}" onclick="capturar('${t}')" style="display:none">Capturar</button>
+
+      <button type="button"
+        class="btn btn-sec"
+        id="cap-${t}"
+        onclick="capturar('${t}')"
+        style="display:none">
+        Capturar
+      </button>
+
       <img id="prev-${t}" class="preview">
       <canvas id="canvas-${t}" hidden></canvas>
     `;
   });
+
+  // ASSINATURA
+  docs.innerHTML += `
+    <label>Assinatura</label>
+    <canvas id="assinatura" style="height:160px;border:1px solid #ccc"></canvas>
+    <button class="btn btn-sec" onclick="limparAssinatura()">Limpar assinatura</button>
+  `;
+
+  initAssinatura();
 }
 
 async function abrirCamera(tipo,facing){
@@ -252,7 +278,40 @@ function fecharCamera(){
   document.querySelectorAll("[id^='cap-']").forEach(b=>b.style.display="none");
 }
 
-/* ENVIO */
+/* ================= ASSINATURA ================= */
+function initAssinatura(){
+  const c = document.getElementById("assinatura");
+  const ctx = c.getContext("2d");
+  c.width = c.offsetWidth;
+  c.height = 160;
+
+  let desenhando=false;
+
+  c.onmousedown = e=>{
+    desenhando=true;
+    ctx.beginPath();
+    ctx.moveTo(e.offsetX,e.offsetY);
+  };
+  c.onmousemove = e=>{
+    if(desenhando){
+      ctx.lineTo(e.offsetX,e.offsetY);
+      ctx.stroke();
+    }
+  };
+  window.onmouseup = ()=>desenhando=false;
+
+  c.toBlob = cb=>{
+    c.toBlob(b=>arquivos.assinatura=b);
+  };
+}
+
+function limparAssinatura(){
+  const c=document.getElementById("assinatura");
+  c.getContext("2d").clearRect(0,0,c.width,c.height);
+  arquivos.assinatura=null;
+}
+
+/* ================= ENVIO ================= */
 async function enviarSolicitacao(){
   const dias = Number(fDias.value || 0);
 
