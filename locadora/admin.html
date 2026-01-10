@@ -133,6 +133,13 @@ function abrirSitePublico(){
     return;
   }
 
+  window.open(
+    `https://anajuliafarias659-cloud.github.io/ffsolucoes/locadora/public/index.html?app_id=${appId}`,
+    "_blank"
+  );
+}
+
+
   // ajuste o caminho se quiser domínio externo
   window.open(`../public/index.html?app_id=${appId}`, "_blank");
 }
@@ -209,3 +216,4 @@ document.getElementById("appId").innerText = admin.app_id || "não informado";
 
 </body>
 </html>
+
