@@ -23,7 +23,6 @@ header{background:#0f172a;padding:18px 24px;font-size:22px;font-weight:700}
 .recusar{background:#ef4444;color:#fff}
 .pdf{background:#2563eb;color:#fff}
 .whats{background:#16a34a;color:#022c22}
-.excluir{background:#475569;color:#fff}
 hr{opacity:.2}
 
 #modal{
@@ -67,19 +66,21 @@ input,textarea{width:100%;padding:10px;border-radius:10px;border:none;margin-top
     <textarea id="mClausulas" rows="6"></textarea>
 
     <div style="margin-top:16px;display:flex;gap:10px">
-      <button class="btn aprovar" onclick="confirmar()">✔ Aprovar</button>
-      <button class="btn excluir" onclick="fechar()">Cancelar</button>
+      <button class="btn aprovar" onclick="confirmar()">✔ Salvar & Aprovar</button>
+      <button class="btn recusar" onclick="fechar()">Cancelar</button>
     </div>
   </div>
 </div>
 
 <script>
-/* AUTH */
+/* ================= AUTH ================= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
-if(!admin || admin.tipo!=="locadora"){ location.href="../auth/login.html"; }
+if(!admin || admin.tipo!=="locadora"){
+  location.href="../auth/login.html";
+}
 const appId = admin.app_id;
 
-/* SUPABASE */
+/* ================= SUPABASE ================= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
@@ -87,22 +88,34 @@ const sb = supabase.createClient(
 
 let locacaoAtual = null;
 
-/* LOAD */
+/* ================= LOAD ================= */
 async function carregar(){
-  const { data:locacoes } = await sb.from("locacoes")
-    .select("*").eq("app_id",appId).order("created_at",{ascending:false});
+  const { data:locacoes } = await sb
+    .from("locacoes")
+    .select("*")
+    .eq("app_id",appId)
+    .order("created_at",{ascending:false});
 
-  const { data:veiculos } = await sb.from("veiculos")
-    .select("*").eq("app_id",appId);
+  const { data:veiculos } = await sb
+    .from("veiculos")
+    .select("*")
+    .eq("app_id",appId);
 
-  const mapa={}; veiculos.forEach(v=>mapa[v.id]=v);
+  const mapa={};
+  veiculos.forEach(v=>mapa[v.id]=v);
+
   lista.innerHTML="";
+  if(!locacoes || !locacoes.length){
+    lista.innerHTML="<p>Nenhuma locação.</p>";
+    return;
+  }
 
   locacoes.forEach(l=>{
     const v = mapa[l.veiculo_id] || {};
     lista.innerHTML+=`
       <div class="card">
         <h3>${v.modelo || "Veículo"}</h3>
+
         <p><b>Cliente:</b> ${l.nome}</p>
         <p><b>Telefone:</b> ${l.telefone}</p>
         <p><b>Dias:</b> ${l.dias}</p>
@@ -123,11 +136,15 @@ async function carregar(){
   });
 }
 
-/* MODAL */
+/* ================= MODAL ================= */
 async function abrir(id){
   locacaoAtual=id;
-  const { data:cfg } = await sb.from("config_site")
-    .select("*").eq("app_id",appId).single();
+
+  const { data:cfg } = await sb
+    .from("config_site")
+    .select("*")
+    .eq("app_id",appId)
+    .single();
 
   mNome.value = cfg?.nome_site || "";
   mEndereco.value = cfg?.endereco || "";
@@ -139,28 +156,36 @@ async function abrir(id){
 }
 function fechar(){ modal.style.display="none"; }
 
-/* CONFIRMAR */
+/* ================= CONFIRMAR ================= */
 async function confirmar(){
   await sb.from("config_site").upsert({
-    app_id:appId,
-    nome_site:mNome.value,
-    endereco:mEndereco.value,
-    cnpj:mCnpj.value,
-    telefone:mTelefone.value,
-    clausulas_pdf:mClausulas.value
+    app_id: appId,
+    nome_site: mNome.value,
+    endereco: mEndereco.value,
+    cnpj: mCnpj.value,
+    telefone: mTelefone.value,
+    clausulas_pdf: mClausulas.value
   });
 
-  const { data:l } = await sb.from("locacoes")
-    .select("veiculo_id").eq("id",locacaoAtual).single();
+  const { data:l } = await sb
+    .from("locacoes")
+    .select("veiculo_id")
+    .eq("id",locacaoAtual)
+    .single();
 
-  await sb.from("locacoes").update({status:"ativa"}).eq("id",locacaoAtual);
-  await sb.from("veiculos").update({status:"alugado"}).eq("id",l.veiculo_id);
+  await sb.from("locacoes")
+    .update({status:"ativa"})
+    .eq("id",locacaoAtual);
+
+  await sb.from("veiculos")
+    .update({status:"alugado"})
+    .eq("id",l.veiculo_id);
 
   fechar();
   carregar();
 }
 
-/* PDF */
+/* ================= PDF ================= */
 async function gerarPDF(id){
   const { jsPDF } = window.jspdf;
 
@@ -169,67 +194,59 @@ async function gerarPDF(id){
   const { data:cfg } = await sb.from("config_site").select("*").eq("app_id",appId).single();
 
   const pdf = new jsPDF();
-  let y = 20;
-
-  // LOGO
-  if(cfg?.logo_url){
-    const img = await fetch(cfg.logo_url).then(r=>r.blob());
-    const base64 = await new Promise(r=>{
-      const fr=new FileReader();
-      fr.onload=()=>r(fr.result);
-      fr.readAsDataURL(img);
-    });
-    pdf.addImage(base64,"PNG",10,10,45,20);
-    y = 40;
-  }
+  let y=20;
 
   pdf.setFontSize(14);
-  pdf.text(cfg?.nome_site || "Locadora",70,18);
-
+  pdf.text(cfg?.nome_site || "Locadora",10,y); y+=10;
   pdf.setFontSize(11);
 
-  // LOCATÁRIO
-  pdf.text("1. DADOS DO LOCATÁRIO",10,y); y+=7;
-  pdf.text(`Nome: ${l.nome || "-"}`,10,y); y+=6;
-  pdf.text(`Telefone: ${l.telefone || "-"}`,10,y); y+=6;
-  pdf.text(`CPF: ${l.cpf || "-"}`,10,y); y+=10;
+  pdf.text("1. DADOS DO LOCATÁRIO",10,y); y+=6;
+  pdf.text(`Nome: ${l.nome}`,10,y); y+=6;
+  pdf.text(`Telefone: ${l.telefone}`,10,y); y+=8;
 
-  // LOCADORA
-  pdf.text("2. DADOS DO LOCADOR",10,y); y+=7;
-  pdf.text(`Empresa: ${cfg?.nome_site || "-"}`,10,y); y+=6;
-  pdf.text(`CNPJ: ${cfg?.cnpj || "-"}`,10,y); y+=6;
-  pdf.text(`Telefone: ${cfg?.telefone || "-"}`,10,y); y+=6;
-  pdf.text(`Endereço: ${cfg?.endereco || "-"}`,10,y); y+=10;
+  pdf.text("2. DADOS DO LOCADOR",10,y); y+=6;
+  pdf.text(`Empresa: ${cfg?.nome_site||"-"}`,10,y); y+=6;
+  pdf.text(`CNPJ: ${cfg?.cnpj||"-"}`,10,y); y+=6;
+  pdf.text(`Telefone: ${cfg?.telefone||"-"}`,10,y); y+=6;
+  pdf.text(`Endereço: ${cfg?.endereco||"-"}`,10,y); y+=8;
 
-  // VEÍCULO
-  pdf.text("3. VEÍCULO",10,y); y+=7;
-  pdf.text(`Modelo: ${v.modelo || "-"}`,10,y); y+=6;
-  pdf.text(`Placa: ${v.placa || "-"}`,10,y); y+=6;
-  pdf.text(`Chassi: ${v.chassi || "-"}`,10,y); y+=10;
+  pdf.text("3. VEÍCULO",10,y); y+=6;
+  pdf.text(`Modelo: ${v.modelo}`,10,y); y+=8;
 
-  // VALOR
-  pdf.text("4. VALOR",10,y); y+=7;
+  pdf.text("4. VALOR",10,y); y+=6;
   pdf.text(`Dias: ${l.dias}`,10,y); y+=6;
-  pdf.text(`Total: R$ ${l.total}`,10,y); y+=10;
+  pdf.text(`Total: R$ ${l.total}`,10,y); y+=8;
 
-  // CLÁUSULAS
-  pdf.text("CLÁUSULAS",10,y); y+=7;
-  pdf.text(cfg?.clausulas_pdf || "Sem cláusulas.",10,y,{maxWidth:180});
+  pdf.text("CLÁUSULAS",10,y); y+=6;
+  pdf.text(cfg?.clausulas_pdf||"Sem cláusulas.",10,y,{maxWidth:180});
 
   return pdf;
 }
 
-/* AÇÕES */
-async function baixar(id){ (await gerarPDF(id)).save("contrato.pdf"); }
+/* ================= AÇÕES ================= */
+async function baixar(id){
+  const pdf = await gerarPDF(id);
+  pdf.save("contrato-locacao.pdf");
+}
+
 async function whats(id){
   const pdf = await gerarPDF(id);
   const blob = pdf.output("blob");
-  await sb.storage.from("contratos").upload(`contratos/${id}.pdf`,blob,{upsert:true});
-  const url = sb.storage.from("contratos").getPublicUrl(`contratos/${id}.pdf`).data.publicUrl;
 
-  const { data:l } = await sb.from("locacoes").select("telefone").eq("id",id).single();
-  window.open(`https://wa.me/55${l.telefone.replace(/\D/g,"")}?text=Contrato: ${url}`);
+  await sb.storage.from("contratos")
+    .upload(`contratos/${id}.pdf`,blob,{upsert:true});
+
+  const url = sb.storage.from("contratos")
+    .getPublicUrl(`contratos/${id}.pdf`).data.publicUrl;
+
+  const { data:l } = await sb.from("locacoes")
+    .select("telefone").eq("id",id).single();
+
+  window.open(
+    `https://wa.me/55${l.telefone.replace(/\D/g,"")}?text=Contrato: ${url}`
+  );
 }
+
 async function recusar(id){
   await sb.from("locacoes").update({status:"recusada"}).eq("id",id);
   carregar();
@@ -241,4 +258,3 @@ carregar();
 
 </body>
 </html>
-
