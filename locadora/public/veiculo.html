@@ -62,6 +62,13 @@ input{
   cursor:pointer
 }
 .btn-sec{background:#222}
+
+video, canvas, img.preview{
+  width:100%;
+  margin-top:8px;
+  border-radius:10px;
+  display:none
+}
 </style>
 </head>
 
@@ -72,9 +79,7 @@ input{
 <div class="container">
   <div class="card">
 
-    <div class="hero">
-      <img id="imgVeiculo">
-    </div>
+    <div class="hero"><img id="imgVeiculo"></div>
 
     <h2 id="modelo"></h2>
     <div class="preco" id="preco"></div>
@@ -84,7 +89,7 @@ input{
       Alugar este veículo
     </div>
 
-    <!-- FORMULÁRIO COMPLETO -->
+    <!-- FORM -->
     <div id="formSolicitacao" style="display:none">
 
       <label>Nome</label>
@@ -101,6 +106,9 @@ input{
 
       <label>Total</label>
       <input id="fTotal" readonly>
+
+      <!-- DOCUMENTOS -->
+      <div id="docs"></div>
 
       <div class="btn" onclick="enviarSolicitacao()">Enviar solicitação</div>
     </div>
@@ -121,6 +129,8 @@ const sb = supabase.createClient(
 );
 
 let DIARIA = 0;
+let arquivos = {};
+let stream = null;
 
 /* INIT */
 if(!appId || !veiculoId){
@@ -130,7 +140,7 @@ if(!appId || !veiculoId){
   carregarVeiculo();
 }
 
-/* LOAD */
+/* LOAD VEÍCULO */
 async function carregarVeiculo(){
   const { data:v } = await sb
     .from("veiculos")
@@ -160,6 +170,8 @@ async function carregarVeiculo(){
     statusEl.classList.add("disponivel");
     acaoAlugar.style.display = "block";
   }
+
+  criarCameras();
 }
 
 /* FORM */
@@ -169,8 +181,75 @@ function abrirFormulario(){
 }
 
 function calcularTotal(){
-  const dias = Number(fDias.value || 0);
-  fTotal.value = dias * DIARIA;
+  fTotal.value = Number(fDias.value || 0) * DIARIA;
+}
+
+/* CAMERAS */
+function criarCameras(){
+  const tipos = [
+    ["selfie","user"],
+    ["rg_frente","environment"],
+    ["rg_verso","environment"],
+    ["cpf_doc","environment"]
+  ];
+
+  const docs = document.getElementById("docs");
+  docs.innerHTML = "";
+
+  tipos.forEach(([t,f])=>{
+    docs.innerHTML += `
+      <label>${t.replace("_"," ").toUpperCase()}</label>
+      <button class="btn btn-sec" onclick="abrirCamera('${t}','${f}')">Abrir câmera</button>
+      <video id="video-${t}"></video>
+      <button class="btn btn-sec" id="cap-${t}" onclick="capturar('${t}')" style="display:none">Capturar</button>
+      <img id="prev-${t}" class="preview">
+      <canvas id="canvas-${t}" hidden></canvas>
+    `;
+  });
+}
+
+async function abrirCamera(tipo,facing){
+  fecharCamera();
+  const video = document.getElementById("video-"+tipo);
+  const cap = document.getElementById("cap-"+tipo);
+
+  stream = await navigator.mediaDevices.getUserMedia({
+    video:{facingMode:facing}
+  });
+
+  video.srcObject = stream;
+  video.style.display = "block";
+  cap.style.display = "block";
+  await video.play();
+}
+
+function capturar(tipo){
+  const video = document.getElementById("video-"+tipo);
+  const canvas = document.getElementById("canvas-"+tipo);
+  const img = document.getElementById("prev-"+tipo);
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video,0,0);
+
+  canvas.toBlob(b=>{
+    arquivos[tipo] = b;
+    img.src = URL.createObjectURL(b);
+    img.style.display = "block";
+  });
+
+  fecharCamera();
+}
+
+function fecharCamera(){
+  if(stream){
+    stream.getTracks().forEach(t=>t.stop());
+    stream=null;
+  }
+  document.querySelectorAll("video").forEach(v=>{
+    v.pause();v.srcObject=null;v.style.display="none";
+  });
+  document.querySelectorAll("[id^='cap-']").forEach(b=>b.style.display="none");
 }
 
 /* ENVIO */
