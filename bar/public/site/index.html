@@ -47,7 +47,10 @@ body{
   color:#fff;
   text-align:center;
 }
-.logo{max-height:70px;margin-bottom:10px}
+.logo{
+  max-height:70px;
+  margin-bottom:10px;
+}
 
 /* TABS */
 .tabs{
@@ -125,7 +128,10 @@ body{
   padding:14px;
   font-size:14px;
 }
-.info ul{padding-left:18px;margin:8px 0 0}
+.info ul{
+  padding-left:18px;
+  margin:8px 0 0;
+}
 </style>
 </head>
 
@@ -160,18 +166,24 @@ body{
 </div>
 
 <script>
+/* SUPABASE */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* PARAMS */
 const params = new URLSearchParams(location.search);
 const app_id = params.get("app_id");
 if(!app_id){
-  document.body.innerHTML="Indisponível";
+  document.body.innerHTML = "Indisponível";
   throw "";
 }
 
+/* ELEMENTOS */
+const conteudo = document.getElementById("conteudo");
+
+/* STATE */
 let produtos = [];
 let filtro = "BAR";
 
@@ -185,8 +197,14 @@ async function carregarConfig(){
 
   if(!data) return;
   nome.innerText = data.nome_site || "Vitrine";
-  if(data.logo_url){ logo.src=data.logo_url; logo.style.display="block"; }
-  if(data.banner_url){ banner.src=data.banner_url; banner.style.display="block"; }
+  if(data.logo_url){
+    logo.src = data.logo_url;
+    logo.style.display = "block";
+  }
+  if(data.banner_url){
+    banner.src = data.banner_url;
+    banner.style.display = "block";
+  }
 }
 
 /* PRODUTOS */
@@ -204,10 +222,10 @@ async function carregarProdutos(){
 
 /* RENDER */
 function render(){
-  conteudo.querySelectorAll(".produto").forEach(e=>e.remove());
+  conteudo.querySelectorAll(".produto").forEach(e => e.remove());
 
   produtos
-    .filter(p => (p.destino||"").toUpperCase().trim() === filtro)
+    .filter(p => (p.destino || "").toUpperCase().trim() === filtro)
     .forEach(p=>{
       conteudo.innerHTML += `
         <div class="produto">
@@ -221,10 +239,10 @@ function render(){
     });
 }
 
-/* BOTÃO */
+/* BOTÕES */
 function mostrar(tipo, btn){
   filtro = tipo;
-  document.querySelectorAll(".tab").forEach(b=>b.classList.remove("ativo"));
+  document.querySelectorAll(".tab").forEach(b => b.classList.remove("ativo"));
   btn.classList.add("ativo");
   render();
 }
