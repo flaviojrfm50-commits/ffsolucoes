@@ -1,96 +1,141 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Site do Negócio</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>Vitrine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      color: #111;
+    }
 
-<style>
-body{
-  margin:0;
-  font-family:Arial,system-ui;
-  background:#020617;
-  color:#e5e7eb;
-}
-header{
-  padding:24px;
-  text-align:center;
-  border-bottom:1px solid #1e293b;
-}
-header h1{ color:#38bdf8 }
-.banner{
-  max-width:1100px;
-  margin:30px auto;
-  border-radius:18px;
-  overflow:hidden;
-}
-.banner img{
-  width:100%;
-  height:380px;
-  object-fit:cover;
-}
-</style>
+    header {
+      padding: 20px;
+      text-align: center;
+      background: #111;
+      color: #fff;
+    }
+
+    header img {
+      max-height: 90px;
+      margin-bottom: 10px;
+    }
+
+    .banner {
+      width: 100%;
+      height: 240px;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .container {
+      padding: 20px;
+    }
+
+    .promo {
+      background: #fff;
+      padding: 16px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .gallery img {
+      width: 100%;
+      border-radius: 8px;
+      object-fit: cover;
+      height: 120px;
+    }
+  </style>
 </head>
-
 <body>
 
 <header>
-  <h1 id="nome">Carregando…</h1>
+  <img id="logo" />
+  <h1 id="nome"></h1>
   <p id="descricao"></p>
 </header>
 
-<div class="banner">
-  <img id="banner" src="">
+<div id="banner" class="banner"></div>
+
+<div class="container">
+  <h2>Promoções</h2>
+  <div id="promos"></div>
+
+  <h2>Galeria</h2>
+  <div class="gallery" id="galeria"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-/* ===== APP ===== */
-const params = new URLSearchParams(location.search);
-const appId = params.get("app");
+  const supabase = supabase.createClient(
+    "https://pdajixsoowcyhnjwhgpc.supabase.co",
+    "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+  )
 
-if(!appId){
-  document.body.innerHTML = "Negócio não identificado";
-  throw new Error("APP ausente");
-}
+  const slug = window.location.pathname.split('/')[1]
 
-/* ===== SUPABASE ===== */
-const supabase = supabase.createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-);
+  async function loadVitrine() {
+    const { data: site } = await supabase
+      .from('sites')
+      .select('*')
+      .eq('slug', slug)
+      .single()
 
-/*
-tabelas esperadas:
-- negocios (id, nome, descricao)
-- banners (app_id, imagem_url)
-*/
+    const { data: logo } = await supabase
+      .from('logos')
+      .select('*')
+      .eq('site_id', site.id)
+      .single()
 
-async function carregarSite(){
-  const { data: negocio } = await supabase
-    .from("negocios")
-    .select("nome, descricao")
-    .eq("id", appId)
-    .single();
+    const { data: banner } = await supabase
+      .from('banners')
+      .select('*')
+      .eq('site_id', site.id)
+      .eq('ativo', true)
+      .single()
 
-  if(negocio){
-    document.getElementById("nome").innerText = negocio.nome;
-    document.getElementById("descricao").innerText = negocio.descricao || "";
+    const { data: promos } = await supabase
+      .from('banners')
+      .select('*')
+      .eq('site_id', site.id)
+
+    const { data: fotos } = await supabase
+      .from('documentos')
+      .select('*')
+      .eq('site_id', site.id)
+
+    document.getElementById('nome').innerText = site.nome
+    document.getElementById('descricao').innerText = site.descricao
+    document.getElementById('logo').src = logo.url
+    document.getElementById('banner').style.backgroundImage = `url(${banner.url})`
+
+    const promoDiv = document.getElementById('promos')
+    promos.forEach(p => {
+      const div = document.createElement('div')
+      div.className = 'promo'
+      div.innerHTML = `<strong>${p.titulo}</strong><p>${p.descricao}</p>`
+      promoDiv.appendChild(div)
+    })
+
+    const galeria = document.getElementById('galeria')
+    fotos.forEach(f => {
+      const img = document.createElement('img')
+      img.src = f.url
+      galeria.appendChild(img)
+    })
   }
 
-  const { data: banners } = await supabase
-    .from("banners")
-    .select("imagem_url")
-    .eq("app_id", appId)
-    .limit(1);
-
-  if(banners && banners.length){
-    document.getElementById("banner").src = banners[0].imagem_url;
-  }
-}
-
-carregarSite();
+  loadVitrine()
 </script>
 
 </body>
