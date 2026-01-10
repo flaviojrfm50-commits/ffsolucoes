@@ -61,73 +61,107 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  const supabase = supabase.createClient(
+  // ⚠️ NÃO DECLARAR DUAS VEZES
+  const client = supabase.createClient(
     'SUA_SUPABASE_URL',
     'SUA_PUBLIC_ANON_KEY'
   )
 
-  const params = new URLSearchParams(window.location.search)
-  const appId = params.get('app')
+  const appId = new URLSearchParams(location.search).get('app')
+
+  const nome = document.getElementById('nome')
+  const descricao = document.getElementById('descricao')
+  const bannerInput = document.getElementById('banner')
+  const preview = document.getElementById('preview')
 
   if (!appId) {
     alert('App não encontrado')
+    throw new Error('Sem app_id')
   }
 
-  async function carregarBanner() {
-    const { data } = await supabase
+  // 🔹 carregar dados
+  async function carregarDados() {
+    const { data: site } = await client
+      .from('sites')
+      .select('*')
+      .eq('id', appId)
+      .single()
+
+    if (site) {
+      nome.value = site.nome || ''
+      descricao.value = site.descricao || ''
+    }
+
+    const { data: banner } = await client
       .from('banners')
       .select('*')
       .eq('site_id', appId)
       .eq('ativo', true)
       .single()
 
-    if (data) {
-      document.getElementById('preview').src = data.url
-    }
+    if (banner) preview.src = banner.url
   }
 
+  // 🔹 salvar texto
+  async function salvarDados() {
+    await client
+      .from('sites')
+      .update({
+        nome: nome.value,
+        descricao: descricao.value
+      })
+      .eq('id', appId)
+
+    alert('Dados salvos ✅')
+  }
+
+  // 🔹 salvar banner
   async function salvarBanner() {
-    const file = document.getElementById('bannerFile').files[0]
+    const file = bannerInput.files[0]
     if (!file) return alert('Selecione uma imagem')
 
-    const filePath = `banners/${appId}/${Date.now()}-${file.name}`
+    const path = `banners/${appId}/${Date.now()}-${file.name}`
 
-    const { error: uploadError } = await supabase
+    const { error } = await client
       .storage
       .from('public')
-      .upload(filePath, file)
+      .upload(path, file)
 
-    if (uploadError) {
-      alert('Erro ao subir imagem')
+    if (error) {
+      alert('Erro no upload')
       return
     }
 
-    const { data: urlData } = supabase
+    const { data } = client
       .storage
       .from('public')
-      .getPublicUrl(filePath)
+      .getPublicUrl(path)
 
-    // desativa banners antigos
-    await supabase
+    await client
       .from('banners')
       .update({ ativo: false })
       .eq('site_id', appId)
 
-    // salva novo banner
-    await supabase
+    await client
       .from('banners')
       .insert({
         site_id: appId,
-        url: urlData.publicUrl,
+        url: data.publicUrl,
         ativo: true
       })
 
+    preview.src = data.publicUrl
     alert('Banner atualizado 🔥')
-    carregarBanner()
   }
 
-  carregarBanner()
+  // ⚠️ EXPOR FUNÇÕES PRO HTML
+  window.salvarBanner = salvarBanner
+  window.salvarDados = salvarDados
+
+  carregarDados()
 </script>
+
 
 </body>
 </html>
+
