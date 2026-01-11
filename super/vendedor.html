@@ -16,12 +16,13 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
 .badge{background:#334155;padding:4px 8px;border-radius:6px;font-size:12px}
 small{opacity:.8}
 hr{margin:30px 0;border:none;height:1px;background:rgba(255,255,255,.2)}
+a{color:#22c55e;text-decoration:none}
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
+<!-- LOGIN DO VENDEDOR -->
 <div class="login" id="loginBox">
   <h2>🔐 Login do Vendedor</h2>
   <input id="emailVendedor" placeholder="E-mail">
@@ -47,8 +48,8 @@ hr{margin:30px 0;border:none;height:1px;background:rgba(255,255,255,.2)}
   <input id="telefoneNegocio" placeholder="Telefone">
 
   <input id="nomeDono" placeholder="Nome do dono">
-  <input id="loginDono" placeholder="Login do dono">
-  <input id="senhaDono" type="password" placeholder="Senha do dono">
+  <input id="loginDono" placeholder="Login (e-mail)">
+  <input id="senhaDono" type="password" placeholder="Senha">
 </div>
 
 <button onclick="criarNegocio()">Cadastrar Negócio</button>
@@ -89,9 +90,9 @@ window.login = async ()=>{
   carregarNegocios();
 };
 
-/* CRIAR NEGÓCIO + DONO */
+/* CRIAR DONO + NEGÓCIO */
 window.criarNegocio = async ()=>{
-  // cria dono
+  // cria usuário dono
   const { data: dono, error: erroDono } = await supabase
     .from("usuarios")
     .insert({
@@ -105,7 +106,7 @@ window.criarNegocio = async ()=>{
     .single();
 
   if(erroDono){
-    alert("Erro ao criar dono");
+    alert("Erro ao criar usuário do dono");
     return;
   }
 
@@ -119,6 +120,8 @@ window.criarNegocio = async ()=>{
       telefone: telefoneNegocio.value,
       vendedor_id: vendedorLogado.id,
       dono_id: dono.id,
+      dono_nome: nomeDono.value,
+      dono_login: loginDono.value,
       ativo: true
     })
     .select()
@@ -137,12 +140,17 @@ window.criarNegocio = async ()=>{
   const linkPainel = "https://anajuliafarias659-cloud.github.io/ffsolucoes/";
 
   alert(
-`✅ Negócio criado!
+`✅ Negócio criado com sucesso!
 
-🔗 Painel:
+🏪 ${negocio.nome}
+
+🔗 Painel do sistema:
 ${linkPainel}
 
-👤 Login:
+👤 Usuário:
+${nomeDono.value}
+
+🔐 Login:
 ${loginDono.value}
 
 🔑 Senha:
@@ -176,7 +184,8 @@ async function carregarNegocios(){
 🔗 Painel:
 https://anajuliafarias659-cloud.github.io/ffsolucoes/
 
-👤 Login: ${n.dono_login || "conforme cadastro"}
+👤 Usuário: ${n.dono_nome}
+🔐 Login: ${n.dono_login}
 🔑 Senha: conforme informado
 
 🌍 Link público:
@@ -186,6 +195,7 @@ ${linkPublico}
     listaNegocios.innerHTML += `
       <div class="card">
         <b>${n.nome}</b> <span class="badge">${n.tipo}</span><br><br>
+
         <small>📍 Endereço:</small> ${n.endereco}<br>
         <small>📞 Telefone:</small> ${n.telefone}<br><br>
 
