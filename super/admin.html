@@ -18,6 +18,7 @@ button.danger{background:#e53935;color:#fff}
 hr{margin:40px 0;border:none;height:1px;background:rgba(255,255,255,.2)}
 a{color:#22c55e;text-decoration:none}
 .btn-small{width:auto;padding:6px 12px;font-size:12px;border-radius:8px}
+.badge{background:#334155;padding:4px 8px;border-radius:6px;font-size:12px}
 </style>
 </head>
 
@@ -60,10 +61,7 @@ a{color:#22c55e;text-decoration:none}
   <option value="editar">Editar</option>
   <option value="visualizar">Visualizar</option>
 </select>
-
-<!-- ⚠️ MANTIDO: escolha de negócio -->
 <select id="appAdmin"></select>
-
 <button onclick="criarAdmin()">Criar Admin</button>
 
 <h3>👥 Admins</h3>
@@ -75,13 +73,13 @@ a{color:#22c55e;text-decoration:none}
 <h2>💰 Cadastro de Vendedor</h2>
 <div class="card" style="flex-direction:column;align-items:stretch">
   <input id="nomeVendedor" placeholder="Nome completo">
-  <input id="usuarioVendedor" placeholder="Usuário">
+  <input id="emailVendedor" placeholder="E-mail / usuário">
   <input id="senhaVendedor" type="password" placeholder="Senha">
   <input id="comissaoVendedor" type="number" value="10" placeholder="Comissão (%)">
   <button onclick="criarVendedor()">Cadastrar Vendedor</button>
 </div>
 
-<h3>🧾 Vendedores</h3>
+<h3>🧾 Vendedores (Acompanhamento)</h3>
 <div id="listaVendedores"></div>
 
 </div>
@@ -121,56 +119,33 @@ window.login = async ()=>{
 
 /* NEGÓCIOS */
 window.criarNegocio = async ()=>{
-  const id = nomeNegocio.dataset.editando;
-
-  if(id){
-    await supabase.from("apps")
-      .update({nome:nomeNegocio.value,tipo:tipoNegocio.value})
-      .eq("id",id);
-    delete nomeNegocio.dataset.editando;
-  }else{
-    await supabase.from("apps").insert({
-      nome:nomeNegocio.value,
-      tipo:tipoNegocio.value,
-      public_url:getPublicUrlBase(tipoNegocio.value)
-    });
-  }
-
+  await supabase.from("apps").insert({
+    nome:nomeNegocio.value,
+    tipo:tipoNegocio.value,
+    public_url:getPublicUrlBase(tipoNegocio.value)
+  });
   nomeNegocio.value="";
   carregarNegocios();
 };
 
 async function carregarNegocios(){
   const { data } = await supabase.from("apps").select("*");
-
   listaNegocios.innerHTML="";
   appAdmin.innerHTML="";
-
   (data||[]).forEach(n=>{
     const link = `https://anajuliafarias659-cloud.github.io/ffsolucoes/${getPublicUrlBase(n.tipo)}${n.id}`;
-
     listaNegocios.innerHTML+=`
       <div class="card">
         <div>
           <b>${n.nome}</b><br>
           <a href="${link}" target="_blank">🌍 Site Público</a>
         </div>
-        <div>
-          <button class="btn-small" onclick="editarNegocio('${n.id}','${n.nome}','${n.tipo}')">Editar</button>
-          <button class="danger btn-small" onclick="excluirNegocio('${n.id}')">Excluir</button>
-        </div>
+        <button class="danger btn-small" onclick="excluirNegocio('${n.id}')">Excluir</button>
       </div>
     `;
-
     appAdmin.innerHTML+=`<option value="${n.id}">${n.nome}</option>`;
   });
 }
-
-window.editarNegocio = (id,nome,tipo)=>{
-  nomeNegocio.value=nome;
-  tipoNegocio.value=tipo;
-  nomeNegocio.dataset.editando=id;
-};
 
 window.excluirNegocio = async id=>{
   if(confirm("Excluir negócio?")){
@@ -185,10 +160,9 @@ window.criarAdmin = async ()=>{
     usuario:usuarioAdmin.value,
     senha:senhaAdmin.value,
     permissao:permissaoAdmin.value,
-    app_id:appAdmin.value, // 🔒 MANTIDO
+    app_id:appAdmin.value,
     ativo:true
   });
-
   usuarioAdmin.value="";
   senhaAdmin.value="";
   carregarAdmins();
@@ -197,7 +171,6 @@ window.criarAdmin = async ()=>{
 async function carregarAdmins(){
   const { data } = await supabase.from("admins").select("*");
   listaAdmins.innerHTML="";
-
   (data||[]).forEach(a=>{
     listaAdmins.innerHTML+=`
       <div class="card">
@@ -215,45 +188,73 @@ window.excluirAdmin = async id=>{
   }
 };
 
-/* VENDEDORES */
+/* VENDEDOR */
+let vendedorEditando = null;
+
 window.criarVendedor = async ()=>{
-  await supabase.from("vendedores").insert({
-    nome:nomeVendedor.value,
-    usuario:usuarioVendedor.value,
-    senha:senhaVendedor.value,
-    comissao_percentual:comissaoVendedor.value,
-    ativo:true
-  });
+  if(vendedorEditando){
+    await supabase.from("usuarios").update({
+      nome:nomeVendedor.value,
+      email:emailVendedor.value,
+      comissao_percentual:Number(comissaoVendedor.value)
+    }).eq("id",vendedorEditando);
+    vendedorEditando = null;
+  }else{
+    await supabase.from("usuarios").insert({
+      nome:nomeVendedor.value,
+      email:emailVendedor.value,
+      senha:senhaVendedor.value,
+      tipo:"vendedor",
+      comissao_percentual:Number(comissaoVendedor.value),
+      ativo:true
+    });
+  }
 
   nomeVendedor.value="";
-  usuarioVendedor.value="";
+  emailVendedor.value="";
   senhaVendedor.value="";
+  comissaoVendedor.value=10;
   carregarVendedores();
 };
 
-async function carregarVendedores(){
-  const { data } = await supabase.from("vendedores").select("*");
-  listaVendedores.innerHTML="";
+window.editarVendedor = (id,nome,email,comissao)=>{
+  vendedorEditando = id;
+  nomeVendedor.value = nome;
+  emailVendedor.value = email;
+  comissaoVendedor.value = comissao;
+};
 
+window.excluirVendedor = async id=>{
+  if(confirm("Desativar vendedor?")){
+    await supabase.from("usuarios").update({ativo:false}).eq("id",id);
+    carregarVendedores();
+  }
+};
+
+async function carregarVendedores(){
+  const { data } = await supabase.from("usuarios").select("*").eq("tipo","vendedor");
+  listaVendedores.innerHTML="";
   (data||[]).forEach(v=>{
     listaVendedores.innerHTML+=`
       <div class="card">
         <div>
           <b>${v.nome}</b><br>
-          <small>${v.usuario} • ${v.comissao_percentual}%</small>
+          <small>${v.email}</small><br>
+          <span class="badge">Comissão: ${v.comissao_percentual}%</span>
         </div>
-        <button class="danger btn-small" onclick="excluirVendedor('${v.id}')">Excluir</button>
+        <div>
+          <button class="btn-small" onclick="editarVendedor(
+            '${v.id}',
+            '${v.nome}',
+            '${v.email}',
+            ${v.comissao_percentual}
+          )">Editar</button>
+          <button class="danger btn-small" onclick="excluirVendedor('${v.id}')">Desativar</button>
+        </div>
       </div>
     `;
   });
 }
-
-window.excluirVendedor = async id=>{
-  if(confirm("Excluir vendedor?")){
-    await supabase.from("vendedores").delete().eq("id",id);
-    carregarVendedores();
-  }
-};
 </script>
 
 </body>
