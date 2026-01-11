@@ -25,7 +25,7 @@ a{color:#22c55e;text-decoration:none}
 <!-- LOGIN DO VENDEDOR -->
 <div class="login" id="loginBox">
   <h2>🔐 Login do Vendedor</h2>
-  <input id="emailVendedor" placeholder="E-mail">
+  <input id="emailVendedor" placeholder="Usuário / E-mail">
   <input id="senhaVendedor" type="password" placeholder="Senha">
   <button onclick="login()">Entrar</button>
 </div>
@@ -48,8 +48,8 @@ a{color:#22c55e;text-decoration:none}
   <input id="telefoneNegocio" placeholder="Telefone">
 
   <input id="nomeDono" placeholder="Nome do dono">
-  <input id="loginDono" placeholder="Login (e-mail)">
-  <input id="senhaDono" type="password" placeholder="Senha">
+  <input id="loginDono" placeholder="Usuário do dono">
+  <input id="senhaDono" type="password" placeholder="Senha do dono">
 </div>
 
 <button onclick="criarNegocio()">Cadastrar Negócio</button>
@@ -71,12 +71,12 @@ const supabase = createClient(
 
 let vendedorLogado = null;
 
-/* LOGIN */
+/* LOGIN DO VENDEDOR (COMPATÍVEL COM SISTEMA ANTIGO) */
 window.login = async ()=>{
   const { data } = await supabase
     .from("usuarios")
     .select("*")
-    .eq("email", emailVendedor.value)
+    .eq("usuario", emailVendedor.value)
     .eq("senha", senhaVendedor.value)
     .eq("tipo","vendedor")
     .eq("ativo",true)
@@ -90,13 +90,14 @@ window.login = async ()=>{
   carregarNegocios();
 };
 
-/* CRIAR DONO + NEGÓCIO */
+/* CRIAR DONO + NEGÓCIO (RETROCOMPATÍVEL) */
 window.criarNegocio = async ()=>{
-  // cria usuário dono
+  // cria usuário DONO (compatível com login antigo)
   const { data: dono, error: erroDono } = await supabase
     .from("usuarios")
     .insert({
       nome: nomeDono.value,
+      usuario: loginDono.value,   // 👈 compatibilidade total
       email: loginDono.value,
       senha: senhaDono.value,
       tipo: "dono",
@@ -148,9 +149,6 @@ window.criarNegocio = async ()=>{
 ${linkPainel}
 
 👤 Usuário:
-${nomeDono.value}
-
-🔐 Login:
 ${loginDono.value}
 
 🔑 Senha:
@@ -184,8 +182,7 @@ async function carregarNegocios(){
 🔗 Painel:
 https://anajuliafarias659-cloud.github.io/ffsolucoes/
 
-👤 Usuário: ${n.dono_nome}
-🔐 Login: ${n.dono_login}
+👤 Usuário: ${n.dono_login}
 🔑 Senha: conforme informado
 
 🌍 Link público:
