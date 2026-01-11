@@ -50,20 +50,32 @@ button{
   background:#e53935;
   color:#fff;
 }
-.login{max-width:420px;margin:60px auto}
+.login{
+  max-width:420px;
+  margin:60px auto;
+}
 .chat-box{
   background:#020617;
   padding:15px;
   border-radius:12px;
   margin-top:15px;
+  max-height:300px;
+  overflow-y:auto;
 }
 .msg{
   padding:8px 12px;
   border-radius:10px;
   margin-top:6px;
+  max-width:80%;
 }
-.admin{background:#2563eb}
+.admin{background:#2563eb;margin-left:auto}
 .publico{background:#334155}
+hr{
+  margin:30px 0;
+  border:none;
+  height:1px;
+  background:rgba(255,255,255,.2);
+}
 </style>
 </head>
 
@@ -74,7 +86,8 @@ button{
 
 <!-- LOGIN -->
 <div class="login" id="loginBox">
-  <input type="password" id="senhaSuper" placeholder="Senha Super Admin">
+  <input id="usuarioSuper" placeholder="Usuário">
+  <input type="password" id="senhaSuper" placeholder="Senha">
   <button onclick="login()">Entrar</button>
 </div>
 
@@ -115,28 +128,37 @@ const supabase = createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* ELEMENTOS */
 const loginBox = document.getElementById("loginBox");
 const painel = document.getElementById("painel");
+const usuarioSuper = document.getElementById("usuarioSuper");
 const senhaSuper = document.getElementById("senhaSuper");
 
 const listaAdmins = document.getElementById("listaAdmins");
 const appChat = document.getElementById("appChat");
 const chatMensagens = document.getElementById("chatMensagens");
+const msgAdmin = document.getElementById("msgAdmin");
 
-/* LOGIN SEGURO */
-window.login = async ()=>{
+/* LOGIN SUPER ADMIN */
+window.login = async function(){
   const { data } = await supabase
     .from("super_admins")
     .select("*")
+    .eq("usuario", usuarioSuper.value)
     .eq("senha", senhaSuper.value)
     .eq("ativo", true)
     .maybeSingle();
 
-  if(!data){ alert("Senha incorreta"); return; }
+  if(!data){
+    alert("Usuário ou senha incorretos");
+    return;
+  }
 
+  usuarioSuper.value="";
   senhaSuper.value="";
   loginBox.style.display="none";
   painel.style.display="block";
+
   carregarAdmins();
   carregarApps();
 };
@@ -145,16 +167,20 @@ window.login = async ()=>{
 async function carregarAdmins(){
   const { data } = await supabase.from("admins").select("*");
   listaAdmins.innerHTML="";
-  data.forEach(a=>{
+  (data || []).forEach(a=>{
     listaAdmins.innerHTML+=`
       <div class="card">
-        <b>${a.usuario}</b>
+        <div>
+          <b>${a.usuario}</b><br>
+          <small>${a.permissao}</small>
+        </div>
         <button onclick="excluirAdmin('${a.id}')">Excluir</button>
-      </div>`;
+      </div>
+    `;
   });
 }
 
-window.criarAdmin = async ()=>{
+window.criarAdmin = async function(){
   await supabase.from("admins").insert({
     usuario:usuarioAdmin.value,
     senha:senhaAdmin.value,
@@ -162,11 +188,14 @@ window.criarAdmin = async ()=>{
     app_id:appAdmin.value,
     ativo:true
   });
+
+  usuarioAdmin.value="";
+  senhaAdmin.value="";
   carregarAdmins();
 };
 
-window.excluirAdmin = async (id)=>{
-  if(!confirm("Excluir este admin?")) return;
+window.excluirAdmin = async function(id){
+  if(!confirm("Deseja excluir este admin?")) return;
   await supabase.from("admins").delete().eq("id",id);
   carregarAdmins();
 };
@@ -175,36 +204,41 @@ window.excluirAdmin = async (id)=>{
 async function carregarApps(){
   const { data } = await supabase.from("apps").select("id,nome");
   appChat.innerHTML="";
-  data.forEach(a=>{
+  (data || []).forEach(a=>{
     appChat.innerHTML+=`<option value="${a.id}">${a.nome}</option>`;
   });
   carregarChat();
 }
 
-window.carregarChat = async ()=>{
-  const appId = appChat.value;
+window.carregarChat = async function(){
   const { data } = await supabase
     .from("chat_admin")
     .select("*")
-    .eq("app_id", appId)
+    .eq("app_id", appChat.value)
     .order("created_at");
 
   chatMensagens.innerHTML="";
-  data.forEach(m=>{
+  (data || []).forEach(m=>{
     chatMensagens.innerHTML+=`
       <div class="msg ${m.remetente}">
         ${m.mensagem}
-      </div>`;
+      </div>
+    `;
   });
+
+  chatMensagens.scrollTop = chatMensagens.scrollHeight;
 };
 
-window.enviarMensagem = async ()=>{
+window.enviarMensagem = async function(){
+  if(!msgAdmin.value) return;
+
   await supabase.from("chat_admin").insert({
     app_id: appChat.value,
     remetente: "admin",
     mensagem: msgAdmin.value,
     lida: false
   });
+
   msgAdmin.value="";
   carregarChat();
 };
