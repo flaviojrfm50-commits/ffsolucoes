@@ -9,18 +9,18 @@
 *{box-sizing:border-box}
 body{
   margin:0;
-  font-family:Arial,sans-serif;
+  font-family:Arial, Helvetica, sans-serif;
   background:#020617;
   color:#fff;
 }
 .container{
-  max-width:1100px;
+  max-width:1200px;
   margin:40px auto;
   padding:30px;
   border-radius:20px;
   background:linear-gradient(135deg,#0f172a,#4b1fa0);
 }
-h1,h2{margin-top:25px}
+h1,h2,h3{margin-top:25px}
 input,select,button,textarea{
   width:100%;
   padding:14px;
@@ -35,6 +35,10 @@ button{
   font-weight:bold;
   cursor:pointer;
 }
+button.danger{
+  background:#e53935;
+  color:#fff;
+}
 .card{
   background:#020617;
   padding:16px;
@@ -45,14 +49,15 @@ button{
   align-items:center;
   gap:12px;
 }
-.card button{
-  width:auto;
-  background:#e53935;
-  color:#fff;
-}
 .login{
   max-width:420px;
-  margin:60px auto;
+  margin:80px auto;
+}
+hr{
+  margin:40px 0;
+  border:none;
+  height:1px;
+  background:rgba(255,255,255,.2);
 }
 .chat-box{
   background:#020617;
@@ -70,11 +75,24 @@ button{
 }
 .admin{background:#2563eb;margin-left:auto}
 .publico{background:#334155}
-hr{
-  margin:30px 0;
-  border:none;
-  height:1px;
-  background:rgba(255,255,255,.2);
+.topo{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+a.link-publico{
+  color:#22c55e;
+  text-decoration:none;
+  font-weight:bold;
+}
+a.link-publico:hover{
+  text-decoration:underline;
+}
+.tag{
+  font-size:12px;
+  padding:4px 10px;
+  border-radius:20px;
+  background:#334155;
 }
 </style>
 </head>
@@ -82,18 +100,42 @@ hr{
 <body>
 <div class="container">
 
-<h1>🔐 Super Admin — FF Soluções</h1>
+<h1>👑 Super Admin — FF Soluções</h1>
 
 <!-- LOGIN -->
 <div class="login" id="loginBox">
   <input id="usuarioSuper" placeholder="Usuário">
-  <input type="password" id="senhaSuper" placeholder="Senha">
+  <input id="senhaSuper" type="password" placeholder="Senha">
   <button onclick="login()">Entrar</button>
 </div>
 
 <!-- PAINEL -->
 <div id="painel" style="display:none">
 
+<div class="topo">
+  <h2>Painel Geral</h2>
+  <button class="danger" onclick="logout()">Sair</button>
+</div>
+
+<hr>
+
+<!-- NEGÓCIOS -->
+<h2>🏢 Criar Negócio</h2>
+<input id="nomeNegocio" placeholder="Nome do negócio">
+<select id="tipoNegocio">
+  <option value="bar">Bar</option>
+  <option value="restaurante">Restaurante</option>
+  <option value="mercado">Mercado</option>
+  <option value="locadora">Locadora</option>
+</select>
+<button onclick="criarNegocio()">Criar Negócio</button>
+
+<h3>📋 Negócios</h3>
+<div id="listaNegocios"></div>
+
+<hr>
+
+<!-- ADMINS -->
 <h2>👤 Criar Admin</h2>
 <input id="usuarioAdmin" placeholder="Usuário">
 <input id="senhaAdmin" type="password" placeholder="Senha">
@@ -101,14 +143,17 @@ hr{
   <option value="editar">Editar</option>
   <option value="visualizar">Visualizar</option>
 </select>
-<input id="appAdmin" placeholder="ID do Negócio">
+<select id="appAdmin">
+  <option value="">Selecione o negócio</option>
+</select>
 <button onclick="criarAdmin()">Criar Admin</button>
 
-<h2>👥 Admins</h2>
+<h3>👥 Admins</h3>
 <div id="listaAdmins"></div>
 
 <hr>
 
+<!-- CHAT -->
 <h2>💬 Chat com Público</h2>
 <select id="appChat" onchange="carregarChat()"></select>
 
@@ -128,19 +173,16 @@ const supabase = createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ELEMENTOS */
-const loginBox = document.getElementById("loginBox");
-const painel = document.getElementById("painel");
-const usuarioSuper = document.getElementById("usuarioSuper");
-const senhaSuper = document.getElementById("senhaSuper");
+/* MAPA DOS SITES PÚBLICOS (MANTIDO) */
+const MAPA_PUBLICO = {
+  bar: "bar/public/index.html",
+  restaurante: "restaurante/public/index.html",
+  mercado: "mercado/public/index.html",
+  locadora: "locadora/Locadora/public/index.html"
+};
 
-const listaAdmins = document.getElementById("listaAdmins");
-const appChat = document.getElementById("appChat");
-const chatMensagens = document.getElementById("chatMensagens");
-const msgAdmin = document.getElementById("msgAdmin");
-
-/* LOGIN SUPER ADMIN */
-window.login = async function(){
+/* LOGIN */
+window.login = async ()=>{
   const { data } = await supabase
     .from("super_admins")
     .select("*")
@@ -150,7 +192,7 @@ window.login = async function(){
     .maybeSingle();
 
   if(!data){
-    alert("Usuário ou senha incorretos");
+    alert("Usuário ou senha inválidos");
     return;
   }
 
@@ -159,13 +201,63 @@ window.login = async function(){
   loginBox.style.display="none";
   painel.style.display="block";
 
+  carregarNegocios();
   carregarAdmins();
-  carregarApps();
+  carregarAppsChat();
 };
+
+/* LOGOUT */
+window.logout = ()=>{
+  painel.style.display="none";
+  loginBox.style.display="block";
+};
+
+/* NEGÓCIOS */
+window.criarNegocio = async ()=>{
+  if(!nomeNegocio.value) return;
+
+  await supabase.from("apps").insert({
+    nome: nomeNegocio.value,
+    tipo: tipoNegocio.value
+  });
+
+  nomeNegocio.value="";
+  carregarNegocios();
+};
+
+async function carregarNegocios(){
+  const { data } = await supabase.from("apps").select("*");
+
+  listaNegocios.innerHTML="";
+  appAdmin.innerHTML='<option value="">Selecione o negócio</option>';
+  appChat.innerHTML="";
+
+  (data || []).forEach(n=>{
+    const caminho = MAPA_PUBLICO[n.tipo];
+    const linkPublico = caminho
+      ? `https://anajuliafarias659-cloud.github.io/ffsolucoes/${caminho}?app=${n.id}`
+      : "#";
+
+    listaNegocios.innerHTML+=`
+      <div class="card">
+        <div>
+          <a href="${linkPublico}" target="_blank" class="link-publico">🌍 Site Público</a><br>
+          <b>${n.nome}</b>
+          <span class="tag">${n.tipo}</span><br>
+          <small>ID: ${n.id}</small>
+        </div>
+      </div>
+    `;
+
+    appAdmin.innerHTML+=`<option value="${n.id}">${n.nome}</option>`;
+    appChat.innerHTML+=`<option value="${n.id}">${n.nome}</option>`;
+  });
+}
 
 /* ADMINS */
 async function carregarAdmins(){
   const { data } = await supabase.from("admins").select("*");
+
   listaAdmins.innerHTML="";
   (data || []).forEach(a=>{
     listaAdmins.innerHTML+=`
@@ -174,13 +266,15 @@ async function carregarAdmins(){
           <b>${a.usuario}</b><br>
           <small>${a.permissao}</small>
         </div>
-        <button onclick="excluirAdmin('${a.id}')">Excluir</button>
+        <button class="danger" onclick="excluirAdmin('${a.id}')">Excluir</button>
       </div>
     `;
   });
 }
 
-window.criarAdmin = async function(){
+window.criarAdmin = async ()=>{
+  if(!usuarioAdmin.value || !senhaAdmin.value || !appAdmin.value) return;
+
   await supabase.from("admins").insert({
     usuario:usuarioAdmin.value,
     senha:senhaAdmin.value,
@@ -194,14 +288,14 @@ window.criarAdmin = async function(){
   carregarAdmins();
 };
 
-window.excluirAdmin = async function(id){
-  if(!confirm("Deseja excluir este admin?")) return;
+window.excluirAdmin = async (id)=>{
+  if(!confirm("Excluir este admin?")) return;
   await supabase.from("admins").delete().eq("id",id);
   carregarAdmins();
 };
 
 /* CHAT */
-async function carregarApps(){
+async function carregarAppsChat(){
   const { data } = await supabase.from("apps").select("id,nome");
   appChat.innerHTML="";
   (data || []).forEach(a=>{
@@ -210,7 +304,7 @@ async function carregarApps(){
   carregarChat();
 }
 
-window.carregarChat = async function(){
+window.carregarChat = async ()=>{
   const { data } = await supabase
     .from("chat_admin")
     .select("*")
@@ -229,7 +323,7 @@ window.carregarChat = async function(){
   chatMensagens.scrollTop = chatMensagens.scrollHeight;
 };
 
-window.enviarMensagem = async function(){
+window.enviarMensagem = async ()=>{
   if(!msgAdmin.value) return;
 
   await supabase.from("chat_admin").insert({
