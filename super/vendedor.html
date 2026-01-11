@@ -25,7 +25,7 @@ a{color:#22c55e;text-decoration:none}
 <!-- LOGIN DO VENDEDOR -->
 <div class="login" id="loginBox">
   <h2>🔐 Login do Vendedor</h2>
-  <input id="emailVendedor" placeholder="Usuário / E-mail">
+  <input id="usuarioVendedor" placeholder="Usuário">
   <input id="senhaVendedor" type="password" placeholder="Senha">
   <button onclick="login()">Entrar</button>
 </div>
@@ -47,8 +47,7 @@ a{color:#22c55e;text-decoration:none}
   <input id="enderecoNegocio" placeholder="Endereço">
   <input id="telefoneNegocio" placeholder="Telefone">
 
-  <input id="nomeDono" placeholder="Nome do dono">
-  <input id="loginDono" placeholder="Usuário do dono">
+  <input id="usuarioDono" placeholder="Usuário do dono">
   <input id="senhaDono" type="password" placeholder="Senha do dono">
 </div>
 
@@ -71,47 +70,29 @@ const supabase = createClient(
 
 let vendedorLogado = null;
 
-/* LOGIN DO VENDEDOR (COMPATÍVEL COM SISTEMA ANTIGO) */
+/* LOGIN DO VENDEDOR (USA TABELA usuarios — JÁ EXISTENTE) */
 window.login = async ()=>{
   const { data } = await supabase
     .from("usuarios")
     .select("*")
-    .eq("usuario", emailVendedor.value)
+    .eq("usuario", usuarioVendedor.value)
     .eq("senha", senhaVendedor.value)
     .eq("tipo","vendedor")
-    .eq("ativo",true)
+    .eq("ativo", true)
     .maybeSingle();
 
   if(!data) return alert("Login inválido");
 
   vendedorLogado = data;
-  loginBox.style.display="none";
-  painel.style.display="block";
+  loginBox.style.display = "none";
+  painel.style.display = "block";
   carregarNegocios();
 };
 
-/* CRIAR DONO + NEGÓCIO (RETROCOMPATÍVEL) */
+/* CRIAR NEGÓCIO + DONO (DONO É ADMIN — IGUAL SUPER ADMIN) */
 window.criarNegocio = async ()=>{
-  // cria usuário DONO (compatível com login antigo)
-  const { data: dono, error: erroDono } = await supabase
-    .from("usuarios")
-    .insert({
-      nome: nomeDono.value,
-      usuario: loginDono.value,   // 👈 compatibilidade total
-      email: loginDono.value,
-      senha: senhaDono.value,
-      tipo: "dono",
-      ativo: true
-    })
-    .select()
-    .single();
 
-  if(erroDono){
-    alert("Erro ao criar usuário do dono");
-    return;
-  }
-
-  // cria negócio
+  /* 1️⃣ cria negócio */
   const { data: negocio, error } = await supabase
     .from("apps")
     .insert({
@@ -120,9 +101,6 @@ window.criarNegocio = async ()=>{
       endereco: enderecoNegocio.value,
       telefone: telefoneNegocio.value,
       vendedor_id: vendedorLogado.id,
-      dono_id: dono.id,
-      dono_nome: nomeDono.value,
-      dono_login: loginDono.value,
       ativo: true
     })
     .select()
@@ -130,6 +108,22 @@ window.criarNegocio = async ()=>{
 
   if(error){
     alert("Erro ao criar negócio");
+    return;
+  }
+
+  /* 2️⃣ cria DONO como ADMIN (ESSA É A CHAVE) */
+  const { error: erroAdmin } = await supabase
+    .from("admins")
+    .insert({
+      usuario: usuarioDono.value,
+      senha: senhaDono.value,
+      permissao: "editar",
+      app_id: negocio.id,
+      ativo: true
+    });
+
+  if(erroAdmin){
+    alert("Erro ao criar usuário do dono");
     return;
   }
 
@@ -141,20 +135,20 @@ window.criarNegocio = async ()=>{
   const linkPainel = "https://anajuliafarias659-cloud.github.io/ffsolucoes/";
 
   alert(
-`✅ Negócio criado com sucesso!
+`✅ NEGÓCIO CRIADO COM SUCESSO!
 
 🏪 ${negocio.nome}
 
-🔗 Painel do sistema:
+🔐 PAINEL DO SISTEMA:
 ${linkPainel}
 
 👤 Usuário:
-${loginDono.value}
+${usuarioDono.value}
 
 🔑 Senha:
 ${senhaDono.value}
 
-🌍 Link público:
+🌍 LINK PÚBLICO:
 ${linkPublico}`
   );
 
@@ -168,9 +162,9 @@ async function carregarNegocios(){
     .select("*")
     .eq("vendedor_id", vendedorLogado.id);
 
-  listaNegocios.innerHTML="";
+  listaNegocios.innerHTML = "";
 
-  (data||[]).forEach(n=>{
+  (data || []).forEach(n=>{
     const linkPublico =
       n.tipo==="locadora"
       ? `https://anajuliafarias659-cloud.github.io/ffsolucoes/locadora/public/index.html?app_id=${n.id}`
@@ -179,10 +173,10 @@ async function carregarNegocios(){
     const msg = `
 🏪 Seu sistema está pronto!
 
-🔗 Painel:
+🔐 Painel:
 https://anajuliafarias659-cloud.github.io/ffsolucoes/
 
-👤 Usuário: ${n.dono_login}
+👤 Usuário: ${usuarioDono.value}
 🔑 Senha: conforme informado
 
 🌍 Link público:
