@@ -121,6 +121,8 @@ let timerAdd=null;
   <div class="botoes-linha baixo">
     <button class="btn btn-mapa" onclick="abrirMapa()">🗺️ Mapa das Mesas</button>
     <button class="btn btn-voltar" onclick="history.back()">Voltar</button>
+    <button class="btn btn-voltar" onclick="sairAdmin()">Sair (Admin)</button>
+
   </div>
 </div>
 
@@ -242,6 +244,15 @@ async function adicionarMesa(){
   criandoMesa=false;
   carregarMesas();
 }
+function sairAdmin(){
+  // limpa só o necessário
+  localStorage.removeItem("funcionario_logado");
+
+  // se quiser sair total:
+  // localStorage.removeItem("admin_logado");
+
+  location.href = "../auth/login.html";
+}
 
 function vendaAvulsa(){
   location.href=`venda-avulsa.html?app_id=${app_id}`;
@@ -256,4 +267,5 @@ setInterval(carregarMesas,4000);
 
 </body>
 </html>
+
 
