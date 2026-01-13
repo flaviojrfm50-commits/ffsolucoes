@@ -43,6 +43,10 @@ button.danger{
   background:#e53935;
   color:#fff;
 }
+button.sec{
+  background:#2563eb;
+  color:#fff;
+}
 .lista{
   margin-top:20px;
 }
@@ -54,8 +58,20 @@ button.danger{
   display:flex;
   justify-content:space-between;
   align-items:center;
+  gap:10px;
 }
 small{opacity:.7}
+.links{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.actions{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+a{color:#22c55e;text-decoration:none}
 </style>
 </head>
 
@@ -68,18 +84,21 @@ small{opacity:.7}
 
 <div class="container">
 
+<!-- CRIAR USUÁRIO -->
 <div class="card">
   <h3>➕ Criar Usuário do Mercado</h3>
   <input id="nome" placeholder="Nome">
   <input id="email" placeholder="Email / Usuário">
   <input id="senha" type="password" placeholder="Senha">
   <select id="tipo">
-    <option value="vendedor">Vendedor</option>
+    <option value="caixa">Caixa</option>
+    <option value="produtos">Produtos / Estoque</option>
     <option value="admin">Admin do Mercado</option>
   </select>
   <button onclick="criarUsuario()">Criar Usuário</button>
 </div>
 
+<!-- LISTA -->
 <div class="card">
   <h3>👥 Usuários do Mercado</h3>
   <div class="lista" id="listaUsuarios"></div>
@@ -95,16 +114,20 @@ const supabase = createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* 🔐 SESSÃO DO ADMIN DO MERCADO */
+/* 🔐 sessão do admin */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 if(!admin || !admin.app_id){
   window.location.href = "../auth/login.html";
 }
 
-/* 🔑 app_id do mercado */
+/* app do mercado */
 const APP_ID = admin.app_id;
 
-/* CRIAR USUÁRIO */
+/* 🔗 link de ativação (plano B ao QR) */
+const LINK_ATIVACAO =
+  "https://anajuliafarias659-cloud.github.io/ffsolucoes/mercado/login-funcionarios.html";
+
+/* criar usuário */
 window.criarUsuario = async ()=>{
   await supabase.from("usuarios").insert({
     nome: nome.value,
@@ -121,7 +144,7 @@ window.criarUsuario = async ()=>{
   carregarUsuarios();
 };
 
-/* LISTAR USUÁRIOS DO MERCADO */
+/* listar usuários */
 async function carregarUsuarios(){
   const { data } = await supabase
     .from("usuarios")
@@ -135,22 +158,40 @@ async function carregarUsuarios(){
         <div>
           <b>${u.nome}</b><br>
           <small>${u.email} • ${u.tipo}</small>
+          <div class="links">
+            <small>
+              🔗 <a href="${LINK_ATIVACAO}" target="_blank">
+                Link de ativação
+              </a>
+            </small>
+          </div>
         </div>
-        <button class="danger" onclick="desativar('${u.id}')">Desativar</button>
+        <div class="actions">
+          <button class="sec" onclick="copiarLink()">Copiar link</button>
+          <button class="danger" onclick="desativar('${u.id}')">Desativar</button>
+        </div>
       </div>
     `;
   });
 }
 
-/* DESATIVAR */
+/* copiar link */
+window.copiarLink = ()=>{
+  navigator.clipboard.writeText(LINK_ATIVACAO);
+  alert("Link de ativação copiado!");
+};
+
+/* desativar */
 window.desativar = async id=>{
   if(confirm("Desativar usuário?")){
-    await supabase.from("usuarios").update({ativo:false}).eq("id",id);
+    await supabase.from("usuarios")
+      .update({ativo:false})
+      .eq("id",id);
     carregarUsuarios();
   }
 };
 
-/* LOGOUT */
+/* logout */
 window.logout = ()=>{
   localStorage.removeItem("admin_logado");
   window.location.href = "../auth/login.html";
