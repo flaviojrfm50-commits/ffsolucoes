@@ -152,8 +152,8 @@ body{
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
 if(!admin || !admin.app_id){
-  alert("Sessão inválida");
-  location.href = "../auth/login.html";
+  location.replace("../auth/login.html");
+  throw new Error("Sessão inválida");
 }
 
 localStorage.setItem("app_id", admin.app_id);
@@ -207,9 +207,6 @@ function logout(){
 
 </body>
 </html>
-
-
-
 
 
 
