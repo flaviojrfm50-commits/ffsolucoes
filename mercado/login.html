@@ -69,10 +69,8 @@ button{
 
 <script>
 /* 🔐 VALIDA SESSÃO (BLINDADO) */
-const raw = localStorage.getItem("admin_logado");
-
-if(!raw){
-  alert("Sessão inválida. Faça login novamente.");
+if(tipo !== "mercado"){
+  alert("Acesso negado.");
   window.location.href = "../auth/login.html";
 }
 
