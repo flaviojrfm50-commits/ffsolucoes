@@ -74,7 +74,6 @@ if(!admin || admin.tipo !== "mercado"){
   window.location.replace("login.html");
   throw new Error("Sessão inválida");
 }
-
 </script>
 
 <div class="topo">
@@ -108,6 +107,19 @@ if(!admin || admin.tipo !== "mercado"){
       <h3>📊 Relatórios</h3>
       <p>Visualizar faturamento e vendas</p>
     </div>
+
+    <!-- 🔥 NOVO: ACESSAR SITE PÚBLICO -->
+    <div class="card" onclick="abrirSite()">
+      <h3>🌍 Acessar Site</h3>
+      <p>Visualizar vitrine / catálogo do mercado</p>
+    </div>
+
+    <!-- 🔥 NOVO: CONFIGURAR SITE -->
+    <div class="card" onclick="go('config-site.html')">
+      <h3>⚙️ Configurar Site</h3>
+      <p>Configurações da vitrine do mercado</p>
+    </div>
+
   </div>
 </div>
 
@@ -116,6 +128,14 @@ document.getElementById("nome").innerText = admin.usuario;
 
 function go(pagina){
   window.location.href = pagina;
+}
+
+function abrirSite(){
+  const app = admin.app_id;
+  window.open(
+    `../mercado/public/index.html?app=${app}`,
+    "_blank"
+  );
 }
 
 function logout(){
