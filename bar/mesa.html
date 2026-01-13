@@ -25,6 +25,21 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 .filtros{display:flex;gap:8px;margin-bottom:16px}
 .filtros button{flex:1;background:#1e293b;color:#fff}
 .filtros button.ativo{background:#2563eb}
+
+/* 🔙 BOTÃO VOLTAR (ÚNICO AJUSTE) */
+.btn-voltar{
+  margin:12px;
+  padding:10px 14px;
+  border-radius:10px;
+  border:none;
+  background:#1e293b;
+  color:#fff;
+  font-weight:bold;
+  cursor:pointer;
+}
+.btn-voltar:hover{
+  background:#2563eb;
+}
 </style>
 </head>
 
@@ -32,7 +47,6 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 
 <div class="topo" id="tituloMesa">🍽️ Mesa</div>
 <button class="btn-voltar" onclick="voltar()">← Voltar</button>
-
 
 <div class="container">
   <input placeholder="🔍 Buscar produto..." oninput="filtrarProdutos()">
@@ -54,20 +68,6 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
   <button class="conta" onclick="pedirConta()">🧾 Pedir conta</button>
   <button class="liberar bloqueado" id="btnLiberar" onclick="liberarMesa()">🔓 Liberar mesa</button>
 </div>
-.btn-voltar{
-  margin:12px;
-  padding:10px 14px;
-  border-radius:10px;
-  border:none;
-  background:#1e293b;
-  color:#fff;
-  font-weight:bold;
-  cursor:pointer;
-}
-.btn-voltar:hover{
-  background:#2563eb;
-}
-
 
 <script>
 /* ================= SUPABASE ================= */
@@ -90,17 +90,14 @@ if(!mesaId || !appId){
 const mesaSessao = localStorage.getItem("mesa_sessao");
 
 if(!mesaSessao){
-  // primeira entrada (QR)
   localStorage.setItem("mesa_sessao", mesaId);
 }else{
-  // tentativa de trocar mesa
   if(mesaSessao !== mesaId){
     alert("Sessão já vinculada a outra mesa");
     location.href = `mesa.html?mesa=${mesaSessao}&app_id=${appId}`;
   }
 }
 
-// trava botão voltar
 history.pushState(null, null, location.href);
 window.onpopstate = function(){
   history.pushState(null, null, location.href);
@@ -361,7 +358,6 @@ async function liberarMesa(){
     .eq("id",pedidoAtual.id);
 
   localStorage.removeItem("mesa_sessao");
-
   location.href="mesas.html";
 }
 
@@ -372,12 +368,10 @@ async function liberarMesa(){
   await carregarProdutos();
   await carregarPedido();
 })();
+
 function voltar(){
   location.href = `index.html?app_id=${appId}`;
-  // se preferir:
-  // location.href = "mesas.html";
 }
-
 </script>
 
 </body>
