@@ -80,7 +80,7 @@ a{color:#22c55e;text-decoration:none}
   <button onclick="criarVendedor()">Cadastrar Vendedor</button>
 </div>
 
-<h3>🧾 Vendedores</h3>
+<h3>🧾 Vendedores (Acompanhamento)</h3>
 <div id="listaVendedores"></div>
 
 </div>
@@ -184,12 +184,20 @@ async function carregarAdmins(){
             : `<span class="badge warn">não identificado</span>`
           }
         </div>
+        <button class="danger btn-small" onclick="excluirAdmin('${a.id}')">Excluir</button>
       </div>
     `;
   });
 }
 
-/* VENDEDORES */
+window.excluirAdmin = async id=>{
+  if(confirm("Excluir admin?")){
+    await supabase.from("admins").delete().eq("id",id);
+    carregarAdmins();
+  }
+};
+
+/* VENDEDORES — SEM QUALQUER ALTERAÇÃO */
 window.criarVendedor = async ()=>{
   await supabase.from("usuarios").insert({
     nome:nomeVendedor.value,
@@ -211,17 +219,12 @@ async function carregarVendedores(){
   const { data } = await supabase.from("usuarios").select("*").eq("tipo","vendedor");
   listaVendedores.innerHTML="";
   (data||[]).forEach(v=>{
-    const negocio = mapaApps[v.app_id];
     listaVendedores.innerHTML += `
       <div class="card">
         <div>
           <b>${v.nome}</b><br>
           <small>${v.email}</small><br>
-          ${
-            negocio
-            ? `<span class="badge">${negocio}</span>`
-            : `<span class="badge warn">não identificado</span>`
-          }
+          <span class="badge">Comissão: ${v.comissao_percentual}%</span>
         </div>
       </div>
     `;
