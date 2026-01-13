@@ -105,9 +105,10 @@ body{
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
 if(!admin || admin.tipo !== "locadora"){
-  alert("Acesso não autorizado");
-  window.location.href = "../auth/login.html";
+  window.location.replace("../auth/login.html");
+  throw new Error("Acesso não autorizado");
 }
+
 
 /* garante app_id global */
 if(admin.app_id){
@@ -211,4 +212,3 @@ document.getElementById("appId").innerText = admin.app_id || "não informado";
 
 </body>
 </html>
-
