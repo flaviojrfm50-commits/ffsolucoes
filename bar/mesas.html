@@ -5,7 +5,6 @@
 <title>Mesas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#020617">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -86,21 +85,23 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 <body>
 
 <script>
-/* SUPABASE */
+/* 🔐 SUPABASE */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
-const app_id = funcionario?.app_id || admin?.app_id;
+/* 🔑 PERFIL */
+const perfil = localStorage.getItem("perfil");
+const app_id = localStorage.getItem("app_id");
 
-if(!admin && !funcionario){
+/* 🚫 BLOQUEIA CLIENTE */
+if(!perfil || perfil === "cliente"){
   alert("Acesso restrito");
-  location.href="../auth/login.html";
+  location.href = "../auth/login.html";
 }
 
+/* 🔐 SEGREDOS */
 const SEGREDO_ADD_MESA = "4321";
 const SEGREDO_REMOVER_MESA = "4321";
 
@@ -114,6 +115,7 @@ let timerAdd = null;
   <div class="botoes-linha">
     <button class="btn btn-avulsa" onclick="vendaAvulsa()">💳 Venda Avulsa</button>
 
+    <!-- botão secreto -->
     <button class="btn btn-secreto" id="btnAdd"
       onmousedown="segurarAdd(true)"
       onmouseup="segurarAdd(false)"
@@ -148,40 +150,34 @@ function segurarAdd(pressionado){
 }
 
 async function carregarMesas(){
-  if(!app_id) return;
-
   const { data: mesas } = await sb
     .from("mesas")
     .select("id,numero_mesa")
     .eq("app_id", app_id)
+    .eq("ativa", true)
     .order("numero_mesa");
 
-  if(!mesas) return;
-
-  let { data: pedidos } = await sb
+  const { data: pedidos } = await sb
     .from("pedidos")
     .select("mesa_id,status,created_at")
     .eq("app_id", app_id)
-    .not("mesa_id","is",null)
-    .not("status","in","(pago,finalizado)")
+    .eq("status", "aberto")
     .order("created_at",{ ascending:false });
 
-  if(!pedidos) pedidos = [];
-
   const pedidosPorMesa = {};
-  pedidos.forEach(p=>{
+  pedidos?.forEach(p=>{
     if(!pedidosPorMesa[p.mesa_id]) pedidosPorMesa[p.mesa_id] = p;
   });
 
   const grid = document.getElementById("listaMesas");
   grid.innerHTML = "";
 
-  mesas.forEach(m=>{
+  mesas?.forEach(m=>{
     const pedido = pedidosPorMesa[m.id];
     let classe="livre", texto="LIVRE";
 
     if(pedido){
-      if(pedido.status==="conta_solicitada"){
+      if(pedido.status === "conta_solicitada"){
         classe="conta"; texto="PEDIU A CONTA";
       }else{
         classe="preparando"; texto="OCUPADA";
@@ -197,18 +193,19 @@ async function carregarMesas(){
       ${!pedido ? `<button class="btn-remover">Remover mesa</button>` : ""}
     `;
 
-    /* GARÇOM / ADMIN */
-    div.onclick = () =>
-      location.href = `mesa.html?mesa=${m.id}&app_id=${app_id}`;
+    /* 👉 GARÇOM / ADMIN */
+    div.onclick = () =>{
+      location.href = `mesa.html?mesa=${m.id}`;
+    };
 
     grid.appendChild(div);
 
-    /* 🔥 QR DO CLIENTE (VERSIONADO → QR ANTIGO MORRE) */
+    /* 📲 QR DO CLIENTE */
     const canvas = document.getElementById(`qr-${m.id}`);
     if(canvas){
       QRCode.toCanvas(
         canvas,
-        `https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/public/cardapio/index.html?v=2&mesa=${m.id}&app=${app_id}`,
+        `../cardapio/index.html?mesa=${m.id}&app_id=${app_id}`,
         { width:140, margin:1 }
       );
     }
@@ -245,14 +242,14 @@ async function adicionarMesa(){
 }
 
 function vendaAvulsa(){
-  location.href = `venda-avulsa.html?app_id=${app_id}`;
+  location.href = `venda-avulsa.html`;
 }
 function abrirMapa(){
-  location.href = `mapa-mesas.html?app_id=${app_id}`;
+  location.href = `mapa-mesas.html`;
 }
 
 carregarMesas();
-setInterval(carregarMesas,4000);
+setInterval(carregarMesas, 4000);
 </script>
 
 </body>
