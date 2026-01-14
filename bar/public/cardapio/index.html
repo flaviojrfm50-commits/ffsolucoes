@@ -128,7 +128,6 @@ body{
 
 <body>
 
-<!-- TOPO -->
 <div class="topo">
   <img id="banner" class="banner" style="display:none">
   <div class="topo-conteudo">
@@ -137,16 +136,13 @@ body{
   </div>
 </div>
 
-<!-- BOTÕES -->
 <div class="tabs">
   <button class="tab ativo" id="btnBar">🍺 Bar</button>
   <button class="tab" id="btnCozinha">🍽️ Restaurante</button>
 </div>
 
-<!-- PRODUTOS -->
 <div class="container" id="conteudo"></div>
 
-<!-- CARRINHO -->
 <div class="carrinho-btn" onclick="abrirCarrinho()">
   🛒 Ver pedido (<span id="qtd">0</span>)
 </div>
@@ -161,17 +157,12 @@ const sb = supabase.createClient(
 /* PARAMS */
 const params = new URLSearchParams(location.search);
 const app_id = params.get("app") || params.get("app_id");
-const mesa_id = params.get("mesa"); // 🔥 NOVO
+const mesa_id = params.get("mesa");
 
 if(!app_id){
   document.body.innerHTML="Indisponível";
   throw "";
 }
-
-/* ELEMENTOS */
-const conteudo = document.getElementById("conteudo");
-const btnBar = document.getElementById("btnBar");
-const btnCozinha = document.getElementById("btnCozinha");
 
 /* STATE */
 let produtos = [];
@@ -222,14 +213,13 @@ function render(){
     });
 }
 
-/* BOTÕES */
+/* TABS */
 btnBar.onclick = ()=>{
   filtro="BAR";
   btnBar.classList.add("ativo");
   btnCozinha.classList.remove("ativo");
   render();
 };
-
 btnCozinha.onclick = ()=>{
   filtro="COZINHA";
   btnCozinha.classList.add("ativo");
@@ -237,7 +227,7 @@ btnCozinha.onclick = ()=>{
   render();
 };
 
-/* 🔥 SESSÃO */
+/* SESSÃO */
 async function getOrCreateSession(appId, mesaId){
   const { data: session } = await sb
     .from("sessions")
@@ -262,29 +252,52 @@ async function getOrCreateSession(appId, mesaId){
   return nova;
 }
 
-/* CARRINHO */
+/* 🔥 CARRINHO DO BANCO */
+async function carregarCarrinho(){
+  const session_id = localStorage.getItem("session_id");
+  if(!session_id) return;
+
+  const { data } = await sb
+    .from("order_items")
+    .select("*")
+    .eq("session_id", session_id);
+
+  carrinho = data || [];
+  qtd.innerText = carrinho.reduce((s,i)=>s + i.qtd, 0);
+}
+
+/* ADD PRODUTO */
 async function addProduto(id){
   const p = produtos.find(x=>x.id===id);
   const session_id = localStorage.getItem("session_id");
 
-  // 1️⃣ salva no banco
-  await sb.from("order_items").insert({
-    session_id: session_id,
-    product_id: p.id,
-    nome: p.nome,
-    preco: p.preco,
-    qtd: 1
-  });
+  const { data: existente } = await sb
+    .from("order_items")
+    .select("*")
+    .eq("session_id", session_id)
+    .eq("product_id", p.id)
+    .maybeSingle();
 
-  // 2️⃣ mantém carrinho local (UX rápida)
-  const i = carrinho.find(x=>x.id===id);
-  i ? i.qtd++ : carrinho.push({...p,qtd:1});
-  qtd.innerText = carrinho.reduce((s,i)=>s+i.qtd,0);
+  if(existente){
+    await sb
+      .from("order_items")
+      .update({ qtd: existente.qtd + 1 })
+      .eq("id", existente.id);
+  } else {
+    await sb.from("order_items").insert({
+      session_id,
+      product_id: p.id,
+      nome: p.nome,
+      preco: p.preco,
+      qtd: 1
+    });
+  }
+
+  await carregarCarrinho();
 }
 
-
 function abrirCarrinho(){
-  alert("Carrinho funcionando 😎");
+  alert("Carrinho salvo no banco 😎");
 }
 
 /* START */
@@ -294,6 +307,8 @@ function abrirCarrinho(){
 
   const session = await getOrCreateSession(app_id, mesa_id);
   localStorage.setItem("session_id", session.id);
+
+  await carregarCarrinho();
 })();
 </script>
 
