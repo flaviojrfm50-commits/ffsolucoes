@@ -25,24 +25,12 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
 .filtros{display:flex;gap:8px;margin-bottom:16px}
 .filtros button{flex:1;background:#1e293b;color:#fff}
 .filtros button.ativo{background:#2563eb}
-.btn-voltar{
-  margin:12px;
-  padding:10px 14px;
-  border-radius:10px;
-  border:none;
-  background:#1e293b;
-  color:#fff;
-  font-weight:bold;
-  cursor:pointer;
-}
-.btn-voltar:hover{background:#2563eb}
 </style>
 </head>
 
 <body>
 
 <div class="topo" id="tituloMesa">🍽️ Mesa</div>
-<button class="btn-voltar" onclick="voltar()">← Voltar</button>
 
 <div class="container">
   <input placeholder="🔍 Buscar produto..." oninput="filtrarProdutos()">
@@ -61,7 +49,7 @@ button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
   <div class="total" id="totalPedido">Total: R$ 0,00</div>
 
   <button class="pay" onclick="enviarPedido()">📨 Enviar pedido</button>
-  <button class="conta" onclick="pedirConta()">🧾 Pedir conta da mesa</button>
+  <button class="conta" onclick="pedirConta()">🧾 Pedir conta</button>
   <button class="liberar bloqueado" id="btnLiberar" onclick="liberarMesa()">🔓 Liberar mesa</button>
 </div>
 
@@ -76,20 +64,28 @@ const sb = supabase.createClient(
 const params = new URLSearchParams(location.search);
 const mesaId = params.get("mesa");
 const appId  = params.get("app_id");
+const role   = params.get("role") || "cliente";
 
+/* ================= 🔐 TRAVA APENAS PARA CLIENTE ================= */
 if(!mesaId || !appId){
   alert("Acesso inválido");
   location.href = "index.html";
 }
 
-/* ================= SESSÃO DA MESA ================= */
-const mesaSessao = localStorage.getItem("mesa_sessao");
-if(!mesaSessao){
-  localStorage.setItem("mesa_sessao", mesaId);
-}else if(mesaSessao !== mesaId){
-  alert("Sessão já vinculada a outra mesa");
-  location.href = `mesa.html?mesa=${mesaSessao}&app_id=${appId}`;
+if(role === "cliente"){
+  const mesaSessao = localStorage.getItem("mesa_sessao");
+
+  if(!mesaSessao){
+    localStorage.setItem("mesa_sessao", mesaId);
+  }else if(mesaSessao !== mesaId){
+    alert("⚠️ Você já está vinculado a outra mesa.");
+    location.href = `mesa.html?mesa=${mesaSessao}&app_id=${appId}&role=cliente`;
+  }
 }
+
+/* trava botão voltar */
+history.pushState(null, null, location.href);
+window.onpopstate = () => history.pushState(null, null, location.href);
 
 /* ================= VARIÁVEIS ================= */
 let pedidoAtual = null;
@@ -108,7 +104,7 @@ async function carregarMesa(){
     `🍽️ Mesa ${data.numero_mesa}`;
 }
 
-/* ================= PEDIDO ATUAL (GARÇOM) ================= */
+/* ================= PEDIDO ================= */
 async function garantirPedidoAberto(){
   const { data } = await sb
     .from("pedidos")
@@ -130,7 +126,7 @@ async function garantirPedidoAberto(){
       app_id:appId,
       mesa_id:mesaId,
       status:"aberto",
-      origem:"garcom"
+      origem:"mesa"
     })
     .select()
     .single();
@@ -155,6 +151,7 @@ async function carregarProdutos(){
 function renderProdutos(lista){
   const div = document.getElementById("listaProdutos");
   div.innerHTML="";
+
   lista.forEach(p=>{
     div.innerHTML += `
       <div class="produto">
@@ -171,11 +168,15 @@ function renderProdutos(lista){
 /* ================= FILTROS ================= */
 function filtrarDestino(dest){
   destinoSelecionado = dest;
-  document.querySelectorAll(".filtros button").forEach(b=>b.classList.remove("ativo"));
-  document.getElementById(dest==="bar"?"fBar":"fCozinha").classList.add("ativo");
+  document.querySelectorAll(".filtros button")
+    .forEach(b=>b.classList.remove("ativo"));
+  document.getElementById(dest==="bar"?"fBar":"fCozinha")
+    .classList.add("ativo");
   aplicarFiltros();
 }
+
 function filtrarProdutos(){ aplicarFiltros(); }
+
 function aplicarFiltros(){
   const txt = document.querySelector("input").value.toLowerCase();
   renderProdutos(
@@ -199,10 +200,21 @@ async function carregarPedido(){
 
   data.forEach(i=>{
     total += i.preco * i.quantidade;
+
     div.innerHTML += `
       <div class="item">
-        <div style="display:flex;justify-content:space-between">
-          <div>${i.nome_produto} x ${i.quantidade}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            ${i.nome_produto} x ${i.quantidade}
+            <span class="tag ${i.destino}">${i.destino.toUpperCase()}</span>
+          </div>
+
+          ${i.status === "novo" ? `
+            <div>
+              <button onclick="diminuirItem('${i.id}',${i.quantidade})">➖</button>
+              <button onclick="removerItem('${i.id}')">❌</button>
+            </div>
+          ` : `<span>✔ enviado</span>`}
         </div>
       </div>
     `;
@@ -217,20 +229,58 @@ async function carregarPedido(){
 /* ================= ADD / REMOVER ================= */
 async function addProduto(produtoId){
   if(pedidoAtual.status === "conta_solicitada") return;
+
   const p = produtosCache.find(x => x.id === produtoId);
   if(!p) return;
 
-  await sb.from("pedido_itens").insert({
-    app_id:appId,
-    pedido_id:pedidoAtual.id,
-    produto_id:p.id,
-    nome_produto:p.nome,
-    preco:p.preco,
-    quantidade:1,
-    destino:p.destino,
-    status:"novo"
-  });
+  const { data } = await sb
+    .from("pedido_itens")
+    .select("id,quantidade")
+    .eq("pedido_id",pedidoAtual.id)
+    .eq("produto_id",p.id)
+    .eq("status","novo")
+    .maybeSingle();
 
+  if(data){
+    await sb.from("pedido_itens")
+      .update({quantidade:data.quantidade+1})
+      .eq("id",data.id);
+  }else{
+    await sb.from("pedido_itens").insert({
+      app_id:appId,
+      pedido_id:pedidoAtual.id,
+      produto_id:p.id,
+      nome_produto:p.nome,
+      preco:p.preco,
+      quantidade:1,
+      destino:p.destino,
+      status:"novo"
+    });
+  }
+
+  carregarPedido();
+}
+
+async function diminuirItem(id,q){
+  if(q > 1){
+    await sb.from("pedido_itens")
+      .update({quantidade:q-1})
+      .eq("id",id)
+      .eq("status","novo");
+  }else{
+    await sb.from("pedido_itens")
+      .delete()
+      .eq("id",id)
+      .eq("status","novo");
+  }
+  carregarPedido();
+}
+
+async function removerItem(id){
+  await sb.from("pedido_itens")
+    .delete()
+    .eq("id",id)
+    .eq("status","novo");
   carregarPedido();
 }
 
@@ -241,49 +291,61 @@ async function enviarPedido(){
     .eq("pedido_id",pedidoAtual.id)
     .eq("status","novo");
 
+  await sb.from("pedidos")
+    .update({status:"enviado"})
+    .eq("id",pedidoAtual.id);
+
+  pedidoAtual.status = "enviado";
   alert("📨 Pedido enviado!");
 }
 
-/* 🔥 CONTA DA MESA INTEIRA */
 async function pedirConta(){
-  const { data: pedidos } = await sb
-    .from("pedidos")
-    .select("id")
-    .eq("mesa_id", mesaId)
-    .eq("app_id", appId)
-    .not("status","in",'("pago","finalizado")');
+  const { count } = await sb
+    .from("pedido_itens")
+    .select("*",{count:"exact",head:true})
+    .eq("pedido_id",pedidoAtual.id);
 
-  if(!pedidos || pedidos.length === 0){
-    alert("⚠️ Não há pedidos para fechar.");
+  if(count === 0){
+    alert("⚠️ Não é possível pedir conta sem pedido.");
     return;
   }
 
   await sb.from("pedidos")
-    .update({ status:"conta_solicitada" })
-    .eq("mesa_id", mesaId)
-    .eq("app_id", appId)
-    .not("status","in",'("pago","finalizado")');
+    .update({status:"conta_solicitada"})
+    .eq("id",pedidoAtual.id);
 
-  alert("🧾 Conta da mesa solicitada!");
+  pedidoAtual.status = "conta_solicitada";
+  alert("🧾 Conta solicitada!");
 }
 
 async function atualizarLiberacao(){
   const btn = document.getElementById("btnLiberar");
-  btn.classList.add("bloqueado");
+
+  const { count } = await sb
+    .from("pedido_itens")
+    .select("*",{count:"exact",head:true})
+    .eq("pedido_id",pedidoAtual.id);
+
+  btn.classList.toggle("bloqueado", count > 0);
 }
 
 async function liberarMesa(){
+  const { count } = await sb
+    .from("pedido_itens")
+    .select("*",{count:"exact",head:true})
+    .eq("pedido_id",pedidoAtual.id);
+
+  if(count > 0) return;
+
   await sb.from("pedidos")
     .update({status:"finalizado"})
-    .eq("mesa_id",mesaId)
-    .eq("app_id",appId);
+    .eq("id",pedidoAtual.id);
 
-  localStorage.removeItem("mesa_sessao");
+  if(role === "cliente"){
+    localStorage.removeItem("mesa_sessao");
+  }
+
   location.href="mesas.html";
-}
-
-function voltar(){
-  location.href = `mesas.html?app_id=${appId}`;
 }
 
 /* ================= START ================= */
