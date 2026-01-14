@@ -216,16 +216,18 @@ async function carregarMesas(){
       ${!pedido ? `<button class="btn-remover">Remover mesa</button>` : ""}
     `;
 
+    /* acesso do garçom/admin continua indo pra mesa */
     div.onclick = () =>
       location.href = `mesa.html?mesa=${m.id}&app_id=${app_id}`;
 
     grid.appendChild(div);
 
+    /* 🔥 QR DO CLIENTE → CARDÁPIO (CORRETO) */
     const canvas = document.getElementById(`qr-${m.id}`);
     if(canvas){
       QRCode.toCanvas(
         canvas,
-        `https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/mesa.html?mesa=${m.id}&app_id=${app_id}`,
+        `https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/cardapio.html?mesa=${m.id}&app_id=${app_id}`,
         { width:140, margin:1 }
       );
     }
