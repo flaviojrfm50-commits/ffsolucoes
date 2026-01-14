@@ -263,12 +263,25 @@ async function getOrCreateSession(appId, mesaId){
 }
 
 /* CARRINHO */
-function addProduto(id){
+async function addProduto(id){
   const p = produtos.find(x=>x.id===id);
+  const session_id = localStorage.getItem("session_id");
+
+  // 1️⃣ salva no banco
+  await sb.from("order_items").insert({
+    session_id: session_id,
+    product_id: p.id,
+    nome: p.nome,
+    preco: p.preco,
+    qtd: 1
+  });
+
+  // 2️⃣ mantém carrinho local (UX rápida)
   const i = carrinho.find(x=>x.id===id);
   i ? i.qtd++ : carrinho.push({...p,qtd:1});
   qtd.innerText = carrinho.reduce((s,i)=>s+i.qtd,0);
 }
+
 
 function abrirCarrinho(){
   alert("Carrinho funcionando 😎");
