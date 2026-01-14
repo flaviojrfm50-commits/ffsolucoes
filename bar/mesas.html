@@ -91,16 +91,25 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* 🔑 AUTH REAL (SEM PERFIL NOVO) */
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-const funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
+/* 🔥 BLINDAGEM TOTAL DE SESSÃO */
+let admin = null;
+let funcionario = null;
 
-if(!admin && !funcionario){
-  alert("Acesso restrito");
-  location.href="../auth/login.html";
+try{
+  admin = JSON.parse(localStorage.getItem("admin_logado"));
+  funcionario = JSON.parse(localStorage.getItem("funcionario_logado"));
+}catch(e){}
+
+/* 🚫 BLOQUEIA APENAS CLIENTE */
+if(
+  (!admin || !admin.app_id) &&
+  (!funcionario || !funcionario.app_id)
+){
+  alert("Sessão não encontrada. Faça login novamente.");
+  location.href = "../auth/login.html";
 }
 
-/* app_id vem de quem estiver logado */
+/* ✅ app_id GARANTIDO */
 const app_id = funcionario?.app_id || admin?.app_id;
 
 /* 🔐 SEGREDOS */
@@ -117,7 +126,6 @@ let timerAdd = null;
   <div class="botoes-linha">
     <button class="btn btn-avulsa" onclick="vendaAvulsa()">💳 Venda Avulsa</button>
 
-    <!-- botão secreto -->
     <button class="btn btn-secreto" id="btnAdd"
       onmousedown="segurarAdd(true)"
       onmouseup="segurarAdd(false)"
@@ -195,14 +203,12 @@ async function carregarMesas(){
       ${!pedido ? `<button class="btn-remover">Remover mesa</button>` : ""}
     `;
 
-    /* 👉 GARÇOM / ADMIN */
     div.onclick = () => {
       location.href = `mesa.html?mesa=${m.id}`;
     };
 
     grid.appendChild(div);
 
-    /* 📲 QR DO CLIENTE */
     const canvas = document.getElementById(`qr-${m.id}`);
     if(canvas){
       QRCode.toCanvas(
