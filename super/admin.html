@@ -131,6 +131,22 @@ window.criarNegocio = async ()=>{
   nomeNegocio.value="";
   carregarNegocios();
 };
+window.criarNegocio = async ()=>{
+  const { error } = await supabase.from("apps").insert({
+    nome: nomeNegocio.value,
+    tipo: tipoNegocio.value,
+    usar_categorias: tipoNegocio.value !== "hotel"
+  });
+
+  if (error) {
+    console.error(error);
+    alert("Erro ao criar negócio: " + error.message);
+    return;
+  }
+
+  nomeNegocio.value = "";
+  carregarNegocios();
+};
 
 async function carregarNegocios(){
   const { data } = await supabase.from("apps").select("*");
@@ -235,5 +251,3 @@ async function carregarVendedores(){
 
 </body>
 </html>
-
-
