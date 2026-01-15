@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>📅 Reservas - Painel do Hotel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#020617;
+  color:#fff;
+}
+.topo{
+  background:#0f172a;
+  padding:16px 24px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.topo h2{margin:0}
+.voltar{
+  background:#1e293b;
+  color:#fff;
+  border:none;
+  padding:10px 16px;
+  border-radius:10px;
+  cursor:pointer;
+}
+.container{
+  padding:32px;
+  max-width:1000px;
+  margin:auto;
+}
+form{
+  background:#0f172a;
+  padding:20px;
+  border-radius:14px;
+  margin-bottom:30px;
+}
+input, select{
+  width:100%;
+  padding:10px;
+  border-radius:8px;
+  border:none;
+  margin-bottom:12px;
+  background:#1e293b;
+  color:#fff;
+}
+button{
+  padding:10px 16px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#16a34a;
+  color:#fff;
+  font-weight:bold;
+}
+.tabela{
+  width:100%;
+  border-collapse:collapse;
+}
+.tabela th, .tabela td{
+  padding:12px;
+  text-align:left;
+  border-bottom:1px solid #1e293b;
+}
+.status{
+  padding:6px 10px;
+  border-radius:6px;
+  font-size:13px;
+  font-weight:bold;
+}
+.reservado{ background:#2563eb; }
+.hospedado{ background:#b91c1c; }
+.finalizado{ background:#15803d; }
+</style>
+</head>
+
+<body>
+
+<div class="topo">
+  <h2>📅 Reservas - Hotel</h2>
+  <button class="voltar" onclick="history.back()">⬅ Voltar</button>
+</div>
+
+<div class="container">
+  <h3>Nova Reserva</h3>
+
+  <form id="formReserva">
+    <select id="hospede" required></select>
+    <select id="quarto" required></select>
+    <label>Data de Check-in:</label>
+    <input type="date" id="checkin" required>
+    <label>Data de Check-out:</label>
+    <input type="date" id="checkout" required>
+    <input type="number" id="valor" placeholder="Valor total (auto)" readonly>
+    <button type="submit">Salvar Reserva</button>
+  </form>
+
+  <h3>Reservas Ativas</h3>
+  <table class="tabela" id="tabelaReservas">
+    <thead>
+      <tr>
+        <th>Hóspede</th>
+        <th>Quarto</th>
+        <th>Check-in</th>
+        <th>Check-out</th>
+        <th>Valor</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+/* ========= CONFIG SUPABASE ========= */
+const SUPABASE_URL = "https://teu-projeto.supabase.co";
+const SUPABASE_KEY = "public-anon-key";
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ========= SESSÃO ========= */
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+if(!admin || !admin.app_id){
+  location.replace("../auth/login.html");
+  throw new Error("Sessão inválida");
+}
+const app_id = admin.app_id;
+
+/* ========= ELEMENTOS ========= */
+const hospedeSelect = document.getElementById("hospede");
+const quartoSelect = document.getElementById("quarto");
+const form = document.getElementById("formReserva");
+const valorInput = document.getElementById("valor");
+const checkinInput = document.getElementById("checkin");
+const checkoutInput = document.getElementById("checkout");
+
+/* ========= CARREGAR HÓSPEDES ========= */
+async function carregarHospedes(){
+  const { data, error } = await supabase
+    .from("hospedes")
+    .select("*")
+    .eq("app_id", app_id)
+    .order("nome", { ascending: true });
+
+  hospedeSelect.innerHTML = "<option value=''>Selecione o hóspede</option>";
+  if(!data || data.length === 0){
+    hospedeSelect.innerHTML = "<option value=''>Nenhum hóspede</option>";
+    return;
+  }
+  data.forEach(h=>{
+    const opt = document.createElement("option");
+    opt.value = h.id;
+    opt.textContent = h.nome;
+    hospedeSelect.appendChild(opt);
+  });
+}
+
+/* ========= CARREGAR QUARTOS ========= */
+async function carregarQuartos(){
+  const { data, error } = await supabase
+    .from("quartos")
+    .select("*")
+    .eq("app_id", app_id)
+    .neq("status", "ocupado")
+    .order("numero", { ascending: true });
+
+  quartoSelect.innerHTML = "<option value=''>Selecione o quarto</option>";
+  if(!data || data.length === 0){
+    quartoSelect.innerHTML = "<option value=''>Nenhum quarto livre</option>";
+    return;
+  }
+  data.forEach(q=>{
+    const opt = document.createElement("option");
+    opt.value = q.id;
+    opt.textContent = `Quarto ${q.numero} (${q.tipo}) - R$${q.preco_diaria}`;
+    opt.dataset.preco = q.preco_diaria;
+    quartoSelect.appendChild(opt);
+  });
+}
+
+/* ========= CÁLCULO AUTOMÁTICO ========= */
+function calcularValor(){
+  const quartoSel = quartoSelect.selectedOptions[0];
+  if(!quartoSel || !checkinInput.value || !checkoutInput.value) return;
+  const preco = parseFloat(quartoSel.dataset.preco || 0);
+  const dias = (new Date(checkoutInput.value) - new Date(checkinInput.value)) / (1000*60*60*24);
+  valorInput.value = (dias > 0 ? dias * preco : 0).toFixed(2);
+}
+checkinInput.addEventListener("change", calcularValor);
+checkoutInput.addEventListener("change", calcularValor);
+quartoSelect.addEventListener("change", calcularValor);
+
+/* ========= SALVAR RESERVA ========= */
+form.addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const quarto_id = quartoSelect.value;
+  const hospede_id = hospedeSelect.value;
+  const data_checkin = checkinInput.value;
+  const data_checkout = checkoutInput.value;
+  const valor_total = parseFloat(valorInput.value || 0);
+
+  const { error } = await supabase.from("reservas").insert([{
+    app_id, quarto_id, hospede_id, data_checkin, data_checkout, valor_total, status:"reservado"
+  }]);
+  if(error){ alert("Erro ao salvar: " + error.message); return; }
+
+  // Atualiza status do quarto pra "ocupado"
+  await supabase.from("quartos").update({ status: "ocupado" }).eq("id", quarto_id);
+
+  form.reset();
+  valorInput.value = "";
+  carregarQuartos();
+  carregarReservas();
+});
+
+/* ========= LISTAR RESERVAS ========= */
+async function carregarReservas(){
+  const tabela = document.querySelector("#tabelaReservas tbody");
+  tabela.innerHTML = "<tr><td colspan='7'>Carregando...</td></tr>";
+
+  const { data, error } = await supabase
+    .from("reservas")
+    .select("*, hospedes(nome), quartos(numero)")
+    .eq("app_id", app_id)
+    .order("data_checkin", { ascending: false });
+
+  if(error){ tabela.innerHTML = "<tr><td colspan='7'>Erro</td></tr>"; return; }
+  if(!data || data.length === 0){ tabela.innerHTML = "<tr><td colspan='7'>Nenhuma reserva</td></tr>"; return; }
+
+  tabela.innerHTML = "";
+  data.forEach(r=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.hospedes?.nome || "-"}</td>
+      <td>${r.quartos?.numero || "-"}</td>
+      <td>${r.data_checkin}</td>
+      <td>${r.data_checkout}</td>
+      <td>R$ ${r.valor_total?.toFixed(2) || "0.00"}</td>
+      <td><span class="status ${r.status}">${r.status}</span></td>
+      <td>
+        ${r.status === "reservado" 
+          ? `<button onclick="mudarStatus('${r.id}','hospedado')">Check-in</button>` 
+          : r.status === "hospedado"
+            ? `<button onclick="mudarStatus('${r.id}','finalizado')">Check-out</button>` 
+            : ""}
+      </td>
+    `;
+    tabela.appendChild(tr);
+  });
+}
+
+/* ========= MUDAR STATUS ========= */
+async function mudarStatus(id, novoStatus){
+  const { data, error } = await supabase
+    .from("reservas")
+    .update({ status: novoStatus })
+    .eq("id", id);
+
+  if(error){ alert("Erro ao atualizar: " + error.message); return; }
+
+  if(novoStatus === "finalizado"){
+    const reserva = data[0];
+    await supabase.from("quartos").update({ status: "limpeza" }).eq("id", reserva.quarto_id);
+  }
+  carregarReservas();
+  carregarQuartos();
+}
+
+/* ========= INICIAR ========= */
+carregarHospedes();
+carregarQuartos();
+carregarReservas();
+</script>
+
+</body>
+</html>
