@@ -5,6 +5,7 @@
   <title>Reserva</title>
 </head>
 <body>
+
   <h1>Solicitar Reserva</h1>
 
   <form onsubmit="criarReserva(event)">
@@ -25,11 +26,15 @@
     <button type="submit">Enviar reserva</button>
   </form>
 
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script src="hotel.js"></script>
+
   <script>
-    // pega quarto_id da URL
     const params = new URLSearchParams(window.location.search);
-    document.getElementById('quarto_id').value = params.get('quarto');
+    document.getElementById("quarto_id").value = params.get("quarto");
   </script>
+
 </body>
 </html>
