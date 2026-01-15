@@ -15,20 +15,19 @@ const elReservas = document.getElementById("total-reservas");
 const elHospedagens = document.getElementById("total-hospedagens");
 const elUltimas = document.getElementById("ultimas-reservas");
 
-// ===== FUNÇÃO CONTAR (SEM FILTRO QUE QUEBRA) =====
+// ===== CONTAR =====
 async function contar(tabela) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/${tabela}?select=id&app_id=eq.${admin.app_id}`,
-    {
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`
-      }
+  const url = `${SUPABASE_URL}/rest/v1/${tabela}?select=id&app_id=eq.${admin.app_id}`;
+
+  const res = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`
     }
-  );
+  });
 
   if (!res.ok) {
-    console.warn(`Erro ao contar ${tabela}`);
+    console.warn(`Tabela ${tabela} indisponível`);
     return 0;
   }
 
@@ -38,14 +37,10 @@ async function contar(tabela) {
 
 // ===== DASHBOARD =====
 async function carregarDashboard() {
-  // cards
   elQuartos.innerText = await contar("hotel_quartos");
   elReservas.innerText = await contar("hotel_reservas");
-
-  // hospedagens (se não existir, fica 0)
   elHospedagens.innerText = await contar("hotel_hospedagens");
 
-  // últimas reservas
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/hotel_reservas?select=*&app_id=eq.${admin.app_id}&order=created_at.desc&limit=5`,
     {
@@ -70,8 +65,8 @@ async function carregarDashboard() {
 
   elUltimas.innerHTML = reservas.map(r => `
     <div class="reserva">
-      <strong>${r.nome_cliente ?? "Cliente"}</strong><br>
-      Quarto ${r.quarto ?? "-"}
+      <strong>${r.nome_cliente || "Cliente"}</strong><br>
+      Quarto ${r.quarto || "-"}
     </div>
   `).join("");
 }
