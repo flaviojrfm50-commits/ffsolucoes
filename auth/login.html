@@ -108,6 +108,8 @@ async function login(){
     location.href = "../mercado/admin.html";
   }else if(adminLogado.tipo === "bar"){
     location.href = "../bar/admin.html";
+    }else if(adminLogado.tipo === "hotel"){
+    location.href = "../hotel/login.html";
   }else{
     alert("Tipo inválido");
   }
@@ -116,3 +118,4 @@ async function login(){
 
 </body>
 </html>
+
