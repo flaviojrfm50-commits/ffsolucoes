@@ -15,15 +15,14 @@
 </div>
 
 <div class="container">
-
   <button class="btn" onclick="novoQuarto()">+ Novo Quarto</button>
 
   <div id="lista-quartos" class="lista">
     Carregando...
   </div>
-
 </div>
 
+<!-- ORDEM CORRETA DOS SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="hotel-admin.js"></script>
 
@@ -57,7 +56,14 @@ async function novoQuarto() {
   let tipo = prompt("Tipo do quarto (Standard/Luxo/Premium):");
   if (!tipo) tipo = "Standard";
 
-  await criarQuarto({ numero, tipo });
+  const hotel_id = await getHotelId();
+
+  await criarQuarto({
+    numero,
+    tipo,
+    hotel_id
+  });
+
   carregar();
 }
 
