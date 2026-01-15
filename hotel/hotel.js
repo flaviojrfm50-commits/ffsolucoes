@@ -1,18 +1,13 @@
-const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co";
-const SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
+const usuario = JSON.parse(sessionStorage.getItem("usuario"));
 
-const lista = document.getElementById("lista-quartos");
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-
-if (!admin || admin.tipo !== "hotel" || !admin.app_id) {
-  window.location.replace("login.html");
+if (!usuario || usuario.app_id !== APP_ID) {
+  alert("Sessão inválida");
+  window.location.href = "login.html";
 }
 
 async function listarQuartos() {
-  lista.innerText = "Carregando...";
-
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/hotel_quartos?select=*&app_id=eq.${admin.app_id}`,
+    `${SUPABASE_URL}/rest/v1/hotel_quartos?app_id=eq.${APP_ID}&select=*`,
     {
       headers: {
         apikey: SUPABASE_KEY,
@@ -22,21 +17,22 @@ async function listarQuartos() {
   );
 
   const quartos = await res.json();
+  const div = document.getElementById("lista");
 
-  if (!Array.isArray(quartos) || quartos.length === 0) {
-    lista.innerHTML = "<p>Nenhum quarto cadastrado.</p>";
-    return;
-  }
+  div.innerHTML = "";
 
-  lista.innerHTML = quartos.map(q => `
-    <div style="border:1px solid #ccc; padding:10px; margin:10px 0">
-      <strong>Quarto ${q.numero}</strong><br>
-      Tipo: ${q.tipo}<br>
-      Capacidade: ${q.capacidade}<br>
-      Diária: R$ ${q.valor_diaria}<br>
-      Status: ${q.status}
-    </div>
-  `).join("");
+  quartos.forEach(q => {
+    div.innerHTML += `
+      <div>
+        <b>Quarto ${q.numero}</b><br>
+        Tipo: ${q.tipo}<br>
+        Capacidade: ${q.capacidade}<br>
+        Diária: R$ ${q.valor_diario}<br>
+        Status: ${q.status}
+        <hr>
+      </div>
+    `;
+  });
 }
 
 listarQuartos();
