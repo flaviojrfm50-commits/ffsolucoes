@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Login do Hotel</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -20,7 +21,7 @@
   <div id="msg"></div>
 </div>
 
-<!-- SUPABASE SDK -->
+<!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
@@ -49,10 +50,10 @@ async function login() {
 
   const { data, error } = await db
     .from("admins")
-    .select("id, usuario, app_id, modulo")
+    .select("id, usuario, permissao, ativo")
     .eq("usuario", usuario)
     .eq("senha", senha)
-    .eq("modulo", "hotel")
+    .eq("ativo", true)
     .single();
 
   if (error || !data) {
@@ -61,15 +62,16 @@ async function login() {
     return;
   }
 
+  /* ========= SESSÃO ========= */
   const adminLogado = {
     id: data.id,
     usuario: data.usuario,
-    app_id: data.app_id,
-    modulo: "hotel"
+    permissao: data.permissao
   };
 
   localStorage.setItem("admin_logado", JSON.stringify(adminLogado));
 
+  /* ========= REDIRECIONA ========= */
   location.href = "painel.html";
 }
 </script>
