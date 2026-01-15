@@ -32,7 +32,8 @@ async function loginHotel() {
     const admin = admins.find(a =>
       a.usuario === usuario.value.trim() &&
       a.senha === senha.value.trim() &&
-      a.ativo === true
+      a.ativo === true &&
+      a.tipo === "hotel"
     );
 
     if (!admin) {
@@ -40,15 +41,13 @@ async function loginHotel() {
       return;
     }
 
-    // 🔥 APP_ID VEM DO ADMIN (IGUAL AO BAR)
-    localStorage.setItem("app_id", admin.app_id);
-
+    // ✅ SALVANDO O QUE O SISTEMA REALMENTE USA
     localStorage.setItem("admin_logado", JSON.stringify({
       id: admin.id,
       usuario: admin.usuario,
-      app_id: admin.app_id,
+      tipo: "hotel",
       permissao: admin.permissao,
-      tipo: "hotel"
+      negocio_id: admin.negocio_id // 🔑 CHAVE MESTRA
     }));
 
     window.location.href = "dashboard.html";
