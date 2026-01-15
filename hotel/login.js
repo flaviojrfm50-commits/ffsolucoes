@@ -2,7 +2,7 @@
 const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
 
-// ===== ELEMENTOS =====
+// ===== ELEMENTOS (BATEM COM O HTML) =====
 const usuarioInput = document.getElementById("usuario");
 const senhaInput = document.getElementById("senha");
 const msg = document.getElementById("msg");
@@ -32,11 +32,9 @@ async function loginHotel() {
 
     const admins = await res.json();
 
-    console.log("ADMINS DO BANCO:", admins);
-
-    // 🔓 LOGIN SEM FILTRO FRÁGIL
+    // LOGIN DIRETO, SEM FIRULA
     const admin = admins.find(a =>
-      String(a.usuario ?? a.login ?? a.email).trim() === usuario &&
+      String(a.usuario).trim() === usuario &&
       String(a.senha).trim() === senha
     );
 
@@ -45,11 +43,11 @@ async function loginHotel() {
       return;
     }
 
-    // 🚀 SALVA SESSÃO
+    // SALVA SESSÃO DO JEITO CERTO
     localStorage.setItem("admin_logado", JSON.stringify({
       id: admin.id,
-      usuario: admin.usuario ?? admin.login ?? admin.email,
-      tipo: admin.tipo ?? "hotel",
+      usuario: admin.usuario,
+      tipo: admin.tipo || "hotel",
       negocio_id: admin.negocio_id
     }));
 
