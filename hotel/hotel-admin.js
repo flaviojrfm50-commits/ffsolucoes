@@ -1,5 +1,5 @@
-const supabaseUrl = "https://pdajixsoowcyhnjwhgpc.supabase.co",
-const supabaseKey = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+const supabaseUrl = "https://pdajixsoowcyhnjwhgpc.supabase.co";
+const supabaseKey = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
 const supabase = supabasejs.createClient(supabaseUrl, supabaseKey);
 
 async function getHotelId() {
