@@ -19,14 +19,13 @@ async function loginHotel() {
   }
 
   try {
-    // 🔥 FILTRA DIRETO NO SUPABASE
+    // 🔥 LOGIN SIMPLES (IGUAL AOS OUTROS MÓDULOS)
     const url =
       `${SUPABASE_URL}/rest/v1/admins` +
       `?usuario=eq.${encodeURIComponent(user)}` +
       `&senha=eq.${encodeURIComponent(pass)}` +
-      `&tipo=eq.hotel` +
       `&ativo=eq.true` +
-      `&select=id,usuario,app_id,tipo`;
+      `&select=id,usuario,app_id`;
 
     const res = await fetch(url, {
       headers: {
@@ -44,16 +43,12 @@ async function loginHotel() {
 
     const admin = data[0];
 
-    // ✅ SESSÃO LIMPA E CONSISTENTE
-    localStorage.setItem(
-      "admin_logado",
-      JSON.stringify({
-        id: admin.id,
-        usuario: admin.usuario,
-        app_id: admin.app_id,
-        tipo: admin.tipo
-      })
-    );
+    // ✅ SESSÃO SIMPLES E FUNCIONAL
+    localStorage.setItem("admin_logado", JSON.stringify({
+      id: admin.id,
+      usuario: admin.usuario,
+      app_id: admin.app_id
+    }));
 
     window.location.href = "dashboard.html";
 
