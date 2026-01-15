@@ -1,32 +1,47 @@
-const { createClient } = supabase;
+// ===============================
+// 🔥 CONFIGURAÇÃO SUPABASE
+// ===============================
+const supabaseUrl = "https://pdajixsoowcyhnjwhgpc.supabase.co",
+const supabaseKey = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+const supabase = supabasejs.createClient(supabaseUrl, supabaseKey);
 
-const db = createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-);
-
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-
-if (!admin || !admin.id) {
-  alert("Sessão inválida");
-  location.href = "login.html";
-  throw new Error("Sem sessão");
-}
-
-/* ========= QUARTOS ========= */
+// ===============================
+// 📌 LISTAR QUARTOS
+// ===============================
 async function listarQuartos() {
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from("hotel_quartos")
-    .select("*");
+    .select("*")
+    .order("numero", { ascending: true });
 
   if (error) {
-    console.error(error);
+    console.error("Erro ao listar:", error);
     return [];
   }
 
   return data;
 }
 
-async function criarQuarto(payload) {
-  return await db.from("hotel_quartos").insert([payload]);
+// ===============================
+// 📌 CRIAR QUARTO
+// ===============================
+async function criarQuarto(quarto) {
+  const { data, error } = await supabase
+    .from("hotel_quartos")
+    .insert(quarto);
+
+  if (error) {
+    console.error("Erro ao criar quarto:", error);
+    alert("Erro ao criar quarto: " + error.message);
+    return null;
+  }
+
+  return data;
+}
+
+// ===============================
+// 📌 REMOVER QUARTO (OPCIONAL)
+// ===============================
+async function deletarQuarto(id) {
+  await supabase.from("hotel_quartos").delete().eq("id", id);
 }
