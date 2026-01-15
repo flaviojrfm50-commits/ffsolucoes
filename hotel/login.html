@@ -1,53 +1,18 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Login do Hotel | FF Soluções</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
 
-  <link rel="stylesheet" href="css/style.css">
-</head>
+<script>
+async function entrar() {
+  const usuario = document.getElementById("usuario").value.trim();
+  const senha = document.getElementById("senha").value.trim();
 
-<body class="center">
+  const logado = await login(usuario, senha);
 
-  <div class="card">
-    <div class="icon">🔐</div>
+  if (!logado) {
+    document.getElementById("erro").textContent = "Falha no login. Verifique usuário e senha.";
+    return;
+  }
 
-    <h1>Acesso ao Sistema</h1>
-
-    <p>Entre com seu e-mail e senha cadastrados.</p>
-
-    <input type="email" id="email" placeholder="Seu e-mail" class="input">
-    <input type="password" id="senha" placeholder="Sua senha" class="input">
-
-    <button class="btn-primary" onclick="entrar()">Entrar</button>
-
-    <p id="msg" class="msg"></p>
-  </div>
-
-  <!-- SCRIPTS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase-client.js"></script>
-  <script src="js/auth.js"></script>
-
-  <script>
-    async function entrar() {
-      const email = document.getElementById("email").value;
-      const senha = document.getElementById("senha").value;
-      const msg = document.getElementById("msg");
-
-      msg.innerText = "Verificando...";
-
-      const user = await login(email, senha);
-
-      if (user) {
-        msg.innerText = "Login realizado! Redirecionando...";
-        setTimeout(() => location.href = "painel.html", 800);
-      } else {
-        msg.innerText = "Falha no login. Verifique suas credenciais.";
-      }
-    }
-  </script>
-
-</body>
-</html>
+  location.href = "painel.html";
+}
+</script>
