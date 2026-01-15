@@ -1,10 +1,10 @@
 // ================== SUPABASE ==================
 const supabase = supabase.createClient(
-  "SUA_URL_SUPABASE",
-  "SUA_ANON_KEY"
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-// ================== SESSÃO ==================
+// ================== SESSÃO (PADRÃO BAR) ==================
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
 if (!admin || !admin.app_id) {
@@ -15,74 +15,39 @@ if (!admin || !admin.app_id) {
 
 const negocioId = admin.app_id;
 
-// ================== RESERVAS ATIVAS ==================
-async function carregarReservasAtivas() {
-  const { data, error } = await supabase
+// ================== CRIAR RESERVA ==================
+async function criarReserva(event) {
+  event.preventDefault();
+
+  const quarto_id = document.getElementById("quarto_id").value;
+  const nome = document.getElementById("nome").value.trim();
+  const documento = document.getElementById("documento").value.trim();
+  const checkin = document.getElementById("checkin").value;
+  const checkout = document.getElementById("checkout").value;
+
+  if (!quarto_id || !nome || !checkin || !checkout) {
+    alert("Preencha todos os campos obrigatórios");
+    return;
+  }
+
+  const { error } = await supabase
     .from("hotel_reservas")
-    .select("*")
-    .eq("negocio_id", negocioId)
-    .eq("status", "ativo");
+    .insert([{
+      negocio_id: negocioId,   // 🔥 AQUI ESTAVA O ERRO
+      quarto_id: quarto_id,
+      hospede_nome: nome,
+      documento: documento,
+      checkin: checkin,
+      checkout: checkout,
+      status: "ativo"
+    }]);
 
   if (error) {
-    console.error("Erro ao carregar reservas:", error);
-    alert("Erro ao carregar reservas");
+    console.error("Erro ao criar reserva:", error);
+    alert("Erro ao criar reserva");
     return;
   }
 
-  renderizarReservas(data);
+  alert("Reserva realizada com sucesso!");
+  location.href = "reservas.html";
 }
-
-// ================== ÚLTIMAS RESERVAS ==================
-async function carregarUltimasReservas() {
-  const { data, error } = await supabase
-    .from("hotel_reservas")
-    .select("id, hospede_nome, checkin, checkout, status")
-    .eq("negocio_id", negocioId)
-    .order("created_at", { ascending: false })
-    .limit(5);
-
-  if (error) {
-    console.error("Erro ao carregar últimas reservas:", error);
-    return;
-  }
-
-  renderizarUltimas(data);
-}
-
-// ================== RENDER ==================
-function renderizarReservas(reservas) {
-  const lista = document.getElementById("listaReservas");
-  lista.innerHTML = "";
-
-  if (!reservas || reservas.length === 0) {
-    lista.innerHTML = "<p>Nenhuma reserva ativa</p>";
-    return;
-  }
-
-  reservas.forEach(r => {
-    const div = document.createElement("div");
-    div.className = "card";
-    div.innerHTML = `
-      <h3>${r.hospede_nome}</h3>
-      <p>Check-in: ${r.checkin}</p>
-      <p>Check-out: ${r.checkout}</p>
-      <p>Status: ${r.status}</p>
-    `;
-    lista.appendChild(div);
-  });
-}
-
-function renderizarUltimas(reservas) {
-  const lista = document.getElementById("ultimasReservas");
-  lista.innerHTML = "";
-
-  reservas.forEach(r => {
-    const li = document.createElement("li");
-    li.innerText = `${r.hospede_nome} • ${r.status}`;
-    lista.appendChild(li);
-  });
-}
-
-// ================== INIT ==================
-carregarReservasAtivas();
-carregarUltimasReservas();
