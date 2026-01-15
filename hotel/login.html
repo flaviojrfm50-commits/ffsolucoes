@@ -8,6 +8,14 @@
   <link rel="stylesheet" href="css/style.css">
 
   <style>
+    body {
+      background: #0f172a;
+      color: #fff;
+      font-family: "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
     .login-box {
       max-width: 420px;
       width: 100%;
@@ -55,7 +63,7 @@
   </style>
 </head>
 
-<body class="center">
+<body>
 
   <div class="login-box">
     <div style="font-size: 50px;">🔐</div>
@@ -71,8 +79,18 @@
     <div id="erro" class="erro"></div>
   </div>
 
-  <!-- JS necessários -->
+
+  <!-- ======================================================= -->
+  <!-- ORDEM CORRETA DOS SCRIPTS - ESSA PARTE É FUNDAMENTAL !! -->
+  <!-- ======================================================= -->
+
+  <!-- 1) Biblioteca oficial do Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- 2) Cliente global (cria sb = supabase.createClient) -->
   <script src="js/supabase-client.js"></script>
+
+  <!-- 3) Auth personalizado usando tabela usuarios -->
   <script src="js/auth.js"></script>
 
   <script>
@@ -84,7 +102,7 @@
       erroBox.textContent = "";
 
       if (!usuario || !senha) {
-        erroBox.textContent = "Preencha todos os campos.";
+        erroBox.textContent = "Preencha usuário e senha.";
         return;
       }
 
@@ -95,7 +113,7 @@
         return;
       }
 
-      // Login OK → vai para o painel
+      // Login OK → Vai para o painel
       location.href = "painel.html";
     }
   </script>
