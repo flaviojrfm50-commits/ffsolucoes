@@ -28,7 +28,7 @@ async function listarQuartos() {
 
     const quartos = await res.json();
 
-    if (!quartos.length) {
+    if (!quartos || quartos.length === 0) {
       lista.innerHTML = "<p>Nenhum quarto cadastrado.</p>";
       return;
     }
@@ -43,10 +43,11 @@ async function listarQuartos() {
       </div>
     `).join("");
 
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.error(err);
     lista.innerText = "Erro ao carregar quartos.";
   }
 }
 
+// garante que o HTML já carregou
 document.addEventListener("DOMContentLoaded", listarQuartos);
