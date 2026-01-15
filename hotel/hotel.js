@@ -2,9 +2,6 @@
 const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
 
-// ===== ELEMENTO =====
-const lista = document.getElementById("lista-quartos");
-
 // ===== SESSÃO =====
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
@@ -13,8 +10,9 @@ if (!admin || admin.tipo !== "hotel") {
   window.location.href = "login.html";
 }
 
-// ===== FUNÇÃO GLOBAL (IMPORTANTE) =====
+// ===== FUNÇÃO =====
 async function listarQuartos() {
+  const lista = document.getElementById("lista-quartos");
   lista.innerText = "Carregando...";
 
   try {
@@ -23,7 +21,7 @@ async function listarQuartos() {
       {
         headers: {
           apikey: SUPABASE_KEY,
-          Authorization: "Bearer " + SUPABASE_KEY
+          Authorization: `Bearer ${SUPABASE_KEY}`
         }
       }
     );
@@ -35,24 +33,21 @@ async function listarQuartos() {
       return;
     }
 
-    let html = "";
-
-    quartos.forEach(q => {
-      html += `
-        <div style="border:1px solid #ccc; padding:10px; margin:10px 0">
-          <strong>Quarto ${q.numero}</strong><br>
-          Tipo: ${q.tipo}<br>
-          Capacidade: ${q.capacidade}<br>
-          Diária: R$ ${q.valor_diaria}<br>
-          Status: ${q.status}
-        </div>
-      `;
-    });
-
-    lista.innerHTML = html;
+    lista.innerHTML = quartos.map(q => `
+      <div style="border:1px solid #ccc; padding:10px; margin:10px 0">
+        <strong>Quarto ${q.numero}</strong><br>
+        Tipo: ${q.tipo}<br>
+        Capacidade: ${q.capacidade}<br>
+        Diária: R$ ${q.valor_diaria}<br>
+        Status: ${q.status}
+      </div>
+    `).join("");
 
   } catch (err) {
     console.error(err);
     lista.innerText = "Erro ao carregar quartos.";
   }
 }
+
+// garante que o HTML já carregou
+document.addEventListener("DOMContentLoaded", listarQuartos);
