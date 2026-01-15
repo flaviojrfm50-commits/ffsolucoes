@@ -4,16 +4,15 @@ const SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
 const lista = document.getElementById("lista-quartos");
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
-if (!admin || !admin.negocio_id) {
-  alert("Sessão inválida");
-  window.location.href = "login.html";
+if (!admin || admin.tipo !== "hotel" || !admin.app_id) {
+  window.location.replace("login.html");
 }
 
 async function listarQuartos() {
   lista.innerText = "Carregando...";
 
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/hotel_quartos?select=*&negocio_id=eq.${admin.negocio_id}`,
+    `${SUPABASE_URL}/rest/v1/hotel_quartos?select=*&app_id=eq.${admin.app_id}`,
     {
       headers: {
         apikey: SUPABASE_KEY,
