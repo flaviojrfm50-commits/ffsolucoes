@@ -1,6 +1,3 @@
-// ===============================
-// 🔥 CONFIGURAÇÃO SUPABASE
-// ===============================
 const supabaseUrl = "https://pdajixsoowcyhnjwhgpc.supabase.co",
 const supabaseKey = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 const supabase = supabasejs.createClient(supabaseUrl, supabaseKey);
@@ -45,3 +42,4 @@ async function criarQuarto(quarto) {
 async function deletarQuarto(id) {
   await supabase.from("hotel_quartos").delete().eq("id", id);
 }
+
