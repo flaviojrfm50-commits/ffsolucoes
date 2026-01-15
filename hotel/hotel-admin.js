@@ -1,13 +1,13 @@
 const supabaseUrl = "https://pdajixsoowcyhnjwhgpc.supabase.co";
 const supabaseKey = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
 
-// AQUI ESTAVA O ERRO — AGORA CORRIGIDO
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+// Cliente exclusivo deste módulo (evita conflito com outros arquivos JS)
+const hotelSupabase = supabase.createClient(supabaseUrl, supabaseKey);
 
 async function getHotelId() {
-  const user = (await supabase.auth.getUser()).data.user;
+  const user = (await hotelSupabase.auth.getUser()).data.user;
 
-  const { data, error } = await supabase
+  const { data, error } = await hotelSupabase
     .from("hoteis")
     .select("id")
     .eq("owner_id", user.id)
@@ -25,7 +25,7 @@ async function listarQuartos() {
   const hotel_id = await getHotelId();
   if (!hotel_id) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await hotelSupabase
     .from("hotel_quartos")
     .select("*")
     .eq("hotel_id", hotel_id)
@@ -40,7 +40,7 @@ async function listarQuartos() {
 }
 
 async function criarQuarto(quarto) {
-  const { data, error } = await supabase
+  const { data, error } = await hotelSupabase
     .from("hotel_quartos")
     .insert(quarto);
 
