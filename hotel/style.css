@@ -1,66 +1,231 @@
-* {
-  margin: 0;
-  padding: 0;
+/* ==============================
+   RESET BÁSICO
+   ============================== */
+*{
   box-sizing: border-box;
+}
+
+body{
+  margin:0;
   font-family: Arial, Helvetica, sans-serif;
+  background:#020617;
+  color:#ffffff;
 }
 
-body {
-  background: #f4f6f8;
-  color: #222;
-  padding: 40px;
+/* ==============================
+   TOPO / HEADER (ADMIN)
+   ============================== */
+.topo{
+  background:#0f172a;
+  padding:16px 24px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
 
-h1 {
-  font-size: 36px;
-  margin-bottom: 10px;
+.topo h2{
+  margin:0;
+  font-size:20px;
 }
 
-p {
-  font-size: 18px;
-  margin-bottom: 20px;
-  color: #555;
+.sair,
+.voltar{
+  background:#334155;
+  color:#fff;
+  border:none;
+  padding:10px 16px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:bold;
 }
 
-a,
-button {
-  display: inline-block;
-  padding: 12px 20px;
-  background: #0a6cff;
-  color: #fff;
-  text-decoration: none;
-  border-radius: 6px;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
+.sair{
+  background:#e53935;
 }
 
-a:hover,
-button:hover {
-  background: #084ecb;
+/* ==============================
+   CONTAINER PADRÃO
+   ============================== */
+.container{
+  padding:32px;
+  max-width:1200px;
+  margin:auto;
 }
 
-.quarto {
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+/* ==============================
+   GRID / CARDS
+   ============================== */
+.grid,
+.lista{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:20px;
 }
 
-form {
-  background: #fff;
-  padding: 25px;
-  border-radius: 8px;
-  max-width: 500px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+.card{
+  background:#0f172a;
+  padding:20px;
+  border-radius:16px;
+  box-shadow:0 10px 20px rgba(0,0,0,.4);
+  transition:.2s;
 }
 
-input {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 15px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 15px;
+.card:hover{
+  transform:scale(1.03);
+}
+
+.card h3{
+  margin:0 0 10px;
+}
+
+.card p{
+  margin:6px 0;
+  font-size:14px;
+  opacity:.85;
+}
+
+/* ==============================
+   BOTÕES
+   ============================== */
+.btn,
+.card a,
+button{
+  background:#22c55e;
+  color:#000;
+  border:none;
+  padding:10px 16px;
+  border-radius:8px;
+  font-weight:bold;
+  cursor:pointer;
+  text-decoration:none;
+  display:inline-block;
+}
+
+.btn-sec{
+  background:#334155;
+  color:#fff;
+}
+
+/* ==============================
+   FORMULÁRIOS
+   ============================== */
+input,
+select{
+  width:100%;
+  padding:12px;
+  border-radius:8px;
+  border:none;
+  outline:none;
+  margin-top:6px;
+  margin-bottom:14px;
+}
+
+label{
+  font-size:14px;
+  opacity:.85;
+}
+
+/* ==============================
+   TABELAS (ADMIN)
+   ============================== */
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:#0f172a;
+  border-radius:12px;
+  overflow:hidden;
+}
+
+th, td{
+  padding:12px;
+  text-align:left;
+  border-bottom:1px solid #1e293b;
+  font-size:14px;
+}
+
+th{
+  background:#020617;
+  font-weight:bold;
+}
+
+/* ==============================
+   STATUS
+   ============================== */
+.status{
+  font-weight:bold;
+  text-transform:capitalize;
+}
+
+.status.ativo{
+  color:#22c55e;
+}
+
+.status.finalizado{
+  color:#38bdf8;
+}
+
+.status.cancelado{
+  color:#f87171;
+}
+
+/* ==============================
+   FILTROS (RESERVAS)
+   ============================== */
+.filtros{
+  display:flex;
+  gap:10px;
+  margin-bottom:20px;
+  flex-wrap:wrap;
+}
+
+.filtros button{
+  background:#334155;
+  color:#fff;
+}
+
+.filtros button.ativo{
+  background:#22c55e;
+  color:#000;
+}
+
+/* ==============================
+   CAIXA DE LOGIN / RESERVA
+   ============================== */
+.box{
+  background:#0f172a;
+  padding:30px;
+  border-radius:16px;
+  width:100%;
+  max-width:420px;
+  margin:auto;
+  box-shadow:0 20px 40px rgba(0,0,0,.6);
+}
+
+.box h1,
+.box h2{
+  text-align:center;
+  margin-bottom:20px;
+}
+
+/* ==============================
+   MENSAGENS
+   ============================== */
+#msg{
+  text-align:center;
+  font-size:14px;
+  margin-top:10px;
+}
+
+/* ==============================
+   RESPONSIVO
+   ============================== */
+@media (max-width:600px){
+  .container{
+    padding:20px;
+  }
+
+  .topo{
+    flex-direction:column;
+    gap:10px;
+  }
 }
