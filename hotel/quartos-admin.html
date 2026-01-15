@@ -24,10 +24,7 @@
 
 </div>
 
-<!-- SUPABASE SDK (UMA VEZ) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<!-- CORE ADMIN -->
 <script src="hotel-admin.js"></script>
 
 <script>
@@ -57,7 +54,10 @@ async function novoQuarto() {
   const numero = prompt("Número do quarto:");
   if (!numero) return;
 
-  await criarQuarto({ numero });
+  let tipo = prompt("Tipo do quarto (Standard/Luxo/Premium):");
+  if (!tipo) tipo = "Standard";
+
+  await criarQuarto({ numero, tipo });
   carregar();
 }
 
