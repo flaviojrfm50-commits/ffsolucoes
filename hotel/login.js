@@ -1,52 +1,47 @@
-const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co";
-const SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
+const supabase = supabase.createClient(
+  "https://pdajixsoowcyhnjwhgpc.supabase.co";
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
+);
 
 async function loginHotel() {
   const usuario = document.getElementById("usuario").value.trim();
   const senha = document.getElementById("senha").value.trim();
   const msg = document.getElementById("msg");
 
+  msg.innerText = "Verificando...";
+  msg.style.color = "#fff";
+
   if (!usuario || !senha) {
-    msg.innerText = "Preencha usuário e senha.";
+    msg.innerText = "Preencha usuário e senha";
+    msg.style.color = "#f87171";
     return;
   }
 
-  msg.innerText = "Entrando...";
+  const { data, error } = await supabase
+    .from("admins")
+    .select("id, usuario, senha, app_id, modulo")
+    .eq("usuario", usuario)
+    .eq("senha", senha)
+    .eq("modulo", "hotel")
+    .single();
 
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/admins?select=*`,
-    {
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`
-      }
-    }
-  );
-
-  const admins = await res.json();
-
-  const admin = admins.find(a =>
-    a.usuario === usuario &&
-    a.senha === senha &&
-    a.ativo === true
-  );
-
-  if (!admin) {
-    msg.innerText = "Usuário ou senha inválidos.";
+  if (error || !data) {
+    msg.innerText = "Usuário ou senha inválidos";
+    msg.style.color = "#f87171";
     return;
   }
 
-  // 🔥 LIMPA E SALVA DO JEITO CERTO
-  localStorage.clear();
+  // 🔥 PADRÃO ÚNICO MULTI-NEGÓCIO
+  const adminLogado = {
+    id: data.id,
+    usuario: data.usuario,
+    app_id: data.app_id,
+    modulo: "hotel"
+  };
 
-  localStorage.setItem("admin_logado", JSON.stringify({
-    id: admin.id,
-    usuario: admin.usuario,
-    negocio_id: admin.negocio_id,
-    tipo: admin.tipo
-  }));
+  localStorage.setItem("admin_logado", JSON.stringify(adminLogado));
+  localStorage.setItem("app_id", data.app_id);
 
-  console.log("LOGIN OK:", admin);
-
-  window.location.href = "dashboard.html";
+  // redireciona pro painel do hotel
+  location.href = "/ffsolucoes/hotel/index.html";
 }
