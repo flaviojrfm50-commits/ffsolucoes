@@ -5,6 +5,7 @@
 <title>🏨 Login - Hotel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- Apenas UMA importação do Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -55,7 +56,7 @@ small{opacity:.6;}
 <body>
   <div class="box">
     <h2>🏨 Hotel - Login</h2>
-    <small>Insira suas credenciais</small>
+    <small>Entre com usuário e senha</small>
     <form id="formLogin">
       <input type="text" id="usuario" placeholder="Usuário" required>
       <input type="password" id="senha" placeholder="Senha" required>
@@ -66,8 +67,8 @@ small{opacity:.6;}
 
 <script>
 /* ========= CONFIG SUPABASE ========= */
-const SUPABASE_URL = "https://teu-projeto.supabase.co"; // 🔹 troca pelo teu
-const SUPABASE_KEY = "public-anon-key"; // 🔹 troca pelo teu
+const SUPABASE_URL = "https://teu-projeto.supabase.co"; // coloca tua URL aqui
+const SUPABASE_KEY = "public-anon-key"; // e tua key pública
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ========= LOGIN ========= */
