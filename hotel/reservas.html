@@ -5,80 +5,25 @@
 <title>📅 Reservas - Hotel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- SUPABASE CDN (UMD) -->
+<!-- SUPABASE CDN -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-
-<!-- Remove erro de favicon -->
 <link rel="icon" href="data:,">
 
 <style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #020617;
-  color: #fff;
-}
-.topo {
-  background: #0f172a;
-  padding: 16px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.voltar {
-  background: #1e293b;
-  color: #fff;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 10px;
-  cursor: pointer;
-}
-.container {
-  padding: 32px;
-  max-width: 1000px;
-  margin: auto;
-}
-form {
-  background: #0f172a;
-  padding: 20px;
-  border-radius: 14px;
-  margin-bottom: 30px;
-}
-input, select {
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-  margin-bottom: 12px;
-  background: #1e293b;
-  color: #fff;
-}
-button {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  background: #16a34a;
-  color: #fff;
-  font-weight: bold;
-}
-.tabela {
-  width: 100%;
-  border-collapse: collapse;
-}
-.tabela th, .tabela td {
-  padding: 12px;
-  border-bottom: 1px solid #1e293b;
-}
-.status {
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: bold;
-}
-.reservado { background: #2563eb; }
-.hospedado { background: #b91c1c; }
-.finalizado { background: #15803d; }
+/* (estilo mantido – não mexi) */
+body { margin:0; font-family:Arial,sans-serif; background:#020617; color:#fff; }
+.topo { background:#0f172a; padding:16px 24px; display:flex; justify-content:space-between; align-items:center; }
+.voltar { background:#1e293b; color:#fff; border:none; padding:10px 16px; border-radius:10px; cursor:pointer; }
+.container { padding:32px; max-width:1000px; margin:auto; }
+form { background:#0f172a; padding:20px; border-radius:14px; margin-bottom:30px; }
+input,select { width:100%; padding:10px; border-radius:8px; border:none; margin-bottom:12px; background:#1e293b; color:#fff; }
+button { padding:10px 16px; border:none; border-radius:8px; cursor:pointer; background:#16a34a; color:#fff; font-weight:bold; }
+.tabela { width:100%; border-collapse:collapse; }
+.tabela th,.tabela td { padding:12px; border-bottom:1px solid #1e293b; }
+.status { padding:6px 10px; border-radius:6px; font-size:13px; font-weight:bold; }
+.reservado { background:#2563eb; }
+.hospedado { background:#b91c1c; }
+.finalizado { background:#15803d; }
 </style>
 </head>
 
@@ -90,52 +35,57 @@ button {
 </div>
 
 <div class="container">
-  <h3>Nova Reserva</h3>
 
-  <form id="formReserva">
-    <select id="hospede" required></select>
-    <select id="quarto" required></select>
+<h3>Nova Reserva</h3>
 
-    <label>Data de Check-in</label>
-    <input type="date" id="checkin" required>
+<form id="formReserva">
+  <select id="hospede" required></select>
+  <select id="quarto" required></select>
 
-    <label>Data de Check-out</label>
-    <input type="date" id="checkout" required>
+  <label>Data de Check-in</label>
+  <input type="date" id="checkin" required>
 
-    <input type="number" id="valor" placeholder="Valor total (auto)" readonly>
+  <label>Data de Check-out</label>
+  <input type="date" id="checkout" required>
 
-    <button type="submit">Salvar Reserva</button>
-  </form>
+  <input type="number" id="valor" placeholder="Valor total (auto)" readonly>
 
-  <h3>Reservas</h3>
-  <table class="tabela">
-    <thead>
-      <tr>
-        <th>Hóspede</th>
-        <th>Quarto</th>
-        <th>Check-in</th>
-        <th>Check-out</th>
-        <th>Valor</th>
-        <th>Status</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody id="tabelaReservas"></tbody>
-  </table>
+  <button type="submit">Salvar Reserva</button>
+</form>
+
+<h3>Reservas</h3>
+<table class="tabela">
+  <thead>
+    <tr>
+      <th>Hóspede</th>
+      <th>Quarto</th>
+      <th>Check-in</th>
+      <th>Check-out</th>
+      <th>Valor</th>
+      <th>Status</th>
+      <th>Ações</th>
+    </tr>
+  </thead>
+  <tbody id="tabelaReservas"></tbody>
+</table>
+
 </div>
 
 <script>
-/* ================= AUTH ================= */
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-if (!admin) {
-  alert("Sessão inválida");
-  location.href = "login.html";
+/* ================= SESSÃO CENTRAL ================= */
+function getSessao() {
+  const admin = JSON.parse(localStorage.getItem("admin_logado"));
+  if (!admin || !admin.app_id) {
+    alert("Sessão inválida");
+    location.replace("login.html");
+    throw new Error("Sessão inválida");
+  }
+  return { admin, negocio_id: admin.app_id };
 }
 
-const negocio_id = admin.app_id;
+const { negocio_id } = getSessao();
 
 /* ================= SUPABASE ================= */
-/* ⚠️ NÃO declare const supabase */
 const db = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
@@ -150,31 +100,38 @@ const checkinInput  = document.getElementById("checkin");
 const checkoutInput = document.getElementById("checkout");
 const tabela        = document.getElementById("tabelaReservas");
 
+/* ================= CORREÇÃO MULTI-NEGÓCIO (USO MANUAL SE PRECISAR) ================= */
+async function corrigirRegistro(tabela, id) {
+  await db.from(tabela).update({ negocio_id }).eq("id", id);
+}
+
 /* ================= HÓSPEDES ================= */
 async function carregarHospedes() {
-  const { data } = await db
+  const { data, error } = await db
     .from("hotel_hospedes")
-    .select("*")
-    .eq("negocio_id", negocio_id)
-    .order("nome");
+    .select("id, nome")
+    .eq("negocio_id", negocio_id);
+
+  if (error) return console.error(error);
 
   hospedeSelect.innerHTML = "<option value=''>Selecione o hóspede</option>";
-  data?.forEach(h => {
+  data.forEach(h => {
     hospedeSelect.innerHTML += `<option value="${h.id}">${h.nome}</option>`;
   });
 }
 
 /* ================= QUARTOS ================= */
 async function carregarQuartos() {
-  const { data } = await db
+  const { data, error } = await db
     .from("hotel_quartos")
-    .select("*")
+    .select("id, numero, preco_diaria")
     .eq("negocio_id", negocio_id)
-    .neq("status", "ocupado")
-    .order("numero");
+    .neq("status", "ocupado");
+
+  if (error) return console.error(error);
 
   quartoSelect.innerHTML = "<option value=''>Selecione o quarto</option>";
-  data?.forEach(q => {
+  data.forEach(q => {
     quartoSelect.innerHTML += `
       <option value="${q.id}" data-preco="${q.preco_diaria}">
         Quarto ${q.numero} - R$ ${q.preco_diaria}
@@ -226,15 +183,17 @@ form.addEventListener("submit", async e => {
 async function carregarReservas() {
   tabela.innerHTML = "<tr><td colspan='7'>Carregando...</td></tr>";
 
-  const { data } = await db
+  const { data, error } = await db
     .from("hotel_reservas")
     .select("*, hotel_hospedes(nome), hotel_quartos(numero)")
     .eq("negocio_id", negocio_id)
     .order("data_checkin", { ascending: false });
 
+  if (error) return console.error(error);
+
   tabela.innerHTML = "";
 
-  if (!data?.length) {
+  if (!data.length) {
     tabela.innerHTML = "<tr><td colspan='7'>Nenhuma reserva</td></tr>";
     return;
   }
