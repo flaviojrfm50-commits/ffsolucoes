@@ -111,7 +111,8 @@ if(!admin || !admin.app_id){
 // mantém compatibilidade com o bar
 localStorage.setItem("app_id", admin.app_id);
 document.getElementById("nome").innerText = admin.usuario;
-document.getElementById("appId").innerText = admin.app_id;
+document.getElementById("appId").innerText = admin.app_id || admin.id || "sem id";
+
 
 /* ========= LOGOUT ========= */
 function logout(){
