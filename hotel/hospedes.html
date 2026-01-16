@@ -10,11 +10,16 @@
 
 <!-- INIT SUPABASE (ÚNICO) -->
 <script>
-  if (!window.db) {
-    const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_LAtlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
-    window.db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  }
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+if(!admin){
+  alert("Sessão inválida");
+  window.location.href="login.html";
+}
+
+const supabaseClient = supabase.createClient(
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+);
 </script>
 
 <link rel="icon" href="data:,">
