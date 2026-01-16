@@ -123,14 +123,10 @@ if(!admin){
   window.location.href="login.html";
 }
 
-<!-- SUPABASE SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const supabase = window.supabase.createClient(
-    "https://pdajixsoowcyhnjwhgpc.supabase.co",
-    "sb_publishable_LAtlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-  );
-
+const supabaseClient = supabase.createClient(
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+);
   const negocio_id = adm.app_id;
 
   // 🔹 Elementos
@@ -306,4 +302,3 @@ if(!admin){
 
 </body>
 </html>
-
