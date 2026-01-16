@@ -5,14 +5,9 @@
 <title>🛏️ Quartos - Painel do Hotel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- SUPABASE -->
+<!-- SUPABASE GLOBAL -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-/* ===== CONFIG SUPABASE GLOBAL ===== */
-const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co";
-const SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-</script>
+<script src="../js/supabase-global.js"></script>
 
 <style>
 body{
@@ -120,6 +115,13 @@ button{
 </div>
 
 <script>
+/* ========= CLIENTE SUPABASE (DO GLOBAL) ========= */
+if (!window.supabaseClient) {
+  alert("Erro: Supabase não inicializado!");
+  throw new Error("Supabase não inicializado");
+}
+const supabase = window.supabaseClient;
+
 /* ========= VALIDA LOGIN ========= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 if (!admin || !admin.app_id) {
@@ -137,7 +139,7 @@ document.getElementById("formQuarto").addEventListener("submit", async (e) => {
   const tipo = document.getElementById("tipo").value.trim();
   const preco = parseFloat(document.getElementById("preco").value || 0);
 
-  const { error } = await sb.from("hotel_quartos").insert([
+  const { error } = await supabase.from("hotel_quartos").insert([
     {
       negocio_id,
       numero,
@@ -162,7 +164,7 @@ async function carregarQuartos() {
   const tabela = document.querySelector("#tabelaQuartos tbody");
   tabela.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
 
-  const { data, error } = await sb
+  const { data, error } = await supabase
     .from("hotel_quartos")
     .select("*")
     .eq("negocio_id", negocio_id)
@@ -203,13 +205,17 @@ async function carregarQuartos() {
 /* ========= ALTERAR STATUS ========= */
 async function alterarStatus(id, status) {
   if (!status) return;
-  const { error } = await sb
+  const { error } = await supabase
     .from("hotel_quartos")
     .update({ status })
     .eq("id", id);
 
-  if (error) alert("Erro ao atualizar: " + error.message);
-  else carregarQuartos();
+  if (error) {
+    alert("Erro ao atualizar: " + error.message);
+    console.error(error);
+  } else {
+    carregarQuartos();
+  }
 }
 
 /* ========= INICIAR ========= */
