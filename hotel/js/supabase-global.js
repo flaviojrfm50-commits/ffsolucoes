@@ -1,20 +1,10 @@
-// ===============================
-// Supabase Global Config Seguro
-// ===============================
-(function () {
-  // Espera o Supabase SDK estar carregado
-  if (typeof window.supabase === "undefined") {
-    console.error("⚠️ Supabase SDK ainda não carregado. Verifique a ordem dos scripts.");
-    return;
-  }
+if (!window.supabaseClient) {
+  const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co";
+  const SUPABASE_KEY = "sb-publishable-LAtlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
 
-  // Se ainda não existir um cliente global, cria um
-  if (!window.supabaseClient) {
-    const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_LAtlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
-    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log("✅ Supabase global inicializado com sucesso.");
-  } else {
-    console.log("ℹ️ Supabase global já existente, reutilizando instância.");
-  }
-})();
+  // Usa o objeto global da biblioteca carregada
+  const { createClient } = window.supabase;
+  window.supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  console.log("✅ Supabase global inicializado com sucesso.");
+}
