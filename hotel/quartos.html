@@ -5,7 +5,7 @@
 <title>🛏️ Quartos - Painel do Hotel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- SUPABASE GLOBAL -->
+<!-- SDK Supabase e cliente global -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://anajuliafarias659-cloud.github.io/ffsolucoes/hotel/js/supabase-global.js"></script>
 
@@ -115,15 +115,12 @@ button{
 </div>
 
 <script>
-/* ========= CLIENTE SUPABASE (DO GLOBAL) ========= */
-if (!window.supabaseClient) {
+/* ========= PEGA CLIENTE GLOBAL ========= */
+const sb = window.supabaseClient;
+
+if (!sb) {
   alert("Erro: Supabase não inicializado!");
   throw new Error("Supabase não inicializado");
-}
-
-// evita erro “Identifier 'supabase' has already been declared”
-if (typeof supabase === "undefined") {
-  var supabase = window.supabaseClient;
 }
 
 /* ========= VALIDA LOGIN ========= */
@@ -143,7 +140,7 @@ document.getElementById("formQuarto").addEventListener("submit", async (e) => {
   const tipo = document.getElementById("tipo").value.trim();
   const preco = parseFloat(document.getElementById("preco").value || 0);
 
-  const { error } = await supabase.from("hotel_quartos").insert([
+  const { error } = await sb.from("hotel_quartos").insert([
     {
       negocio_id,
       numero,
@@ -168,7 +165,7 @@ async function carregarQuartos() {
   const tabela = document.querySelector("#tabelaQuartos tbody");
   tabela.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
 
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from("hotel_quartos")
     .select("*")
     .eq("negocio_id", negocio_id)
@@ -209,7 +206,7 @@ async function carregarQuartos() {
 /* ========= ALTERAR STATUS ========= */
 async function alterarStatus(id, status) {
   if (!status) return;
-  const { error } = await supabase
+  const { error } = await sb
     .from("hotel_quartos")
     .update({ status })
     .eq("id", id);
