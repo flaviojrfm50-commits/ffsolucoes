@@ -5,7 +5,14 @@
 <title>🛏️ Quartos - Painel do Hotel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===== CONFIG SUPABASE GLOBAL ===== */
+const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
+window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+</script>
 
 <style>
 body{
@@ -113,10 +120,8 @@ button{
 </div>
 
 <script>
-/* ========= CONFIG SUPABASE ========= */
-const SUPABASE_URL = "https://teu-projeto.supabase.co";
-const SUPABASE_KEY = "public-anon-key";
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+/* ========= SUPABASE CLIENT ========= */
+const supabase = window.supabaseClient;
 
 /* ========= SESSÃO ========= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
@@ -134,10 +139,17 @@ form.addEventListener("submit", async (e)=>{
   const tipo = document.getElementById("tipo").value.trim();
   const preco = parseFloat(document.getElementById("preco").value || 0);
 
-  const { error } = await supabase.from("quartos").insert([{ 
-    app_id, numero, tipo, preco_diaria: preco, status: "livre" 
+  const { error } = await supabase.from("hotel_quartos").insert([{ 
+    negocio_id: app_id, // mantém compatível com tua estrutura multi negócio
+    numero,
+    tipo,
+    preco_diaria: preco,
+    status: "livre"
   }]);
-  if(error){ alert("Erro ao salvar: " + error.message); return; }
+  if(error){ 
+    alert("Erro ao salvar: " + error.message);
+    return;
+  }
 
   form.reset();
   carregarQuartos();
@@ -149,12 +161,15 @@ async function carregarQuartos(){
   tabela.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
 
   const { data, error } = await supabase
-    .from("quartos")
+    .from("hotel_quartos")
     .select("*")
-    .eq("app_id", app_id)
+    .eq("negocio_id", app_id)
     .order("numero", { ascending: true });
 
-  if(error){ tabela.innerHTML = "<tr><td colspan='5'>Erro ao carregar</td></tr>"; return; }
+  if(error){
+    tabela.innerHTML = "<tr><td colspan='5'>Erro ao carregar</td></tr>";
+    return;
+  }
 
   if(!data || data.length === 0){
     tabela.innerHTML = "<tr><td colspan='5'>Nenhum quarto cadastrado</td></tr>";
@@ -186,7 +201,7 @@ async function carregarQuartos(){
 async function alterarStatus(id, status){
   if(!status) return;
   const { error } = await supabase
-    .from("quartos")
+    .from("hotel_quartos")
     .update({ status })
     .eq("id", id);
   if(error) alert("Erro: " + error.message);
