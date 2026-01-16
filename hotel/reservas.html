@@ -116,21 +116,17 @@ button {
   </table>
 </div>
 
-<script type="module">
-  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+<script>
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+if(!admin){
+  alert("Sessão inválida");
+  window.location.href="login.html";
+}
 
-  const supabase = createClient(
-    "https://pdajixsoowcyhnjwhgpc.supabase.co",
-    "sb_publishable_LAtlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-  );
-  window.supabase = supabase;
-
-  // 🔹 Sessão do admin
-  const adm = JSON.parse(localStorage.getItem("admin_logado"));
-  if (!adm || !adm.app_id) {
-    alert("Sessão inválida. Faça login novamente.");
-    location.replace("../auth/login.html");
-  }
+const supabaseClient = supabase.createClient(
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+);
   const negocio_id = adm.app_id;
 
   // 🔹 Elementos
@@ -306,5 +302,6 @@ button {
 
 </body>
 </html>
+
 
 
