@@ -76,6 +76,7 @@ small{ color:#9ca3af; }
   </p>
 
   <div class="grid">
+
     <div class="card" onclick="location.href='quartos.html'">
       <h3>🛏️ Quartos</h3>
       <p>Cadastro e status dos quartos</p>
@@ -96,10 +97,23 @@ small{ color:#9ca3af; }
       <p>Movimentações financeiras</p>
     </div>
 
+    <!-- 🔥 NOVO: CONFIG SITE -->
+    <div class="card" onclick="location.href='hotel-config.html'">
+      <h3>⚙️ Configurar Site</h3>
+      <p>Banner, informações e imagens do hotel</p>
+    </div>
+
+    <!-- 🔥 NOVO: ABRIR SITE -->
+    <div class="card" onclick="abrirSite()">
+      <h3>🌍 Abrir Site</h3>
+      <p>Visualizar o site público do hotel</p>
+    </div>
+
     <div class="card" onclick="window.open('../chat-admin.html','_blank')">
       <h3>💬 Suporte</h3>
       <p>Falar com o suporte</p>
     </div>
+
   </div>
 </div>
 
@@ -113,9 +127,14 @@ if (!admin || !admin.app_id) {
 }
 
 /* ========= DEFINE DADOS NA TELA ========= */
-localStorage.setItem("app_id", admin.app_id); // compatibilidade com outros módulos
+localStorage.setItem("app_id", admin.app_id);
 document.getElementById("nome").innerText = admin.usuario || "Administrador";
 document.getElementById("appId").innerText = admin.app_id || admin.id || "sem id";
+
+/* ========= ABRIR SITE PUBLICO ========= */
+function abrirSite() {
+  window.open(`public/site/index.html?id=${admin.app_id}`, "_blank");
+}
 
 /* ========= LOGOUT ========= */
 function logout() {
