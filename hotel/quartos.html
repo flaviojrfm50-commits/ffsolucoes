@@ -8,18 +8,21 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#020617;color:#fff}
-.topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between}
-.voltar{background:#1e293b;color:#fff;border:none;padding:10px 16px;border-radius:10px;cursor:pointer}
-.container{max-width:1000px;margin:30px auto;padding:20px}
-.card{background:#0f172a;padding:20px;border-radius:16px;margin-bottom:25px}
-input{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:none;background:#1e293b;color:#fff}
-button{padding:10px 14px;border:none;border-radius:8px;font-weight:bold;cursor:pointer}
-.btn-green{background:#16a34a;color:#fff}
-.btn-red{background:#dc2626;color:#fff}
-table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid #1e293b}
-.fotos img{height:60px;border-radius:6px;margin-right:6px}
+  body{margin:0;font-family:Arial;background:#020617;color:#fff}
+  .topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+  .voltar{background:#1e293b;color:#fff;border:none;padding:10px 16px;border-radius:10px;cursor:pointer}
+  .container{max-width:1000px;margin:30px auto;padding:20px}
+  .card{background:#0f172a;padding:20px;border-radius:16px;margin-bottom:25px}
+  input{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:none;background:#1e293b;color:#fff}
+  button{padding:10px 14px;border:none;border-radius:8px;font-weight:bold;cursor:pointer}
+  .btn-green{background:#16a34a;color:#fff}
+  .btn-red{background:#dc2626;color:#fff}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:10px;border-bottom:1px solid #1e293b;text-align:left;vertical-align:top}
+  .fotos{display:flex;gap:6px;flex-wrap:wrap}
+  .fotos img{height:60px;width:80px;object-fit:cover;border-radius:6px}
+  .acoes{display:flex;gap:8px;flex-wrap:wrap}
+  .mini{padding:8px 10px;border-radius:8px}
 </style>
 </head>
 
@@ -32,154 +35,216 @@ th,td{padding:10px;border-bottom:1px solid #1e293b}
 
 <div class="container">
 
-<div class="card">
-  <h3>Cadastrar Novo Quarto</h3>
-  <input id="numero" placeholder="Número do quarto">
-  <input id="tipo" placeholder="Tipo (Standard, Suíte, Luxo)">
-  <input id="preco" type="number" placeholder="Preço da diária (R$)">
-  <input id="fotosQuarto" type="file" multiple>
-  <button class="btn-green" onclick="salvarQuarto()">Salvar Quarto</button>
-</div>
+  <div class="card">
+    <h3>Cadastrar Novo Quarto</h3>
+    <input id="numero" placeholder="Número do quarto">
+    <input id="tipo" placeholder="Tipo (Standard, Suíte, Luxo)">
+    <input id="preco" type="number" placeholder="Preço da diária (R$)">
+    <label style="margin-top:12px;display:block;">📷 Fotos do quarto</label>
+    <input id="fotosQuarto" type="file" multiple accept="image/*">
+    <button id="btnSalvar" class="btn-green">Salvar Quarto</button>
+  </div>
 
-<div class="card">
-  <h3>Lista de Quartos</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Número</th>
-        <th>Tipo</th>
-        <th>Preço</th>
-        <th>Fotos</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody id="tabela"></tbody>
-  </table>
-</div>
+  <div class="card">
+    <h3>Lista de Quartos</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Número</th>
+          <th>Tipo</th>
+          <th>Preço</th>
+          <th>Fotos</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabela">
+        <tr><td colspan="5">Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
 </div>
 
 <script>
-/* ====== SESSÃO ====== */
+/* ===== SESSÃO ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
-if(!admin || !admin.app_id){
+if (!admin || !admin.app_id) {
   alert("Sessão inválida");
-  location.href="login.html";
+  location.href = "login.html";
 }
 const negocio_id = admin.app_id;
 
-/* ====== SUPABASE ====== */
-const supabase = window.supabase.createClient(
+/* ===== SUPABASE ===== */
+const sb = window.supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ====== SALVAR QUARTO ====== */
-async function salvarQuarto(){
-  const numero = document.getElementById("numero").value.trim();
-  const tipo = document.getElementById("tipo").value.trim();
-  const preco = parseFloat(document.getElementById("preco").value);
-  const files = document.getElementById("fotosQuarto").files;
+/* ===== ELEMENTOS ===== */
+const elNumero = document.getElementById("numero");
+const elTipo = document.getElementById("tipo");
+const elPreco = document.getElementById("preco");
+const elFotos = document.getElementById("fotosQuarto");
+const elTabela = document.getElementById("tabela");
+const btnSalvar = document.getElementById("btnSalvar");
 
-  if(!numero || !tipo || !preco){
-    alert("Preencha todos os campos");
-    return;
-  }
-
-  const fotos = [];
-
-  for(const file of files){
-    const path = `${negocio_id}/${Date.now()}_${file.name}`;
-    const { error } = await supabase
-      .storage
-      .from("hotel-quartos")
-      .upload(path, file, { upsert:false });
-
-    if(error){
-      alert("Erro upload: " + error.message);
-      return;
-    }
-
-    const { data } = supabase
-      .storage
-      .from("hotel-quartos")
-      .getPublicUrl(path);
-
-    fotos.push(data.publicUrl);
-  }
-
-  const { error } = await supabase.from("hotel_quartos").insert({
-    negocio_id,
-    numero,
-    tipo,
-    preco_diaria: preco,
-    status:"livre",
-    fotos
-  });
-
-  if(error){
-    alert(error.message);
-    return;
-  }
-
-  document.getElementById("numero").value="";
-  document.getElementById("tipo").value="";
-  document.getElementById("preco").value="";
-  document.getElementById("fotosQuarto").value="";
-
-  carregar();
+/* ===== HELPERS ===== */
+function safeName(name) {
+  return name
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/[^a-zA-Z0-9._-]/g, "");
 }
 
-/* ====== LISTAR ====== */
-async function carregar(){
-  const tabela = document.getElementById("tabela");
-  tabela.innerHTML="<tr><td colspan='5'>Carregando...</td></tr>";
+async function uploadFotos(quartoId) {
+  const files = elFotos.files;
+  if (!files || !files.length) return [];
 
-  const { data, error } = await supabase
-    .from("hotel_quartos")
-    .select("*")
-    .eq("negocio_id",negocio_id)
-    .order("numero");
+  const urls = [];
 
-  if(error){
-    tabela.innerHTML="<tr><td colspan='5'>Erro</td></tr>";
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const fileName = `${Date.now()}_${i}_${safeName(file.name) || ("foto."+ext)}`;
+    const path = `${negocio_id}/${quartoId}/${fileName}`;
+
+    const { error } = await sb.storage
+      .from("hotel-quartos")
+      .upload(path, file, { upsert: true, contentType: file.type || "image/jpeg" });
+
+    if (error) {
+      console.error("Erro upload:", error);
+      // não trava tudo, só pula essa foto
+      continue;
+    }
+
+    const { data } = sb.storage.from("hotel-quartos").getPublicUrl(path);
+    urls.push(data.publicUrl);
+  }
+
+  return urls;
+}
+
+/* ===== CRUD ===== */
+async function salvarQuarto() {
+  const numero = elNumero.value.trim();
+  const tipo = elTipo.value.trim();
+  const preco = parseFloat(elPreco.value);
+
+  if (!numero || !tipo || !preco || preco <= 0) {
+    alert("Preencha todos os campos corretamente.");
     return;
   }
 
-  tabela.innerHTML="";
-  data.forEach(q=>{
-    tabela.innerHTML+=`
+  btnSalvar.disabled = true;
+  btnSalvar.textContent = "Salvando...";
+
+  // 1) cria o quarto (sem fotos primeiro)
+  const { data: quarto, error: errInsert } = await sb
+    .from("hotel_quartos")
+    .insert([{ negocio_id, numero, tipo, preco_diaria: preco, status: "livre", fotos: [] }])
+    .select()
+    .single();
+
+  if (errInsert) {
+    btnSalvar.disabled = false;
+    btnSalvar.textContent = "Salvar Quarto";
+    alert("Erro ao salvar quarto: " + errInsert.message);
+    return;
+  }
+
+  // 2) upload das fotos
+  const fotosUrls = await uploadFotos(quarto.id);
+
+  // 3) salva urls no banco
+  if (fotosUrls.length) {
+    const { error: errUp } = await sb
+      .from("hotel_quartos")
+      .update({ fotos: fotosUrls })
+      .eq("id", quarto.id);
+
+    if (errUp) console.error("Erro ao salvar URLs:", errUp);
+  }
+
+  // limpa formulário
+  elNumero.value = "";
+  elTipo.value = "";
+  elPreco.value = "";
+  elFotos.value = "";
+
+  btnSalvar.disabled = false;
+  btnSalvar.textContent = "Salvar Quarto";
+
+  await carregarQuartos();
+}
+
+async function excluirFotos(id) {
+  if (!confirm("Excluir TODAS as fotos desse quarto?")) return;
+  const { error } = await sb.from("hotel_quartos").update({ fotos: [] }).eq("id", id);
+  if (error) alert("Erro ao excluir fotos: " + error.message);
+  await carregarQuartos();
+}
+
+async function excluirQuarto(id) {
+  if (!confirm("Excluir quarto?")) return;
+  const { error } = await sb.from("hotel_quartos").delete().eq("id", id);
+  if (error) alert("Erro ao excluir quarto: " + error.message);
+  await carregarQuartos();
+}
+
+async function carregarQuartos() {
+  elTabela.innerHTML = `<tr><td colspan="5">Carregando...</td></tr>`;
+
+  const { data, error } = await sb
+    .from("hotel_quartos")
+    .select("*")
+    .eq("negocio_id", negocio_id)
+    .order("numero", { ascending: true });
+
+  if (error) {
+    elTabela.innerHTML = `<tr><td colspan="5">Erro ao carregar: ${error.message}</td></tr>`;
+    return;
+  }
+
+  if (!data || !data.length) {
+    elTabela.innerHTML = `<tr><td colspan="5">Nenhum quarto cadastrado</td></tr>`;
+    return;
+  }
+
+  elTabela.innerHTML = "";
+  data.forEach(q => {
+    const fotosHtml = (q.fotos || []).map(url => `<img src="${url}" alt="foto">`).join("");
+    elTabela.innerHTML += `
       <tr>
         <td>${q.numero}</td>
         <td>${q.tipo}</td>
-        <td>R$ ${q.preco_diaria.toFixed(2)}</td>
-        <td class="fotos">
-          ${(q.fotos||[]).map(f=>`<img src="${f}">`).join("")}
-        </td>
+        <td>R$ ${Number(q.preco_diaria).toFixed(2)}</td>
+        <td><div class="fotos">${fotosHtml || ""}</div></td>
         <td>
-          <button class="btn-red" onclick="excluirFotos('${q.id}')">Excluir Fotos</button>
-          <button class="btn-red" onclick="excluirQuarto('${q.id}')">Excluir Quarto</button>
+          <div class="acoes">
+            <button class="btn-red mini" data-excluir-fotos="${q.id}">Excluir Fotos</button>
+            <button class="btn-red mini" data-excluir-quarto="${q.id}">Excluir Quarto</button>
+          </div>
         </td>
       </tr>
     `;
   });
+
+  // listeners nos botões gerados
+  document.querySelectorAll("[data-excluir-fotos]").forEach(b => {
+    b.addEventListener("click", () => excluirFotos(b.getAttribute("data-excluir-fotos")));
+  });
+  document.querySelectorAll("[data-excluir-quarto]").forEach(b => {
+    b.addEventListener("click", () => excluirQuarto(b.getAttribute("data-excluir-quarto")));
+  });
 }
 
-/* ====== EXCLUIR FOTOS ====== */
-async function excluirFotos(id){
-  if(!confirm("Excluir todas as fotos?")) return;
-  await supabase.from("hotel_quartos").update({fotos:[]}).eq("id",id);
-  carregar();
-}
+/* ===== EVENTOS ===== */
+btnSalvar.addEventListener("click", salvarQuarto);
 
-/* ====== EXCLUIR QUARTO ====== */
-async function excluirQuarto(id){
-  if(!confirm("Excluir quarto?")) return;
-  await supabase.from("hotel_quartos").delete().eq("id",id);
-  carregar();
-}
-
-carregar();
+/* START */
+carregarQuartos();
 </script>
 
 </body>
