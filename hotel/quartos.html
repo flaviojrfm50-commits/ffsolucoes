@@ -82,10 +82,6 @@
       text-align: left;
       vertical-align: top;
     }
-    .status {
-      font-weight: bold;
-      text-transform: capitalize;
-    }
     .thumbs {
       display: flex;
       gap: 6px;
@@ -145,7 +141,7 @@
 <script>
 const negocio_id = admin.app_id;
 
-/* ===== UPLOAD FOTOS ===== */
+/* ===== UPLOAD FOTOS (CORRIGIDO DEFINITIVO) ===== */
 async function uploadFotos(quarto_id) {
   const input = document.getElementById("fotosQuarto");
   const files = input.files;
@@ -154,18 +150,30 @@ async function uploadFotos(quarto_id) {
   const fotos = [];
 
   for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const safeName = file.name.replace(/\s+/g, "_");
+    const original = files[i];
+
+    // 🔥 normaliza QUALQUER formato para JPG
+    const buffer = await original.arrayBuffer();
+    const jpgFile = new File(
+      [buffer],
+      original.name.replace(/\.[^/.]+$/, ".jpg"),
+      { type: "image/jpeg" }
+    );
+
+    const safeName = jpgFile.name.replace(/\s+/g, "_");
     const path = `hotel-quartos/${negocio_id}/${quarto_id}/${Date.now()}_${safeName}`;
 
     const { error } = await db.storage
       .from("hotel-quartos")
-      .upload(path, file, {
+      .upload(path, jpgFile, {
         upsert: true,
-        contentType: file.type
+        contentType: "image/jpeg"
       });
 
-    if (error) continue;
+    if (error) {
+      console.error("Erro upload:", error);
+      continue;
+    }
 
     const { data } = db.storage
       .from("hotel-quartos")
