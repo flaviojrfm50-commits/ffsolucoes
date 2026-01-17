@@ -5,7 +5,7 @@
 <title>Hotel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Supabase v2 -->
+<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -27,13 +27,7 @@ body{
   border-radius:18px;
   margin-bottom:24px;
 }
-.banner{
-  width:100%;
-  height:240px;
-  object-fit:cover;
-  border-radius:16px;
-  margin-bottom:20px;
-}
+h1,h2{margin:0 0 12px 0}
 .quartos{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
@@ -48,17 +42,19 @@ body{
   width:100%;
   height:180px;
   object-fit:cover;
+  display:block;
 }
 .info{
   padding:16px;
 }
 .preco{
-  font-weight:bold;
   margin:8px 0;
+  font-weight:bold;
   color:#22c55e;
 }
 .btn{
   display:inline-block;
+  margin-top:10px;
   padding:10px 14px;
   background:#16a34a;
   color:#fff;
@@ -76,19 +72,19 @@ body{
 <body>
 <div class="container">
 
-  <div class="card" id="cabecalho">
-    <p>Carregando hotel...</p>
+  <div class="card">
+    <h1>Hotel</h1>
+    <p>Quartos disponíveis</p>
   </div>
 
   <div class="card">
-    <h2>Quartos disponíveis</h2>
     <div id="lista" class="quartos">Carregando...</div>
   </div>
 
 </div>
 
 <script>
-/* ================= CONFIG FIXA ================= */
+/* ================= CONFIG ================= */
 
 const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
@@ -104,47 +100,13 @@ const supabase = window.supabase.createClient(
 const params = new URLSearchParams(window.location.search);
 const negocio_id = params.get("id");
 
-const cabecalho = document.getElementById("cabecalho");
 const lista = document.getElementById("lista");
 
-console.log("NEGOCIO_ID RECEBIDO:", negocio_id);
+console.log("NEGOCIO_ID:", negocio_id);
 
 if(!negocio_id){
-  cabecalho.innerHTML = "<p class='erro'>Negócio não informado</p>";
+  lista.innerHTML = "<p class='erro'>Negócio não informado</p>";
   throw new Error("Sem negocio_id");
-}
-
-/* ================= HOTEL ================= */
-
-async function carregarHotel(){
-  const { data, error } = await supabase
-    .from("estabelecimentos")
-    .select("nome, descricao, banner_url")
-    .eq("negocio_id", negocio_id)
-    .single();
-
-  if(error){
-    console.error("ERRO HOTEL:", error);
-    cabecalho.innerHTML = "<p class='erro'>Erro ao carregar hotel</p>";
-    return;
-  }
-
-  let bannerUrl = "";
-
-  if(data.banner_url){
-    const { data: img } = supabase
-      .storage
-      .from(BUCKET)
-      .getPublicUrl(data.banner_url);
-
-    bannerUrl = img.publicUrl;
-  }
-
-  cabecalho.innerHTML = `
-    ${bannerUrl ? `<img src="${bannerUrl}" class="banner">` : ""}
-    <h1>${data.nome}</h1>
-    <p>${data.descricao || ""}</p>
-  `;
 }
 
 /* ================= QUARTOS ================= */
@@ -157,7 +119,7 @@ async function carregarQuartos(){
     .eq("status", "livre");
 
   if(error){
-    console.error("ERRO QUARTOS:", error);
+    console.error("ERRO:", error);
     lista.innerHTML = "<p class='erro'>Erro ao carregar quartos</p>";
     return;
   }
@@ -183,12 +145,12 @@ async function carregarQuartos(){
 
     lista.innerHTML += `
       <div class="quarto">
-        ${fotoUrl ? `<img src="${fotoUrl}">` : ""}
+        ${fotoUrl ? `<img src="${fotoUrl}" alt="Quarto">` : ""}
         <div class="info">
           <h3>${q.tipo}</h3>
-          <div class="preco">R$ ${Number(q.preco_diaria).toFixed(2)}</div>
+          <div class="preco">Diária: R$ ${Number(q.preco_diaria).toFixed(2)}</div>
           <a class="btn" target="_blank"
-             href="https://wa.me/55SEUNUMERO?text=Quero reservar o quarto ${q.tipo}">
+            href="https://wa.me/55SEUNUMERO?text=Quero reservar o quarto ${q.tipo}">
             Reservar no WhatsApp
           </a>
         </div>
@@ -197,9 +159,6 @@ async function carregarQuartos(){
   });
 }
 
-/* ================= INIT ================= */
-
-carregarHotel();
 carregarQuartos();
 </script>
 
