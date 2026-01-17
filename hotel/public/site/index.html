@@ -59,11 +59,7 @@ p{font-size:14px;opacity:.7}
 
 <body>
 
-<img
-  id="bannerHotel"
-  class="banner"
-  alt="Banner do Hotel"
->
+<img id="bannerHotel" class="banner" alt="Banner do Hotel">
 
 <div class="container">
   <div class="card">
@@ -100,39 +96,34 @@ const sb = supabase.createClient(
 );
 
 /* ================= ELEMENTOS ================= */
-const banner   = document.getElementById("bannerHotel");
-const lista    = document.getElementById("lista");
+const banner = document.getElementById("bannerHotel");
+const lista = document.getElementById("lista");
 const nomeHotel = document.getElementById("nomeHotel");
 
 let whatsappGlobal = "";
 
-/* ================= CONFIG SITE ================= */
+/* ================= CONFIG ================= */
 async function carregarConfig(){
-  const { data, error } = await sb
+  const { data } = await sb
     .from("config_site")
     .select("nome_site, banner_url, whatsapp")
     .eq("app_id", app_id)
     .maybeSingle();
 
-  if(error){
-    console.error(error);
-    return;
-  }
+  if(!data) return;
 
-  if(data?.nome_site){
+  if(data.nome_site){
     nomeHotel.innerText = data.nome_site;
     document.title = data.nome_site;
   }
 
-  if(data?.banner_url){
+  if(data.banner_url){
     banner.src = data.banner_url;
   }else{
     banner.style.display = "none";
   }
 
-  if(data?.whatsapp){
-    whatsappGlobal = data.whatsapp;
-  }
+  whatsappGlobal = data.whatsapp || "";
 }
 
 /* ================= QUARTOS ================= */
@@ -140,10 +131,11 @@ async function carregarQuartos(){
   const { data, error } = await sb
     .from("hotel_quartos")
     .select("tipo, preco_diaria, fotos")
-    .eq("app_id", app_id)
+    .eq("negocio_id", app_id)
     .eq("status","livre");
 
   if(error){
+    console.error(error);
     lista.innerHTML = "Erro ao carregar quartos";
     return;
   }
@@ -157,7 +149,7 @@ async function carregarQuartos(){
 
   data.forEach(q=>{
     const foto = q.fotos?.[0] || "";
-    const waLink = whatsappGlobal
+    const wa = whatsappGlobal
       ? `https://wa.me/55${whatsappGlobal}?text=Quero reservar ${q.tipo}`
       : "#";
 
@@ -167,7 +159,7 @@ async function carregarQuartos(){
         <div class="info">
           <h3>${q.tipo}</h3>
           <div class="preco">Diária: R$ ${Number(q.preco_diaria).toFixed(2)}</div>
-          <a class="btn" target="_blank" href="${waLink}">
+          <a class="btn" target="_blank" href="${wa}">
             Reservar no WhatsApp
           </a>
         </div>
