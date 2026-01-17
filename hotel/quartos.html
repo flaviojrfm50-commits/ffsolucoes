@@ -8,13 +8,11 @@
   <!-- SUPABASE SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- INIT SUPABASE + SESSÃO -->
   <script>
     const admin = JSON.parse(localStorage.getItem("admin_logado"));
-
-    if (!admin) {
+    if (!admin || !admin.app_id) {
       alert("Sessão inválida");
-      window.location.href = "login.html";
+      location.href = "login.html";
     }
 
     const supabaseUrl = "https://pdajixsoowcyhnjwhgpc.supabase.co";
@@ -45,7 +43,7 @@
       cursor: pointer;
     }
     .container {
-      max-width: 900px;
+      max-width: 950px;
       margin: 30px auto;
       padding: 20px;
     }
@@ -65,12 +63,12 @@
       color: #fff;
     }
     button {
-      padding: 12px 16px;
+      padding: 10px 14px;
       border: none;
       border-radius: 8px;
       font-weight: bold;
       cursor: pointer;
-      margin-top: 12px;
+      margin-top: 8px;
     }
     .btn-green { background: #16a34a; color: #fff; }
     .btn-red { background: #dc2626; color: #fff; }
@@ -82,10 +80,22 @@
       padding: 10px;
       border-bottom: 1px solid #1e293b;
       text-align: left;
+      vertical-align: top;
     }
     .status {
       font-weight: bold;
       text-transform: capitalize;
+    }
+    .thumbs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .thumbs img {
+      width: 60px;
+      height: 45px;
+      object-fit: cover;
+      border-radius: 6px;
     }
   </style>
 </head>
@@ -107,7 +117,6 @@
     <input id="tipo" placeholder="Tipo (Standard, Suíte, Luxo)">
     <input id="preco" type="number" placeholder="Preço da diária (R$)">
 
-    <!-- 🔥 NOVO: FOTOS -->
     <label style="margin-top:12px;display:block;">📷 Fotos do quarto</label>
     <input type="file" id="fotosQuarto" multiple accept="image/*">
 
@@ -123,7 +132,7 @@
           <th>Número</th>
           <th>Tipo</th>
           <th>Preço</th>
-          <th>Status</th>
+          <th>Fotos</th>
           <th>Ações</th>
         </tr>
       </thead>
@@ -134,124 +143,131 @@
 </div>
 
 <script>
-  if (!admin.app_id) {
-    alert("Sessão inválida, faça login novamente.");
-    location.replace("login.html");
+const negocio_id = admin.app_id;
+
+/* ===== UPLOAD FOTOS ===== */
+async function uploadFotos(quarto_id) {
+  const input = document.getElementById("fotosQuarto");
+  const files = input.files;
+  if (!files.length) return [];
+
+  const fotos = [];
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const safeName = file.name.replace(/\s+/g, "_");
+    const path = `hotel-quartos/${negocio_id}/${quarto_id}/${Date.now()}_${safeName}`;
+
+    const { error } = await db.storage
+      .from("hotel-quartos")
+      .upload(path, file, {
+        upsert: true,
+        contentType: file.type
+      });
+
+    if (error) continue;
+
+    const { data } = db.storage
+      .from("hotel-quartos")
+      .getPublicUrl(path);
+
+    fotos.push(data.publicUrl);
   }
 
-  const negocio_id = admin.app_id;
+  return fotos;
+}
 
-  /* ===== UPLOAD DAS FOTOS ===== */
-  async function uploadFotos(quarto_id) {
-    const input = document.getElementById("fotosQuarto");
-    const files = input.files;
-    if (!files.length) return [];
+/* ===== SALVAR QUARTO ===== */
+async function salvarQuarto() {
+  const numero = document.getElementById("numero").value.trim();
+  const tipo = document.getElementById("tipo").value.trim();
+  const preco_diaria = parseFloat(document.getElementById("preco").value);
 
-    const fotos = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const path = `hotel-quartos/${negocio_id}/${quarto_id}/${Date.now()}_${i}.jpg`;
-
-      const { error } = await db.storage
-        .from("hotel-quartos")
-        .upload(path, file, { upsert: true });
-
-      if (error) continue;
-
-      const { data } = db.storage
-        .from("hotel-quartos")
-        .getPublicUrl(path);
-
-      fotos.push(data.publicUrl);
-    }
-
-    return fotos;
+  if (!numero || !tipo || !preco_diaria || preco_diaria <= 0) {
+    alert("Preencha todos os campos corretamente.");
+    return;
   }
 
-  /* ===== SALVAR QUARTO ===== */
-  async function salvarQuarto() {
-    const numero = document.getElementById("numero").value.trim();
-    const tipo = document.getElementById("tipo").value.trim();
-    const preco_diaria = parseFloat(document.getElementById("preco").value);
+  const { data, error } = await db
+    .from("hotel_quartos")
+    .insert([{ negocio_id, numero, tipo, preco_diaria, status: "livre" }])
+    .select()
+    .single();
 
-    if (!numero || !tipo || !preco_diaria || preco_diaria <= 0) {
-      alert("Preencha todos os campos corretamente.");
-      return;
-    }
-
-    const { data, error } = await db
-      .from("hotel_quartos")
-      .insert([{ negocio_id, numero, tipo, preco_diaria, status: "livre" }])
-      .select()
-      .single();
-
-    if (error) {
-      alert("Erro ao salvar: " + error.message);
-      return;
-    }
-
-    /* 🔥 UPLOAD DAS FOTOS */
-    const fotos = await uploadFotos(data.id);
-    if (fotos.length) {
-      await db
-        .from("hotel_quartos")
-        .update({ fotos })
-        .eq("id", data.id);
-    }
-
-    document.getElementById("numero").value = "";
-    document.getElementById("tipo").value = "";
-    document.getElementById("preco").value = "";
-    document.getElementById("fotosQuarto").value = "";
-
-    carregarQuartos();
+  if (error) {
+    alert("Erro ao salvar quarto");
+    return;
   }
 
-  /* ===== LISTAR QUARTOS ===== */
-  async function carregarQuartos() {
-    const tabela = document.getElementById("tabelaQuartos");
-    tabela.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
-
-    const { data, error } = await db
-      .from("hotel_quartos")
-      .select("*")
-      .eq("negocio_id", negocio_id)
-      .order("numero");
-
-    if (error) {
-      tabela.innerHTML = "<tr><td colspan='5'>Erro ao carregar</td></tr>";
-      return;
-    }
-
-    if (!data.length) {
-      tabela.innerHTML = "<tr><td colspan='5'>Nenhum quarto cadastrado</td></tr>";
-      return;
-    }
-
-    tabela.innerHTML = "";
-    data.forEach(q => {
-      tabela.innerHTML += `
-        <tr>
-          <td>${q.numero}</td>
-          <td>${q.tipo}</td>
-          <td>R$ ${q.preco_diaria.toFixed(2)}</td>
-          <td class="status">${q.status}</td>
-          <td>
-            <button class="btn-red" onclick="deletarQuarto('${q.id}')">Excluir</button>
-          </td>
-        </tr>
-      `;
-    });
+  const fotos = await uploadFotos(data.id);
+  if (fotos.length) {
+    await db.from("hotel_quartos").update({ fotos }).eq("id", data.id);
   }
 
-  async function deletarQuarto(id) {
-    if (!confirm("Deseja excluir este quarto?")) return;
-    await db.from("hotel_quartos").delete().eq("id", id);
-    carregarQuartos();
-  }
+  document.getElementById("numero").value = "";
+  document.getElementById("tipo").value = "";
+  document.getElementById("preco").value = "";
+  document.getElementById("fotosQuarto").value = "";
 
   carregarQuartos();
+}
+
+/* ===== EXCLUIR FOTOS ===== */
+async function excluirFotos(quarto) {
+  if (!confirm("Deseja remover TODAS as fotos deste quarto?")) return;
+
+  if (quarto.fotos?.length) {
+    for (const url of quarto.fotos) {
+      const path = url.split("/hotel-quartos/")[1];
+      if (path) {
+        await db.storage.from("hotel-quartos").remove([path]);
+      }
+    }
+  }
+
+  await db.from("hotel_quartos").update({ fotos: [] }).eq("id", quarto.id);
+  carregarQuartos();
+}
+
+/* ===== LISTAR ===== */
+async function carregarQuartos() {
+  const tabela = document.getElementById("tabelaQuartos");
+  tabela.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
+
+  const { data, error } = await db
+    .from("hotel_quartos")
+    .select("*")
+    .eq("negocio_id", negocio_id)
+    .order("numero");
+
+  if (error || !data.length) {
+    tabela.innerHTML = "<tr><td colspan='5'>Nenhum quarto cadastrado</td></tr>";
+    return;
+  }
+
+  tabela.innerHTML = "";
+  data.forEach(q => {
+    tabela.innerHTML += `
+      <tr>
+        <td>${q.numero}</td>
+        <td>${q.tipo}</td>
+        <td>R$ ${q.preco_diaria.toFixed(2)}</td>
+        <td>
+          <div class="thumbs">
+            ${(q.fotos || []).map(f => `<img src="${f}">`).join("")}
+          </div>
+        </td>
+        <td>
+          <button class="btn-red" onclick='excluirFotos(${JSON.stringify(q)})'>
+            Excluir Fotos
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+carregarQuartos();
 </script>
 
 </body>
