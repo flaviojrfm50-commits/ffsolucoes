@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Banner do Hotel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SUPABASE -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #020617;
+      color: #fff;
+    }
+    .topo {
+      background: #0f172a;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .voltar {
+      background: #1e293b;
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+    .card {
+      background: #0f172a;
+      padding: 20px;
+      border-radius: 16px;
+      margin-bottom: 25px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      background: #1e293b;
+      color: #fff;
+      margin-top: 10px;
+    }
+    button {
+      padding: 12px 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 12px;
+      background: #16a34a;
+      color: #fff;
+    }
+    .preview {
+      margin-top: 20px;
+      height: 220px;
+      border-radius: 16px;
+      background: #1e293b;
+      background-size: cover;
+      background-position: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="topo">
+    <h2>🖼️ Banner do Hotel</h2>
+    <button class="voltar" onclick="history.back()">⬅ Voltar</button>
+  </div>
+
+  <div class="container">
+
+    <div class="card">
+      <h3>URL do Banner</h3>
+      <input id="banner" placeholder="Cole aqui a URL da imagem do banner">
+      <button onclick="salvarBanner()">Salvar Banner</button>
+
+      <div id="preview" class="preview"></div>
+    </div>
+
+  </div>
+
+<script>
+  /* ===== SESSÃO ===== */
+  const admin = JSON.parse(localStorage.getItem("admin_logado"));
+  if (!admin || !admin.app_id) {
+    alert("Sessão inválida");
+    location.href = "login.html";
+  }
+  const negocio_id = admin.app_id;
+
+  /* ===== SUPABASE ===== */
+  const supabaseUrl = "https://pdajixsoowcyhnjwhgpc.supabase.co";
+  const supabaseKey = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
+  const db = supabase.createClient(supabaseUrl, supabaseKey);
+
+  const inputBanner = document.getElementById("banner");
+  const preview = document.getElementById("preview");
+
+  /* ===== CARREGAR BANNER ATUAL ===== */
+  async function carregarBanner() {
+    const { data, error } = await db
+      .from("estabelecimentos")
+      .select("banner_url")
+      .eq("id", negocio_id)
+      .single();
+
+    if (error || !data) return;
+
+    if (data.banner_url) {
+      inputBanner.value = data.banner_url;
+      preview.style.backgroundImage = `url('${data.banner_url}')`;
+    }
+  }
+
+  /* ===== SALVAR ===== */
+  async function salvarBanner() {
+    const banner_url = inputBanner.value.trim();
+
+    if (!banner_url) {
+      alert("Informe a URL do banner");
+      return;
+    }
+
+    const { error } = await db
+      .from("estabelecimentos")
+      .update({ banner_url })
+      .eq("id", negocio_id);
+
+    if (error) {
+      alert("Erro ao salvar banner");
+      return;
+    }
+
+    preview.style.backgroundImage = `url('${banner_url}')`;
+    alert("Banner atualizado com sucesso!");
+  }
+
+  inputBanner.addEventListener("input", () => {
+    preview.style.backgroundImage =
+      inputBanner.value ? `url('${inputBanner.value}')` : "none";
+  });
+
+  carregarBanner();
+</script>
+
+</body>
+</html>
