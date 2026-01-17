@@ -7,118 +7,23 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{
-  margin:0;
-  font-family:system-ui;
-  background:#f6f1eb;
-}
-header{
-  background:#8b5e3c;
-  color:#fff;
-  padding:20px;
-  text-align:center;
-  font-weight:800;
-}
-.tabs{
-  display:flex;
-  gap:10px;
-  padding:10px;
-}
-.tabs button{
-  flex:1;
-  padding:12px;
-  border:none;
-  border-radius:12px;
-  font-weight:700;
-}
-.tabs .ativo{
-  background:#8b5e3c;
-  color:#fff;
-}
-.tabs button:not(.ativo){
-  background:#fff;
-}
-.container{
-  padding:12px;
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-  gap:12px;
-}
-.card{
-  background:#fff;
-  border-radius:14px;
-  padding:10px;
-}
-.card img{
-  width:100%;
-  height:120px;
-  object-fit:cover;
-  border-radius:10px;
-}
-.card button{
-  margin-top:8px;
-  width:100%;
-  padding:8px;
-  border:none;
-  border-radius:10px;
-  background:#8b5e3c;
-  color:#fff;
-  font-weight:700;
-}
-.footer{
-  position:fixed;
-  bottom:0;
-  left:0;
-  right:0;
-  background:#fff;
-  padding:10px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  border-top:1px solid #ddd;
-}
-.footer button{
-  padding:12px 18px;
-  border:none;
-  border-radius:20px;
-  background:#8b5e3c;
-  color:#fff;
-  font-weight:800;
-}
+body{margin:0;font-family:system-ui;background:#f6f1eb}
+header{background:#8b5e3c;color:#fff;padding:16px;text-align:center;font-weight:800}
+.tabs{display:flex;gap:8px;padding:10px}
+.tabs button{flex:1;padding:10px;border:none;border-radius:10px;font-weight:700}
+.tabs .ativo{background:#8b5e3c;color:#fff}
+.container{padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding-bottom:140px}
+.produto{background:#fff;border-radius:12px;padding:10px}
+.produto img{width:100%;height:120px;object-fit:cover;border-radius:8px}
+.produto button{width:100%;margin-top:6px;padding:8px;border:none;border-radius:8px;background:#8b5e3c;color:#fff;font-weight:700}
+.footer{position:fixed;bottom:0;left:0;right:0;background:#fff;padding:10px;border-top:1px solid #ddd;display:flex;justify-content:space-between;align-items:center}
+.footer button{padding:10px 18px;border:none;border-radius:20px;background:#8b5e3c;color:#fff;font-weight:800}
 
-/* MODAL */
-.modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.6);
-  display:none;
-  align-items:center;
-  justify-content:center;
-}
-.modal .box{
-  background:#fff;
-  padding:20px;
-  border-radius:16px;
-  width:90%;
-  max-width:420px;
-}
-.modal input, .modal textarea{
-  width:100%;
-  padding:10px;
-  margin-top:8px;
-  border-radius:10px;
-  border:1px solid #ccc;
-}
-.modal button{
-  width:100%;
-  margin-top:10px;
-  padding:12px;
-  border:none;
-  border-radius:12px;
-  background:#8b5e3c;
-  color:#fff;
-  font-weight:800;
-}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
+.modal .box{background:#fff;padding:20px;border-radius:16px;width:90%;max-width:420px}
+.modal input,.modal textarea{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #ccc}
+.modal button{width:100%;margin-top:10px;padding:12px;border:none;border-radius:10px;background:#8b5e3c;color:#fff;font-weight:800}
 </style>
 </head>
 
@@ -152,109 +57,174 @@ header{
 </div>
 
 <script>
-/* PARAMS */
+/* ========= PARAMS ========= */
 const params = new URLSearchParams(location.search);
 const app_id = params.get("app");
-if(!app_id){ alert("App inválido"); throw ""; }
+if(!app_id){ alert("Negócio não identificado"); throw ""; }
 
-/* SUPABASE */
+/* ========= SUPABASE ========= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* STATE */
+/* ========= STATE ========= */
 let produtos = [];
 let filtro = "BAR";
 const CART_KEY = `carrinho_${app_id}`;
 let carrinho = JSON.parse(localStorage.getItem(CART_KEY)) || [];
 
-/* ELEMENTOS */
+/* ========= ELEMENTOS ========= */
 const lista = document.getElementById("lista");
 const totalEl = document.getElementById("total");
 const modal = document.getElementById("modal");
 
-/* CONFIG */
+/* ========= CONFIG ========= */
 async function carregarConfig(){
-  const {data} = await sb.from("config_site").select("nome_site").eq("app_id",app_id).single();
+  const {data} = await sb
+    .from("config_site")
+    .select("nome_site")
+    .eq("app_id",app_id)
+    .maybeSingle();
+
   if(data?.nome_site) titulo.innerText = data.nome_site;
 }
 
-/* PRODUTOS */
+/* ========= PRODUTOS ========= */
 async function carregarProdutos(){
-  const {data} = await sb
+  const {data,error} = await sb
     .from("produtos")
-    .select("*")
+    .select("id,nome,preco,foto,destino")
     .eq("app_id",app_id)
     .eq("ativo",true);
+
+  if(error){
+    console.error(error);
+    lista.innerHTML="Erro ao carregar produtos";
+    return;
+  }
 
   produtos = data || [];
   render();
 }
 
-/* RENDER */
+/* ========= RENDER ========= */
 function render(){
   lista.innerHTML="";
-  produtos.filter(p=>p.destino===filtro).forEach(p=>{
-    lista.innerHTML += `
-      <div class="card">
-        ${p.foto ? `<img src="${p.foto}">` : ""}
-        <b>${p.nome}</b>
-        <div>R$ ${p.preco.toFixed(2)}</div>
-        <button onclick="add('${p.id}')">Adicionar</button>
-      </div>
-    `;
-  });
+  produtos
+    .filter(p => (p.destino||"").toUpperCase() === filtro)
+    .forEach(p=>{
+      lista.innerHTML += `
+        <div class="produto">
+          ${p.foto ? `<img src="${p.foto}">` : ""}
+          <b>${p.nome}</b>
+          <div>R$ ${Number(p.preco).toFixed(2)}</div>
+          <button onclick="add('${p.id}')">Adicionar</button>
+        </div>
+      `;
+    });
 }
 
-/* CARRINHO */
+/* ========= CARRINHO ========= */
 function salvarCarrinho(){
   localStorage.setItem(CART_KEY, JSON.stringify(carrinho));
-  totalEl.innerText = carrinho.reduce((s,i)=>s+i.preco*i.qtd,0).toFixed(2);
+  totalEl.innerText = carrinho
+    .reduce((s,i)=>s+i.preco*i.qtd,0)
+    .toFixed(2);
 }
 
 function add(id){
   const p = produtos.find(x=>x.id===id);
   const i = carrinho.find(x=>x.id===id);
-  i ? i.qtd++ : carrinho.push({...p,qtd:1});
+  i ? i.qtd++ : carrinho.push({id:p.id,nome:p.nome,preco:p.preco,qtd:1});
   salvarCarrinho();
 }
 
-/* MODAL */
-function abrirModal(){ modal.style.display="flex"; }
+/* ========= MODAL ========= */
+function abrirModal(){
+  if(carrinho.length===0){ alert("Carrinho vazio"); return; }
+  modal.style.display="flex";
+}
 function fecharModal(){ modal.style.display="none"; }
 
-/* ENVIO */
+/* ========= ENVIO CORRETO ========= */
 async function enviarPedido(){
-  if(carrinho.length===0){ alert("Carrinho vazio"); return; }
+  const nome = document.getElementById("nome").value.trim();
+  const whatsapp = document.getElementById("whatsapp").value.trim();
+  const endereco = document.getElementById("endereco").value.trim();
+  const referencia = document.getElementById("referencia").value.trim();
 
-  const payload = {
-    app_id,
-    tipo:"delivery",
-    status:"novo",
-    cliente_nome:nome.value,
-    cliente_whatsapp:whatsapp.value,
-    endereco:endereco.value,
-    referencia:referencia.value,
-    total: carrinho.reduce((s,i)=>s+i.preco*i.qtd,0),
-    itens:{ produtos:carrinho }
-  };
+  if(!nome || !whatsapp || !endereco){
+    alert("Preencha nome, WhatsApp e endereço");
+    return;
+  }
 
-  const {error} = await sb.from("pedidos").insert(payload);
-  if(error){ console.error(error); alert("Erro ao enviar"); return; }
+  const total = carrinho.reduce((s,i)=>s+i.preco*i.qtd,0);
 
+  /* 1️⃣ cria pedido */
+  const { data: pedido, error: errPedido } = await sb
+    .from("pedidos")
+    .insert({
+      app_id,
+      tipo:"delivery",
+      status:"novo",
+      cliente_nome:nome,
+      cliente_whatsapp:whatsapp,
+      endereco,
+      referencia,
+      total
+    })
+    .select()
+    .single();
+
+  if(errPedido){
+    console.error(errPedido);
+    alert("Erro ao criar pedido");
+    return;
+  }
+
+  /* 2️⃣ cria itens */
+  const itensPayload = carrinho.map(i=>({
+    pedido_id: pedido.id,
+    produto_id: i.id,
+    nome: i.nome,
+    preco: i.preco,
+    quantidade: i.qtd
+  }));
+
+  const { error: errItens } = await sb
+    .from("pedido_itens")
+    .insert(itensPayload);
+
+  if(errItens){
+    console.error(errItens);
+    alert("Erro ao salvar itens");
+    return;
+  }
+
+  /* sucesso */
   localStorage.removeItem(CART_KEY);
   carrinho=[];
   salvarCarrinho();
   fecharModal();
-  alert("Pedido enviado 🍔");
+  alert("Pedido enviado com sucesso ✅");
 }
 
-/* TABS */
-btnBar.onclick=()=>{filtro="BAR";btnBar.classList.add("ativo");btnCozinha.classList.remove("ativo");render();}
-btnCozinha.onclick=()=>{filtro="COZINHA";btnCozinha.classList.add("ativo");btnBar.classList.remove("ativo");render();}
+/* ========= TABS ========= */
+btnBar.onclick=()=>{
+  filtro="BAR";
+  btnBar.classList.add("ativo");
+  btnCozinha.classList.remove("ativo");
+  render();
+};
+btnCozinha.onclick=()=>{
+  filtro="COZINHA";
+  btnCozinha.classList.add("ativo");
+  btnBar.classList.remove("ativo");
+  render();
+};
 
-/* START */
+/* ========= START ========= */
 (async()=>{
   await carregarConfig();
   await carregarProdutos();
