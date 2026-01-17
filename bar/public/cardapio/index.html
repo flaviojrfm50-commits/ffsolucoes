@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Cardápio</title>
+<title>Cardápio Delivery</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -47,9 +47,8 @@ body{
   color:#fff;
   text-align:center;
 }
-.logo{max-height:70px;margin-bottom:10px}
 
-/* BOTÕES */
+/* TABS */
 .tabs{
   display:flex;
   gap:12px;
@@ -72,7 +71,7 @@ body{
   border-color:var(--primary);
 }
 
-/* GRID */
+/* PRODUTOS */
 .container{
   max-width:1100px;
   margin:auto;
@@ -81,8 +80,6 @@ body{
   grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
   gap:18px;
 }
-
-/* PRODUTO */
 .produto{
   background:#fff;
   border-radius:16px;
@@ -98,9 +95,7 @@ body{
   object-fit:cover;
   border-radius:12px;
 }
-.produto b{font-size:15px}
 .preco{font-weight:800}
-
 .add-btn{
   margin-top:auto;
   padding:10px;
@@ -122,133 +117,166 @@ body{
   padding:16px 30px;
   border-radius:999px;
   font-weight:900;
+  cursor:pointer;
+}
+
+/* MODAL */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.5);
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+.modal-box{
+  background:#fff;
+  color:#000;
+  padding:20px;
+  border-radius:16px;
+  width:90%;
+  max-width:420px;
+}
+.modal-box h3{margin-top:0}
+.modal-box input{
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+}
+.modal-box button{
+  width:100%;
+  padding:14px;
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  font-weight:900;
 }
 </style>
 </head>
 
 <body>
 
-<!-- TOPO -->
 <div class="topo">
   <img id="banner" class="banner" style="display:none">
   <div class="topo-conteudo">
-    <img id="logo" class="logo" style="display:none">
-    <h1 id="nome">Cardápio</h1>
+    <h1 id="nome">Cardápio Delivery</h1>
   </div>
 </div>
 
-<!-- BOTÕES -->
 <div class="tabs">
   <button class="tab ativo" id="btnBar">🍺 Bar</button>
-  <button class="tab" id="btnCozinha">🍽️ Restaurante</button>
+  <button class="tab" id="btnCozinha">🍽️ Cozinha</button>
 </div>
 
-<!-- PRODUTOS -->
 <div class="container" id="conteudo"></div>
 
-<!-- CARRINHO -->
 <div class="carrinho-btn" onclick="abrirCarrinho()">
   🛒 Ver pedido (<span id="qtd">0</span>)
 </div>
 
+<!-- MODAL -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <h3>Finalizar pedido</h3>
+    <input id="nomeCliente" placeholder="Seu nome">
+    <input id="whatsCliente" placeholder="WhatsApp">
+    <input id="enderecoCliente" placeholder="Endereço">
+    <button onclick="finalizarPedido()">Enviar pedido</button>
+  </div>
+</div>
+
 <script>
-/* SUPABASE */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* PARAMS */
 const params = new URLSearchParams(location.search);
-const app_id = params.get("app") || params.get("app_id");
-if(!app_id){
-  document.body.innerHTML="Indisponível";
-  throw "";
-}
+const app_id = params.get("app");
+if(!app_id){ document.body.innerHTML="Indisponível"; throw ""; }
 
-/* ELEMENTOS */
 const conteudo = document.getElementById("conteudo");
-const btnBar = document.getElementById("btnBar");
-const btnCozinha = document.getElementById("btnCozinha");
+const qtd = document.getElementById("qtd");
+const modal = document.getElementById("modal");
 
-/* STATE */
-let produtos = [];
-let carrinho = [];
-let filtro = "BAR"; // 🔥 BAR PRIMEIRO DE VERDADE
+let produtos=[], carrinho=[], filtro="BAR";
 
 /* CONFIG */
 async function carregarConfig(){
-  const {data} = await sb
-    .from("config_site")
-    .select("*")
-    .eq("app_id", app_id)
-    .single();
-
+  const {data}=await sb.from("config_site").select("*").eq("app_id",app_id).single();
   if(!data) return;
-  nome.innerText = data.nome_site || "Cardápio";
-  if(data.logo_url){ logo.src=data.logo_url; logo.style.display="block"; }
+  nome.innerText=data.nome_site||"Cardápio";
   if(data.banner_url){ banner.src=data.banner_url; banner.style.display="block"; }
 }
 
 /* PRODUTOS */
 async function carregarProdutos(){
-  const {data} = await sb
-    .from("produtos")
+  const {data}=await sb.from("produtos")
     .select("id,nome,preco,foto,destino")
-    .eq("app_id", app_id)
-    .eq("ativo", true)
-    .order("nome");
-
-  produtos = data || [];
+    .eq("app_id",app_id)
+    .eq("ativo",true);
+  produtos=data||[];
   render();
 }
 
-/* RENDER */
 function render(){
   conteudo.innerHTML="";
-  produtos
-    .filter(p => (p.destino||"").toUpperCase().trim() === filtro)
-    .forEach(p=>{
-      conteudo.innerHTML += `
-        <div class="produto">
-          ${p.foto ? `<img src="${p.foto}">` : ""}
-          <b>${p.nome}</b>
-          <div class="preco">R$ ${p.preco.toFixed(2)}</div>
-          <button class="add-btn" onclick="addProduto('${p.id}')">Adicionar</button>
-        </div>
-      `;
-    });
+  produtos.filter(p=>p.destino===filtro).forEach(p=>{
+    conteudo.innerHTML+=`
+      <div class="produto">
+        ${p.foto?`<img src="${p.foto}">`:""}
+        <b>${p.nome}</b>
+        <div class="preco">R$ ${p.preco.toFixed(2)}</div>
+        <button class="add-btn" onclick="addProduto('${p.id}')">Adicionar</button>
+      </div>`;
+  });
 }
 
-/* BOTÕES */
-btnBar.onclick = ()=>{
-  filtro="BAR";
-  btnBar.classList.add("ativo");
-  btnCozinha.classList.remove("ativo");
-  render();
-};
-
-btnCozinha.onclick = ()=>{
-  filtro="COZINHA";
-  btnCozinha.classList.add("ativo");
-  btnBar.classList.remove("ativo");
-  render();
-};
-
-/* CARRINHO */
 function addProduto(id){
-  const p = produtos.find(x=>x.id===id);
-  const i = carrinho.find(x=>x.id===id);
-  i ? i.qtd++ : carrinho.push({...p,qtd:1});
-  qtd.innerText = carrinho.reduce((s,i)=>s+i.qtd,0);
+  const p=produtos.find(x=>x.id===id);
+  const i=carrinho.find(x=>x.id===id);
+  i?i.qtd++:carrinho.push({...p,qtd:1});
+  salvarCarrinho();
 }
 
-function abrirCarrinho(){
-  alert("Carrinho funcionando 😎");
+function salvarCarrinho(){
+  localStorage.setItem(`cart_${app_id}`,JSON.stringify(carrinho));
+  qtd.innerText=carrinho.reduce((s,i)=>s+i.qtd,0);
 }
 
-/* START */
+function abrirCarrinho(){ modal.style.display="flex"; }
+
+async function finalizarPedido(){
+  if(!carrinho.length) return alert("Carrinho vazio");
+  const cliente={
+    nome:nomeCliente.value,
+    whatsapp:whatsCliente.value,
+    endereco:enderecoCliente.value
+  };
+  const total=carrinho.reduce((s,i)=>s+i.preco*i.qtd,0);
+
+  await sb.from("pedidos").insert({
+    app_id,
+    tipo:"DELIVERY",
+    status:"novo",
+    itens:{produtos:carrinho},
+    cliente,
+    total
+  });
+
+  localStorage.removeItem(`cart_${app_id}`);
+  carrinho=[];
+  qtd.innerText=0;
+  modal.style.display="none";
+  alert("Pedido enviado!");
+}
+
+btnBar.onclick=()=>{filtro="BAR";render();}
+btnCozinha.onclick=()=>{filtro="COZINHA";render();}
+
 (async()=>{
+  carregarCarrinho();
   await carregarConfig();
   await carregarProdutos();
 })();
