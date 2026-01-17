@@ -67,7 +67,7 @@ p{font-size:14px;opacity:.7}
 
 <div class="container">
   <div class="card">
-    <h1>Hotel</h1>
+    <h1 id="nomeHotel">Hotel</h1>
     <p>Quartos disponíveis</p>
   </div>
 
@@ -77,21 +77,17 @@ p{font-size:14px;opacity:.7}
 </div>
 
 <script>
+/* ================= URL ================= */
 const params = new URLSearchParams(window.location.search);
-const negocio_id = params.get("id");
+const app_id = params.get("id");
 
-if(!negocio_id){
-  document.body.innerHTML = "<h2 style='padding:20px'>Negócio não informado</h2>";
-  throw new Error("Sem negocio_id");
+if(!app_id){
+  document.body.innerHTML = "<h2 style='padding:20px'>Hotel não informado</h2>";
+  throw new Error("Sem app_id");
 }
 
-/* ===== BANNER CORRIGIDO ===== */
-const banner = document.getElementById("bannerHotel");
-banner.src = `https://pdajixsoowcyhnjwhgpc.supabase.co/storage/v1/object/public/banners/${negocio_id}/banner.jpg`;
-banner.onerror = () => banner.style.display = "none";
-
-/* ===== SUPABASE ===== */
-const sb = window.supabase.createClient(
+/* ================= SUPABASE ================= */
+const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw",
   {
@@ -103,13 +99,48 @@ const sb = window.supabase.createClient(
   }
 );
 
-const lista = document.getElementById("lista");
+/* ================= ELEMENTOS ================= */
+const banner   = document.getElementById("bannerHotel");
+const lista    = document.getElementById("lista");
+const nomeHotel = document.getElementById("nomeHotel");
 
+let whatsappGlobal = "";
+
+/* ================= CONFIG SITE ================= */
+async function carregarConfig(){
+  const { data, error } = await sb
+    .from("config_site")
+    .select("nome_site, banner_url, whatsapp")
+    .eq("app_id", app_id)
+    .maybeSingle();
+
+  if(error){
+    console.error(error);
+    return;
+  }
+
+  if(data?.nome_site){
+    nomeHotel.innerText = data.nome_site;
+    document.title = data.nome_site;
+  }
+
+  if(data?.banner_url){
+    banner.src = data.banner_url;
+  }else{
+    banner.style.display = "none";
+  }
+
+  if(data?.whatsapp){
+    whatsappGlobal = data.whatsapp;
+  }
+}
+
+/* ================= QUARTOS ================= */
 async function carregarQuartos(){
   const { data, error } = await sb
     .from("hotel_quartos")
     .select("tipo, preco_diaria, fotos")
-    .eq("negocio_id", negocio_id)
+    .eq("app_id", app_id)
     .eq("status","livre");
 
   if(error){
@@ -117,18 +148,26 @@ async function carregarQuartos(){
     return;
   }
 
+  if(!data || data.length === 0){
+    lista.innerHTML = "Nenhum quarto disponível";
+    return;
+  }
+
   lista.innerHTML = "";
 
   data.forEach(q=>{
     const foto = q.fotos?.[0] || "";
+    const waLink = whatsappGlobal
+      ? `https://wa.me/55${whatsappGlobal}?text=Quero reservar ${q.tipo}`
+      : "#";
+
     lista.innerHTML += `
       <div class="quarto">
         ${foto ? `<img src="${foto}">` : ""}
         <div class="info">
           <h3>${q.tipo}</h3>
           <div class="preco">Diária: R$ ${Number(q.preco_diaria).toFixed(2)}</div>
-          <a class="btn" target="_blank"
-            href="https://wa.me/55SEUNUMERO?text=Quero reservar ${q.tipo}">
+          <a class="btn" target="_blank" href="${waLink}">
             Reservar no WhatsApp
           </a>
         </div>
@@ -137,7 +176,11 @@ async function carregarQuartos(){
   });
 }
 
-carregarQuartos();
+/* ================= INIT ================= */
+(async()=>{
+  await carregarConfig();
+  await carregarQuartos();
+})();
 </script>
 
 </body>
