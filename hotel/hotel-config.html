@@ -4,58 +4,25 @@
 <meta charset="UTF-8">
 <title>Configurações do Hotel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui}
 body{background:#020617;color:#fff}
-
 .container{max-width:900px;margin:auto;padding:24px}
 .card{background:#0f172a;padding:22px;border-radius:18px;margin-bottom:22px}
-
-h1{font-size:22px;margin-bottom:14px}
-label{display:block;font-size:14px;margin:14px 0 6px}
-input,textarea{
-  width:100%;
-  padding:12px;
-  border-radius:12px;
-  border:none;
-  outline:none;
-  background:#020617;
-  color:#fff;
-}
-textarea{min-height:90px;resize:vertical}
-
-button{
-  margin-top:16px;
-  background:#16a34a;
-  color:#fff;
-  border:none;
-  padding:12px 18px;
-  border-radius:14px;
-  font-weight:700;
-  cursor:pointer;
-}
-
-.banner-preview{
-  width:100%;
-  height:220px;
-  object-fit:cover;
-  border-radius:14px;
-  margin-top:14px;
-  display:none;
-}
+label{display:block;margin:12px 0 6px}
+input,textarea{width:100%;padding:12px;border-radius:12px;border:none;background:#020617;color:#fff}
+button{margin-top:14px;background:#16a34a;color:#fff;border:none;padding:12px 18px;border-radius:14px;font-weight:700}
+img{width:100%;height:220px;object-fit:cover;border-radius:14px;margin-top:14px;display:none}
 </style>
 </head>
 
 <body>
 
 <div class="container">
+  <h2>⚙️ Configurações do Hotel</h2>
 
-  <h1>⚙️ Configurações do Hotel</h1>
-
-  <!-- DADOS -->
   <div class="card">
     <label>Nome do hotel</label>
     <input id="nome">
@@ -64,76 +31,73 @@ button{
     <textarea id="descricao"></textarea>
 
     <label>WhatsApp</label>
-    <input id="whatsapp" placeholder="55999999999">
+    <input id="whatsapp">
 
-    <button onclick="salvarDados()">Salvar dados</button>
+    <button onclick="salvar()">Salvar dados</button>
   </div>
 
-  <!-- BANNER -->
   <div class="card">
     <label>Banner do site</label>
-    <input type="file" id="bannerFile" accept="image/*">
-    <button onclick="enviarBanner()">Enviar banner</button>
-    <img id="preview" class="banner-preview">
+    <input type="file" id="banner">
+    <button onclick="uploadBanner()">Enviar banner</button>
+    <img id="preview">
   </div>
-
 </div>
 
 <script>
-/* ================== PARAM ================== */
-const params = new URLSearchParams(window.location.search)
-const negocio_id = params.get("id")
+const params = new URLSearchParams(location.search)
+const id = params.get("id")
 
-if(!negocio_id){
+if(!id){
   document.body.innerHTML = "<h2 style='padding:30px'>Negócio não informado</h2>"
-  throw new Error("Sem negocio_id")
+  throw new Error("sem id")
 }
 
-/* ================== SUPABASE ================== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw",
-  { auth:{ persistSession:false } }
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 )
 
-/* ================== LOAD CONFIG ================== */
-async function carregarConfig(){
-  const { data } = await sb
-    .from("site_config")
-    .select("*")
-    .eq("negocio_id", negocio_id)
+const preview = document.getElementById("preview")
+
+function bannerUrl(path){
+  return `https://pdajixsoowcyhnjwhgpc.supabase.co/storage/v1/object/public/banners/${path}`
+}
+
+async function carregar(){
+  const { data, error } = await sb
+    .from("negocios")
+    .select("nome, descricao, whatsapp, banner")
+    .eq("id", id)
     .single()
 
-  if(data){
-    nome.value = data.nome || ""
-    descricao.value = data.descricao || ""
-    whatsapp.value = data.whatsapp || ""
+  if(error){
+    console.error(error)
+    return
+  }
 
-    if(data.banner_path){
-      preview.src = bannerURL(data.banner_path)
-      preview.style.display = "block"
-    }
+  nome.value = data.nome || ""
+  descricao.value = data.descricao || ""
+  whatsapp.value = data.whatsapp || ""
+
+  if(data.banner){
+    preview.src = bannerUrl(data.banner)
+    preview.style.display = "block"
   }
 }
 
-carregarConfig()
-
-/* ================== SALVAR DADOS ================== */
-async function salvarDados(){
-  const payload = {
-    negocio_id,
-    nome: nome.value,
-    descricao: descricao.value,
-    whatsapp: whatsapp.value,
-    updated_at: new Date()
-  }
-
+async function salvar(){
   const { error } = await sb
-    .from("site_config")
-    .upsert(payload)
+    .from("negocios")
+    .update({
+      nome: nome.value,
+      descricao: descricao.value,
+      whatsapp: whatsapp.value
+    })
+    .eq("id", id)
 
   if(error){
-    alert("Erro ao salvar dados")
+    alert("Erro ao salvar")
     console.error(error)
     return
   }
@@ -141,40 +105,39 @@ async function salvarDados(){
   alert("Dados salvos com sucesso")
 }
 
-/* ================== BANNER ================== */
-function bannerURL(path){
-  return `https://pdajixsoowcyhnjwhgpc.supabase.co/storage/v1/object/public/banners/${path}`
-}
+async function uploadBanner(){
+  const file = banner.files[0]
+  if(!file) return alert("Escolha um arquivo")
 
-async function enviarBanner(){
-  const file = bannerFile.files[0]
-  if(!file) return alert("Escolha uma imagem")
+  const path = `${id}/banner.jpg`
 
-  const path = `${negocio_id}/banner.jpg`
-
-  const { error } = await sb.storage
+  const { error: uploadError } = await sb.storage
     .from("banners")
     .upload(path, file, { upsert:true })
 
-  if(error){
-    alert("Erro ao enviar banner")
-    console.error(error)
+  if(uploadError){
+    alert("Erro no upload")
+    console.error(uploadError)
     return
   }
 
-  await sb
-    .from("site_config")
-    .upsert({
-      negocio_id,
-      banner_path: path,
-      updated_at: new Date()
-    })
+  const { error: updateError } = await sb
+    .from("negocios")
+    .update({ banner: path })
+    .eq("id", id)
 
-  preview.src = bannerURL(path) + "?v=" + Date.now()
+  if(updateError){
+    alert("Erro ao salvar banner")
+    console.error(updateError)
+    return
+  }
+
+  preview.src = bannerUrl(path) + "?v=" + Date.now()
   preview.style.display = "block"
-
   alert("Banner atualizado")
 }
+
+carregar()
 </script>
 
 </body>
