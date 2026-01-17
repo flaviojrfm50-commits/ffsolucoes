@@ -8,17 +8,29 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+:root{
+  --bg:#020617;
+  --card:#020617;
+  --border:#1e293b;
+  --primary:#22c55e;
+  --text:#ffffff;
+  --muted:#94a3b8;
+}
+*{box-sizing:border-box}
 body{
-  background:#020617;
-  color:#fff;
+  margin:0;
   font-family:'Segoe UI',system-ui,sans-serif;
+  background:linear-gradient(135deg,#020617,#020617dd);
+  color:var(--text);
+  min-height:100vh;
 }
 .container{
   max-width:480px;
   margin:40px auto;
-  padding:24px;
-  background:#0f172a;
+  padding:28px;
+  background:var(--card);
   border-radius:18px;
+  border:1px solid var(--border);
 }
 h2{text-align:center;margin-bottom:20px}
 label{display:block;margin-top:14px;font-size:.9rem}
@@ -27,32 +39,44 @@ input,button{
   padding:14px;
   margin-top:6px;
   border-radius:12px;
-  border:none;
+  border:1px solid var(--border);
+  background:#020617;
+  color:#fff;
 }
-input{background:#020617;color:#fff}
 button{
-  background:#22c55e;
+  background:var(--primary);
   color:#022c22;
   font-weight:700;
+  border:none;
   cursor:pointer;
   margin-top:20px;
 }
 .preview{
   margin-top:10px;
   width:100%;
-  max-height:160px;
+  max-height:180px;
   object-fit:cover;
   border-radius:12px;
   display:none;
 }
-small{opacity:.6}
+small{color:var(--muted)}
+.btn-voltar{
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--muted);
+  font-weight:600;
+  margin-bottom:16px;
+  cursor:pointer;
+}
 </style>
 </head>
 
 <body>
 
 <div class="container">
-  <h2>🏨 Banner do Hotel</h2>
+  <h2>🏨 Configurar Hotel</h2>
+
+  <button class="btn-voltar" onclick="history.back()">← Voltar</button>
 
   <label>Banner do site</label>
   <input type="file" id="bannerInput" accept="image/*">
@@ -64,20 +88,21 @@ small{opacity:.6}
 </div>
 
 <script>
-/* ================= URL / MULTI NEGÓCIO ================= */
-const params = new URLSearchParams(window.location.search);
-const negocio_id = params.get("id");
-
-if(!negocio_id){
-  alert("Negócio não informado na URL");
-  throw new Error("Sem negocio_id");
-}
-
 /* ================= SUPABASE ================= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
+
+/* ================= ADMIN (IGUAL AO BAR) ================= */
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+
+if(!admin?.app_id){
+  alert("Sessão expirada");
+  location.href="../auth/login.html";
+}
+
+const app_id = admin.app_id;
 
 /* ================= ELEMENTOS ================= */
 const bannerInput   = document.getElementById("bannerInput");
@@ -93,12 +118,12 @@ bannerInput.onchange = ()=>{
   }
 };
 
-/* ================= UPLOAD (PADRÃO PLATAFORMA) ================= */
+/* ================= UPLOAD (PADRÃO DO BAR) ================= */
 async function uploadBanner(file){
   if(!file) return null;
 
   const ext  = file.name.split(".").pop();
-  const path = `${negocio_id}/${Date.now()}.${ext}`;
+  const path = `${app_id}/${Date.now()}.${ext}`;
 
   const { error } = await sb
     .storage
@@ -138,7 +163,7 @@ async function salvarBanner(){
   const { error } = await sb
     .from("config_hotel")
     .upsert({
-      negocio_id,
+      app_id,
       banner_url
     });
 
@@ -157,7 +182,7 @@ async function salvarBanner(){
   const { data } = await sb
     .from("config_hotel")
     .select("banner_url")
-    .eq("negocio_id", negocio_id)
+    .eq("app_id", app_id)
     .maybeSingle();
 
   if(data?.banner_url){
