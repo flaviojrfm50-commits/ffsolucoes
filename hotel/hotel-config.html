@@ -4,52 +4,36 @@
 <meta charset="UTF-8">
 <title>Configurar Hotel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-:root{
-  --bg:#020617;
-  --card:#020617;
-  --border:#1e293b;
-  --primary:#22c55e;
-  --text:#ffffff;
-  --muted:#94a3b8;
-}
-*{box-sizing:border-box}
 body{
-  margin:0;
+  background:#020617;
+  color:#fff;
   font-family:'Segoe UI',system-ui,sans-serif;
-  background:linear-gradient(135deg,#020617,#020617dd);
-  color:var(--text);
-  min-height:100vh;
 }
 .container{
-  max-width:480px;
+  max-width:500px;
   margin:40px auto;
-  padding:28px;
-  background:var(--card);
+  padding:24px;
+  background:#0f172a;
   border-radius:18px;
-  border:1px solid var(--border);
 }
-h2{text-align:center;margin-bottom:20px}
-label{display:block;margin-top:14px;font-size:.9rem}
+label{display:block;margin-top:14px}
 input,button{
   width:100%;
   padding:14px;
   margin-top:6px;
   border-radius:12px;
-  border:1px solid var(--border);
-  background:#020617;
-  color:#fff;
+  border:none;
 }
+input{background:#020617;color:#fff}
 button{
-  background:var(--primary);
+  background:#22c55e;
   color:#022c22;
   font-weight:700;
-  border:none;
-  cursor:pointer;
   margin-top:20px;
+  cursor:pointer;
 }
 .preview{
   margin-top:10px;
@@ -59,15 +43,7 @@ button{
   border-radius:12px;
   display:none;
 }
-small{color:var(--muted)}
-.btn-voltar{
-  background:transparent;
-  border:1px solid var(--border);
-  color:var(--muted);
-  font-weight:600;
-  margin-bottom:16px;
-  cursor:pointer;
-}
+small{opacity:.6}
 </style>
 </head>
 
@@ -76,118 +52,114 @@ small{color:var(--muted)}
 <div class="container">
   <h2>🏨 Configurar Hotel</h2>
 
-  <button class="btn-voltar" onclick="history.back()">← Voltar</button>
+  <label>WhatsApp</label>
+  <input id="whatsapp" placeholder="Ex: 88999999999">
 
   <label>Banner do site</label>
   <input type="file" id="bannerInput" accept="image/*">
   <img id="bannerPreview" class="preview">
 
-  <button onclick="salvarBanner()">Salvar banner</button>
-
+  <button onclick="salvar()">Salvar configurações</button>
   <small id="status"></small>
 </div>
 
 <script>
-/* ================= SUPABASE ================= */
+/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ================= ADMIN (IGUAL AO BAR) ================= */
+/* ===== ADMIN ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
-
 if(!admin?.app_id){
   alert("Sessão expirada");
   location.href="../auth/login.html";
 }
-
 const app_id = admin.app_id;
 
-/* ================= ELEMENTOS ================= */
-const bannerInput   = document.getElementById("bannerInput");
+/* ===== ELEMENTOS ===== */
+const bannerInput = document.getElementById("bannerInput");
 const bannerPreview = document.getElementById("bannerPreview");
-const statusEl      = document.getElementById("status");
+const whatsappInput = document.getElementById("whatsapp");
+const statusEl = document.getElementById("status");
 
-/* ================= PREVIEW ================= */
+/* ===== PREVIEW ===== */
 bannerInput.onchange = ()=>{
-  const file = bannerInput.files[0];
-  if(file){
-    bannerPreview.src = URL.createObjectURL(file);
-    bannerPreview.style.display = "block";
+  const f = bannerInput.files[0];
+  if(f){
+    bannerPreview.src = URL.createObjectURL(f);
+    bannerPreview.style.display="block";
   }
 };
 
-/* ================= UPLOAD (PADRÃO DO BAR) ================= */
+/* ===== UPLOAD ===== */
 async function uploadBanner(file){
   if(!file) return null;
 
-  const ext  = file.name.split(".").pop();
+  const ext = file.name.split(".").pop();
   const path = `${app_id}/${Date.now()}.${ext}`;
 
-  const { error } = await sb
-    .storage
+  const { error } = await sb.storage
     .from("banners")
-    .upload(path, file, { upsert:true });
+    .upload(path,file,{upsert:true});
 
-  if(error){
-    console.error(error);
-    return null;
-  }
+  if(error) return null;
 
-  const { data } = sb
-    .storage
-    .from("banners")
-    .getPublicUrl(path);
-
-  return data.publicUrl;
+  return sb.storage.from("banners").getPublicUrl(path).data.publicUrl;
 }
 
-/* ================= SALVAR ================= */
-async function salvarBanner(){
-  const file = bannerInput.files[0];
-  if(!file){
-    alert("Escolha uma imagem");
-    return;
+/* ===== SALVAR ===== */
+async function salvar(){
+  statusEl.innerText = "Salvando...";
+
+  let banner_url = null;
+  if(bannerInput.files[0]){
+    banner_url = await uploadBanner(bannerInput.files[0]);
   }
 
-  statusEl.innerText = "Enviando banner...";
+  const payload = {
+    app_id,
+    whatsapp: whatsappInput.value || null
+  };
 
-  const banner_url = await uploadBanner(file);
-  if(!banner_url){
-    statusEl.innerText = "";
-    alert("Erro ao enviar banner");
-    return;
-  }
+  if(banner_url) payload.banner_url = banner_url;
 
-  const { error } = await sb
-    .from("config_hotel")
-    .upsert({
-      app_id,
-      banner_url
-    });
+  const { data: existente } = await sb
+    .from("config_site")
+    .select("id")
+    .eq("app_id",app_id)
+    .maybeSingle();
 
-  if(error){
-    console.error(error);
-    statusEl.innerText = "";
+  const res = existente
+    ? await sb.from("config_site").update(payload).eq("app_id",app_id)
+    : await sb.from("config_site").insert(payload);
+
+  if(res.error){
+    console.error(res.error);
+    statusEl.innerText="";
     alert("Erro ao salvar no banco");
     return;
   }
 
-  statusEl.innerText = "Banner salvo com sucesso 🔥";
+  statusEl.innerText="Salvo com sucesso 🔥";
 }
 
-/* ================= LOAD ================= */
+/* ===== LOAD ===== */
 (async()=>{
   const { data } = await sb
-    .from("config_hotel")
-    .select("banner_url")
-    .eq("app_id", app_id)
+    .from("config_site")
+    .select("whatsapp,banner_url")
+    .eq("app_id",app_id)
     .maybeSingle();
 
-  if(data?.banner_url){
+  if(!data) return;
+
+  whatsappInput.value = data.whatsapp || "";
+
+  if(data.banner_url){
     bannerPreview.src = data.banner_url;
-    bannerPreview.style.display = "block";
+    bannerPreview.style.display="block";
   }
 })();
 </script>
