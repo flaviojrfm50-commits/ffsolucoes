@@ -4,18 +4,70 @@
 <meta charset="UTF-8">
 <title>Hotel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#020617;color:#fff}
-.container{max-width:1100px;margin:auto;padding:24px}
-.card{background:#0f172a;padding:24px;border-radius:18px;margin-bottom:24px}
-.quartos{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
-.quarto{background:#020617;border-radius:16px;overflow:hidden}
-.quarto img{width:100%;height:180px;object-fit:cover}
-.info{padding:16px}
-.preco{font-weight:bold;margin:8px 0}
-.btn{display:inline-block;padding:10px 14px;background:#16a34a;color:#fff;border-radius:10px;text-decoration:none}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial, Helvetica, sans-serif;
+  background:#020617;
+  color:#fff;
+}
+.container{
+  max-width:1100px;
+  margin:auto;
+  padding:24px;
+}
+.card{
+  background:#0f172a;
+  padding:24px;
+  border-radius:18px;
+  margin-bottom:24px;
+}
+.quartos{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:20px;
+}
+.quarto{
+  background:#020617;
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 10px 30px rgba(0,0,0,.4);
+}
+.quarto img{
+  width:100%;
+  height:180px;
+  object-fit:cover;
+  display:block;
+}
+.info{
+  padding:16px;
+}
+.preco{
+  font-weight:bold;
+  margin:8px 0;
+  color:#22c55e;
+}
+.btn{
+  display:inline-block;
+  padding:10px 14px;
+  background:#16a34a;
+  color:#fff;
+  border-radius:10px;
+  text-decoration:none;
+  font-weight:bold;
+}
+.btn:hover{
+  background:#22c55e;
+}
+.erro{
+  text-align:center;
+  opacity:.7;
+}
 </style>
 </head>
 
@@ -28,56 +80,79 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   </div>
 
   <div class="card">
-    <div id="lista" class="quartos">Carregando...</div>
+    <div id="lista" class="quartos">
+      Carregando...
+    </div>
   </div>
 
 </div>
 
 <script>
+/* ================= CONFIGURAÇÃO ================= */
+
+const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
+const BUCKET = "hotel-quartos"; // ⚠️ NOME REAL DO BUCKET
+
 const supabase = window.supabase.createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+  SUPABASE_URL,
+  SUPABASE_KEY
 );
 
-const params = new URLSearchParams(location.search);
-const negocio_id = params.get("id");
+/* ================= NEGÓCIO ================= */
 
-if(!negocio_id){
-  document.body.innerHTML = "Negócio não informado";
-  throw new Error("Sem id");
-}
+const params = new URLSearchParams(window.location.search);
+const negocio_id = params.get("id");
 
 const lista = document.getElementById("lista");
 
-async function carregar(){
+if(!negocio_id){
+  lista.innerHTML = "<p class='erro'>Negócio não informado</p>";
+  throw new Error("ID do negócio não informado");
+}
+
+/* ================= CARREGAR QUARTOS ================= */
+
+async function carregarQuartos(){
   const { data, error } = await supabase
     .from("hotel_quartos")
-    .select("tipo,preco_diaria,fotos")
+    .select("tipo, preco_diaria, fotos")
     .eq("negocio_id", negocio_id)
-    .eq("status","livre");
+    .eq("status", "livre");
 
   if(error){
-    lista.innerHTML = "Erro ao carregar";
     console.error(error);
+    lista.innerHTML = "<p class='erro'>Erro ao carregar quartos</p>";
     return;
   }
 
-  if(!data.length){
-    lista.innerHTML = "Nenhum quarto disponível";
+  if(!data || data.length === 0){
+    lista.innerHTML = "<p class='erro'>Nenhum quarto disponível</p>";
     return;
   }
 
   lista.innerHTML = "";
-  data.forEach(q=>{
-    const foto = q.fotos && q.fotos.length ? q.fotos[0] : "";
+
+  data.forEach(q => {
+    let fotoUrl = "";
+
+    if(q.fotos && q.fotos.length){
+      const { data: img } = supabase
+        .storage
+        .from(BUCKET)
+        .getPublicUrl(q.fotos[0]);
+
+      fotoUrl = img.publicUrl;
+    }
+
     lista.innerHTML += `
       <div class="quarto">
-        ${foto ? `<img src="${foto}">` : ""}
+        ${fotoUrl ? `<img src="${fotoUrl}" alt="Foto do quarto">` : ""}
         <div class="info">
           <h3>${q.tipo}</h3>
           <div class="preco">R$ ${Number(q.preco_diaria).toFixed(2)}</div>
           <a class="btn" target="_blank"
-            href="https://wa.me/55SEUNUMERO?text=Quero reservar ${q.tipo}">
+            href="https://wa.me/55SEUNUMERO?text=Quero reservar o quarto ${q.tipo}">
             Reservar no WhatsApp
           </a>
         </div>
@@ -86,7 +161,8 @@ async function carregar(){
   });
 }
 
-carregar();
+carregarQuartos();
 </script>
+
 </body>
 </html>
