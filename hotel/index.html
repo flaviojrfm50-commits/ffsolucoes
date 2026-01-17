@@ -21,11 +21,11 @@ body{
 }
 .card{
   background:#0f172a;
-  padding:20px;
+  padding:24px;
   border-radius:18px;
   margin-bottom:24px;
 }
-h1,h2{margin:0 0 10px}
+h1,h2,h3{margin:0 0 10px}
 .quartos{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
@@ -35,7 +35,7 @@ h1,h2{margin:0 0 10px}
   background:#020617;
   border-radius:16px;
   overflow:hidden;
-  box-shadow:0 10px 30px rgba(0,0,0,.3);
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
 }
 .quarto img{
   width:100%;
@@ -54,7 +54,7 @@ h1,h2{margin:0 0 10px}
 .btn{
   display:inline-block;
   margin-top:10px;
-  padding:10px 14px;
+  padding:12px 16px;
   background:#16a34a;
   color:#fff;
   text-decoration:none;
@@ -72,8 +72,8 @@ h1,h2{margin:0 0 10px}
 <div class="container">
 
   <div class="card">
-    <h1 id="nomeHotel">Hotel</h1>
-    <p id="descHotel" class="vazio">Confira nossos quartos disponíveis</p>
+    <h1>Hotel</h1>
+    <p class="vazio">Confira nossos quartos disponíveis</p>
   </div>
 
   <div class="card">
@@ -87,7 +87,7 @@ h1,h2{margin:0 0 10px}
 
 <script>
 /* =========================
-   CONFIG SUPABASE
+   SUPABASE
 ========================= */
 const supabase = window.supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
@@ -95,13 +95,14 @@ const supabase = window.supabase.createClient(
 );
 
 /* =========================
-   NEGOCIO ID (MULTI)
+   MULTI NEGÓCIOS (URL)
 ========================= */
 const params = new URLSearchParams(window.location.search);
 const negocio_id = params.get("id");
 
 if (!negocio_id) {
-  document.body.innerHTML = "<h2 style='color:white;padding:40px'>Negócio não informado</h2>";
+  document.body.innerHTML =
+    "<h2 style='padding:40px;color:white'>Negócio não informado</h2>";
   throw new Error("Sem negocio_id");
 }
 
@@ -109,24 +110,6 @@ if (!negocio_id) {
    ELEMENTOS
 ========================= */
 const lista = document.getElementById("listaQuartos");
-const nomeHotel = document.getElementById("nomeHotel");
-const descHotel = document.getElementById("descHotel");
-
-/* =========================
-   CARREGAR CONFIG DO HOTEL
-========================= */
-async function carregarConfig() {
-  const { data } = await supabase
-    .from("hotel_config")
-    .select("nome, descricao")
-    .eq("negocio_id", negocio_id)
-    .single();
-
-  if (data) {
-    nomeHotel.innerText = data.nome || "Hotel";
-    descHotel.innerText = data.descricao || "";
-  }
-}
 
 /* =========================
    CARREGAR QUARTOS
@@ -141,12 +124,12 @@ async function carregarQuartos() {
     .eq("status", "livre");
 
   if (error) {
-    lista.innerHTML = "<p class='vazio'>Erro ao carregar quartos</p>";
     console.error(error);
+    lista.innerHTML = "<p class='vazio'>Erro ao carregar quartos</p>";
     return;
   }
 
-  if (!data.length) {
+  if (!data || !data.length) {
     lista.innerHTML = "<p class='vazio'>Nenhum quarto disponível</p>";
     return;
   }
@@ -154,11 +137,14 @@ async function carregarQuartos() {
   lista.innerHTML = "";
 
   data.forEach(q => {
-    const foto = q.fotos && q.fotos.length ? q.fotos[0] : null;
+    const foto =
+      q.fotos && Array.isArray(q.fotos) && q.fotos.length
+        ? q.fotos[0]
+        : null;
 
     lista.innerHTML += `
       <div class="quarto">
-        ${foto ? `<img src="${foto}">` : ""}
+        ${foto ? `<img src="${foto}" alt="Quarto">` : ""}
         <div class="info">
           <h3>${q.tipo}</h3>
           <div class="preco">Diária: R$ ${Number(q.preco_diaria).toFixed(2)}</div>
@@ -175,7 +161,6 @@ async function carregarQuartos() {
 /* =========================
    START
 ========================= */
-carregarConfig();
 carregarQuartos();
 </script>
 
