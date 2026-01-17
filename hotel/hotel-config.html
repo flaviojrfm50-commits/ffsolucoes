@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Configurar Site do Hotel</title>
+<title>Configurar Hotel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -39,71 +39,61 @@ button{
 }
 .preview{
   margin-top:10px;
-  max-height:140px;
   width:100%;
+  max-height:160px;
   object-fit:cover;
   border-radius:12px;
   display:none;
 }
-.btn-voltar{
-  background:transparent;
-  border:1px solid #334155;
-  color:#cbd5f5;
-  margin-bottom:14px;
-}
+small{opacity:.6}
 </style>
 </head>
 
 <body>
 
 <div class="container">
-  <h2>🏨 Configurar Banner do Hotel</h2>
-
-  <button class="btn-voltar" onclick="history.back()">← Voltar</button>
+  <h2>🏨 Banner do Hotel</h2>
 
   <label>Banner do site</label>
   <input type="file" id="bannerInput" accept="image/*">
   <img id="bannerPreview" class="preview">
 
   <button onclick="salvarBanner()">Salvar banner</button>
+
+  <small id="status"></small>
 </div>
 
 <script>
+/* ================= URL / MULTI NEGÓCIO ================= */
+const params = new URLSearchParams(window.location.search);
+const negocio_id = params.get("id");
+
+if(!negocio_id){
+  alert("Negócio não informado na URL");
+  throw new Error("Sem negocio_id");
+}
+
 /* ================= SUPABASE ================= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ================= AUTH / MULTI NEGÓCIO ================= */
-/*
-  padrão igual ao bar:
-  admin_logado no localStorage
-  cada admin tem seu negocio_id
-*/
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-
-if(!admin?.negocio_id){
-  alert("Sessão expirada");
-  location.href="../auth/login.html";
-}
-
-const negocio_id = admin.negocio_id;
-
 /* ================= ELEMENTOS ================= */
 const bannerInput   = document.getElementById("bannerInput");
 const bannerPreview = document.getElementById("bannerPreview");
+const statusEl      = document.getElementById("status");
 
 /* ================= PREVIEW ================= */
 bannerInput.onchange = ()=>{
-  const f = bannerInput.files[0];
-  if(f){
-    bannerPreview.src = URL.createObjectURL(f);
+  const file = bannerInput.files[0];
+  if(file){
+    bannerPreview.src = URL.createObjectURL(file);
     bannerPreview.style.display = "block";
   }
 };
 
-/* ================= UPLOAD (PADRÃO BAR) ================= */
+/* ================= UPLOAD (PADRÃO PLATAFORMA) ================= */
 async function uploadBanner(file){
   if(!file) return null;
 
@@ -128,7 +118,7 @@ async function uploadBanner(file){
   return data.publicUrl;
 }
 
-/* ================= SALVAR CONFIG ================= */
+/* ================= SALVAR ================= */
 async function salvarBanner(){
   const file = bannerInput.files[0];
   if(!file){
@@ -136,8 +126,11 @@ async function salvarBanner(){
     return;
   }
 
+  statusEl.innerText = "Enviando banner...";
+
   const banner_url = await uploadBanner(file);
   if(!banner_url){
+    statusEl.innerText = "";
     alert("Erro ao enviar banner");
     return;
   }
@@ -151,11 +144,12 @@ async function salvarBanner(){
 
   if(error){
     console.error(error);
+    statusEl.innerText = "";
     alert("Erro ao salvar no banco");
     return;
   }
 
-  alert("Banner do hotel salvo com sucesso 🔥");
+  statusEl.innerText = "Banner salvo com sucesso 🔥";
 }
 
 /* ================= LOAD ================= */
