@@ -5,7 +5,7 @@
 <title>Hotel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Supabase -->
+<!-- Supabase v2 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -84,16 +84,25 @@ h1,h2{margin:0 0 12px 0}
 </div>
 
 <script>
+/* ================= SUPABASE ISOLADO =================
+   IMPORTANTÍSSIMO: client isolado, sem sessão, sem estado antigo
+===================================================== */
+
+const sb = window.supabase.createClient(
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw",
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  }
+);
+
 /* ================= CONFIG ================= */
 
-const SUPABASE_URL = "https://pdajixsoowcyhnjwhgpc.supabase.co";
-const SUPABASE_KEY = "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw";
 const BUCKET = "hotel-quartos";
-
-const supabase = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
 
 /* ================= PARAM ================= */
 
@@ -112,7 +121,7 @@ if(!negocio_id){
 /* ================= QUARTOS ================= */
 
 async function carregarQuartos(){
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from("hotel_quartos")
     .select("tipo, preco_diaria, fotos")
     .eq("negocio_id", negocio_id)
@@ -135,7 +144,7 @@ async function carregarQuartos(){
     let fotoUrl = "";
 
     if(q.fotos && q.fotos.length){
-      const { data: img } = supabase
+      const { data: img } = sb
         .storage
         .from(BUCKET)
         .getPublicUrl(q.fotos[0]);
@@ -158,6 +167,8 @@ async function carregarQuartos(){
     `;
   });
 }
+
+/* ================= INIT ================= */
 
 carregarQuartos();
 </script>
