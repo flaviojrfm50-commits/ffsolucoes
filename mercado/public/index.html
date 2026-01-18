@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Mercado</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const app = params.get("app");
+
+if(!app){
+  document.body.innerText = "Mercado não encontrado";
+  throw "";
+}
+
+/* lê escolha feita no painel */
+const modo =
+  localStorage.getItem(`publico_modo_${app}`) || "catalogo";
+
+/* redireciona */
+if(modo === "site"){
+  window.location.replace(`site.html?app=${app}`);
+}else{
+  window.location.replace(`catalogo.html?app=${app}`);
+}
+</script>
+
+</body>
+</html>

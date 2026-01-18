@@ -1,0 +1,28 @@
+<script>
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+const app = admin.app_id;
+
+function salvar(){
+  const config = {
+    nome:nome.value,
+    descricao:descricao.value,
+    cor:cor.value,
+    banner:banner.value,
+    modo:modo.value
+  };
+
+  localStorage.setItem(`config_site_${app}`, JSON.stringify(config));
+  alert("Configurações salvas!");
+}
+</script>
+
+<input id="nome" placeholder="Nome do mercado">
+<input id="descricao" placeholder="Descrição">
+<input id="cor" type="color">
+<input id="banner" placeholder="URL do banner">
+<select id="modo">
+  <option value="catalogo">Catálogo</option>
+  <option value="site">Site</option>
+</select>
+
+<button onclick="salvar()">Salvar</button>
