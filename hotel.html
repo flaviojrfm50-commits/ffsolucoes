@@ -140,7 +140,6 @@
       📞 (89) 98145-2698
     </div>
 
-    <!-- 🔽 AQUI ESTÁ A CORREÇÃO 🔽 -->
     <div class="actions">
       <button class="btn-bar" onclick="irBar()">
         🍔 Sistema para Bar / Restaurante
@@ -151,23 +150,31 @@
       </button>
 
       <button class="btn-locadora" onclick="irLocadora()">
-        🎬 Sistema para Locadora
-      </button>   fflocadora.html
+        🚗 Sistema para Locadora
+      </button>
+
+      <button class="btn-hotel" onclick="irMercado()">
+        🛒 Sistema para Mercado
+      </button>
     </div>
   </div>
 
 <script>
 function irBar(){
-  // entra direto no sistema do bar
-  location.href = "./ffbar.html";
- // entra direto no sistema fflocadora
-  location.href = "./fflocadora.html";
+  window.location.href = "https://anajuliafarias659-cloud.github.io/ffsolucoes/ffbar.html";
 }
 
 function irHotel(){
-  alert("Sistema para hotel em desenvolvimento 😉");
+  window.location.href = "https://anajuliafarias659-cloud.github.io/ffsolucoes/ffhotel.html";
 }
 
+function irLocadora(){
+  window.location.href = "https://anajuliafarias659-cloud.github.io/ffsolucoes/fflocadora.html";
+}
+
+function irMercado(){
+  window.location.href = "https://anajuliafarias659-cloud.github.io/ffsolucoes/ffmercado.html";
+}
 </script>
 
 </body>
