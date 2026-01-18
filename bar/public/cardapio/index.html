@@ -7,14 +7,11 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-/* ===== VARIÁVEIS BASE ===== */
 :root{
   --primary:#8b5e3c;
   --bg:#f6f1eb;
   --text:#2e1f14;
   --border:#e6ded5;
-
-  /* 🔥 CONTROLE DO CARD */
   --card-bg:#ffffff;
   --card-text:#2e1f14;
 }
@@ -27,7 +24,7 @@ body{
   color:var(--text);
 }
 
-/* ===== TOPO ===== */
+/* TOPO */
 .topo{
   height:220px;
   display:flex;
@@ -55,7 +52,7 @@ body{
 }
 .logo{max-height:70px;margin-bottom:10px}
 
-/* ===== TABS ===== */
+/* TABS */
 .tabs{
   display:flex;
   gap:12px;
@@ -78,7 +75,7 @@ body{
   border-color:var(--primary);
 }
 
-/* ===== GRID ===== */
+/* GRID */
 .container{
   max-width:1100px;
   margin:auto;
@@ -88,7 +85,7 @@ body{
   gap:18px;
 }
 
-/* ===== PRODUTO ===== */
+/* PRODUTO */
 .produto{
   background:var(--card-bg);
   color:var(--card-text);
@@ -105,15 +102,8 @@ body{
   object-fit:cover;
   border-radius:12px;
 }
-.produto b{
-  font-size:15px;
-  color:var(--card-text);
-}
-.preco{
-  font-weight:800;
-  color:var(--primary);
-}
-
+.produto b{font-size:15px}
+.preco{font-weight:800;color:var(--primary)}
 .add-btn{
   margin-top:auto;
   padding:10px;
@@ -125,7 +115,7 @@ body{
   cursor:pointer;
 }
 
-/* ===== BOTÃO CARRINHO ===== */
+/* BOTÃO CARRINHO */
 .carrinho-btn{
   position:fixed;
   bottom:22px;
@@ -140,7 +130,7 @@ body{
   z-index:20;
 }
 
-/* ===== MODAL ===== */
+/* MODAL */
 .modal{
   position:fixed;
   inset:0;
@@ -173,45 +163,26 @@ body{
   border-radius:6px;
 }
 
-/* ===== TEMAS ===== */
-body[data-tema="carnaval"]{
-  --primary:#ec4899;
-  --bg:#581c87;
-  --text:#ffffff;
-  --border:#a855f7;
-  --card-bg:#ffffff;
-  --card-text:#2e1f14;
+input,textarea{
+  width:100%;
+  margin-top:8px;
+  padding:10px;
+  border-radius:10px;
+  border:1px solid #e5e7eb;
+  font-size:14px;
 }
-body[data-tema="saojoao"]{
-  --primary:#facc15;
-  --bg:#7c2d12;
-  --text:#ffffff;
-  --border:#fde047;
-  --card-bg:#ffffff;
-  --card-text:#2e1f14;
-}
-body[data-tema="natal"]{
-  --primary:#dc2626;
-  --bg:#14532d;
-  --text:#ffffff;
-  --border:#16a34a;
-  --card-bg:#ffffff;
-  --card-text:#2e1f14;
-}
-body[data-tema="anonovo"]{
-  --primary:#22c55e;
-  --bg:#020617;
-  --text:#ffffff;
-  --border:#334155;
-  --card-bg:#ffffff;
-  --card-text:#2e1f14;
-}
+textarea{resize:none}
+
+/* TEMAS (mantidos) */
+body[data-tema="carnaval"]{--primary:#ec4899;--bg:#581c87;--text:#fff;}
+body[data-tema="saojoao"]{--primary:#facc15;--bg:#7c2d12;--text:#fff;}
+body[data-tema="natal"]{--primary:#dc2626;--bg:#14532d;--text:#fff;}
+body[data-tema="anonovo"]{--primary:#22c55e;--bg:#020617;--text:#fff;}
 </style>
 </head>
 
 <body>
 
-<!-- TOPO -->
 <div class="topo">
   <img id="banner" class="banner" style="display:none">
   <div class="topo-conteudo">
@@ -220,28 +191,31 @@ body[data-tema="anonovo"]{
   </div>
 </div>
 
-<!-- TABS -->
 <div class="tabs">
   <button class="tab ativo" id="btnBar">🍺 Bar</button>
   <button class="tab" id="btnCozinha">🍽️ Restaurante</button>
 </div>
 
-<!-- PRODUTOS -->
 <div class="container" id="conteudo"></div>
 
-<!-- BOTÃO CARRINHO -->
 <div class="carrinho-btn" onclick="abrirCarrinho()">
   🛒 Ver pedido (<span id="qtd">0</span>)
 </div>
 
-<!-- MODAL -->
 <div class="modal" id="modal">
   <div class="modal-box">
     <h3>🛒 Seu pedido</h3>
+
     <div id="lista"></div>
     <b>Total: R$ <span id="total">0.00</span></b>
-    <br><br>
-    <button class="add-btn" onclick="finalizar()">Finalizar no WhatsApp</button>
+
+    <hr>
+
+    <input id="cliente" placeholder="Seu nome *">
+    <input id="endereco" placeholder="Endereço / referência">
+    <textarea id="obs" placeholder="Observações"></textarea>
+
+    <button class="add-btn" onclick="finalizar()">Enviar no WhatsApp</button>
     <button class="add-btn" style="background:#64748b" onclick="fecharCarrinho()">Fechar</button>
   </div>
 </div>
@@ -252,12 +226,10 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-const params = new URLSearchParams(location.search);
-const app_id = params.get("app") || params.get("app_id");
+const app_id = new URLSearchParams(location.search).get("app") || new URLSearchParams(location.search).get("app_id");
 if(!app_id){ document.body.innerHTML="Indisponível"; throw ""; }
 
-let produtos=[];
-let filtro="BAR";
+let produtos=[], filtro="BAR";
 const carrinhoKey="carrinho_"+app_id;
 let carrinho=JSON.parse(localStorage.getItem(carrinhoKey))||[];
 let whatsapp="";
@@ -301,15 +273,18 @@ function addProduto(id){
   const p=produtos.find(x=>x.id===id);
   const i=carrinho.find(x=>x.id===id);
   i?i.qtd++:carrinho.push({id:p.id,nome:p.nome,preco:p.preco,qtd:1});
-  salvarCarrinho();
+  salvar();
 }
-function salvarCarrinho(){
+
+function salvar(){
   localStorage.setItem(carrinhoKey,JSON.stringify(carrinho));
   atualizarQtd();
 }
+
 function atualizarQtd(){
   qtd.innerText=carrinho.reduce((s,i)=>s+i.qtd,0);
 }
+
 function abrirCarrinho(){
   modal.style.display="block";
   renderCarrinho();
@@ -317,6 +292,7 @@ function abrirCarrinho(){
 function fecharCarrinho(){
   modal.style.display="none";
 }
+
 function renderCarrinho(){
   lista.innerHTML="";
   let total=0;
@@ -328,31 +304,47 @@ function renderCarrinho(){
         <button onclick="remover('${i.id}')">−</button>
       </div>`;
   });
-  totalEl=document.getElementById("total");
   totalEl.innerText=total.toFixed(2);
 }
+
 function remover(id){
   const i=carrinho.find(x=>x.id===id);
   if(i){
     i.qtd--;
     if(i.qtd<=0) carrinho=carrinho.filter(x=>x.id!==id);
-    salvarCarrinho();
+    salvar();
     renderCarrinho();
   }
 }
+
 function finalizar(){
-  if(!whatsapp){ alert("WhatsApp não configurado"); return; }
+  if(!cliente.value.trim()){
+    alert("Informe seu nome");
+    return;
+  }
+  if(!whatsapp){
+    alert("WhatsApp não configurado");
+    return;
+  }
+
   let msg="🛒 *Novo Pedido*\n\n";
   let total=0;
+
   carrinho.forEach(i=>{
     const sub=i.preco*i.qtd;
     total+=sub;
     msg+=`• ${i.nome} x${i.qtd} - R$ ${sub.toFixed(2)}\n`;
   });
+
   msg+=`\n💰 Total: R$ ${total.toFixed(2)}`;
+  msg+=`\n👤 ${cliente.value}`;
+  if(endereco.value) msg+=`\n📍 ${endereco.value}`;
+  if(obs.value) msg+=`\n📝 ${obs.value}`;
+
   window.open(`https://wa.me/55${whatsapp}?text=${encodeURIComponent(msg)}`,"_blank");
+
   carrinho=[];
-  salvarCarrinho();
+  salvar();
   fecharCarrinho();
 }
 
