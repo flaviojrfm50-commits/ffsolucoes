@@ -7,11 +7,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+/* ===== VARIÁVEIS BASE ===== */
 :root{
   --primary:#8b5e3c;
   --bg:#f6f1eb;
   --text:#2e1f14;
   --border:#e6ded5;
+
+  /* 🔥 CONTROLE DO CARD */
+  --card-bg:#ffffff;
+  --card-text:#2e1f14;
 }
 
 *{box-sizing:border-box}
@@ -85,7 +90,8 @@ body{
 
 /* ===== PRODUTO ===== */
 .produto{
-  background:#fff;
+  background:var(--card-bg);
+  color:var(--card-text);
   border-radius:16px;
   padding:12px;
   border:1px solid var(--border);
@@ -99,8 +105,14 @@ body{
   object-fit:cover;
   border-radius:12px;
 }
-.produto b{font-size:15px}
-.preco{font-weight:800}
+.produto b{
+  font-size:15px;
+  color:var(--card-text);
+}
+.preco{
+  font-weight:800;
+  color:var(--primary);
+}
 
 .add-btn{
   margin-top:auto;
@@ -128,7 +140,7 @@ body{
   z-index:20;
 }
 
-/* ===== MODAL CARRINHO ===== */
+/* ===== MODAL ===== */
 .modal{
   position:fixed;
   inset:0;
@@ -165,26 +177,34 @@ body{
 body[data-tema="carnaval"]{
   --primary:#ec4899;
   --bg:#581c87;
-  --text:#fff;
+  --text:#ffffff;
   --border:#a855f7;
+  --card-bg:#ffffff;
+  --card-text:#2e1f14;
 }
 body[data-tema="saojoao"]{
   --primary:#facc15;
   --bg:#7c2d12;
-  --text:#fff;
+  --text:#ffffff;
   --border:#fde047;
+  --card-bg:#ffffff;
+  --card-text:#2e1f14;
 }
 body[data-tema="natal"]{
   --primary:#dc2626;
   --bg:#14532d;
-  --text:#fff;
+  --text:#ffffff;
   --border:#16a34a;
+  --card-bg:#ffffff;
+  --card-text:#2e1f14;
 }
 body[data-tema="anonovo"]{
   --primary:#22c55e;
   --bg:#020617;
-  --text:#fff;
+  --text:#ffffff;
   --border:#334155;
+  --card-bg:#ffffff;
+  --card-text:#2e1f14;
 }
 </style>
 </head>
@@ -227,29 +247,24 @@ body[data-tema="anonovo"]{
 </div>
 
 <script>
-/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* PARAMS */
 const params = new URLSearchParams(location.search);
 const app_id = params.get("app") || params.get("app_id");
 if(!app_id){ document.body.innerHTML="Indisponível"; throw ""; }
 
-/* STATE */
 let produtos=[];
 let filtro="BAR";
 const carrinhoKey="carrinho_"+app_id;
 let carrinho=JSON.parse(localStorage.getItem(carrinhoKey))||[];
 let whatsapp="";
 
-/* ===== CONFIG ===== */
 async function carregarConfig(){
   const {data}=await sb.from("config_site").select("*").eq("app_id",app_id).single();
   if(!data) return;
-
   nome.innerText=data.nome_site||"Cardápio";
   if(data.logo_url){logo.src=data.logo_url;logo.style.display="block";}
   if(data.banner_url){banner.src=data.banner_url;banner.style.display="block";}
@@ -257,7 +272,6 @@ async function carregarConfig(){
   whatsapp=data.whatsapp||"";
 }
 
-/* ===== PRODUTOS ===== */
 async function carregarProdutos(){
   const {data}=await sb.from("produtos")
     .select("id,nome,preco,foto,destino")
@@ -268,7 +282,6 @@ async function carregarProdutos(){
   render();
 }
 
-/* ===== RENDER ===== */
 function render(){
   conteudo.innerHTML="";
   produtos.filter(p=>(p.destino||"").toUpperCase()===filtro)
@@ -284,7 +297,6 @@ function render(){
   atualizarQtd();
 }
 
-/* ===== CARRINHO ===== */
 function addProduto(id){
   const p=produtos.find(x=>x.id===id);
   const i=carrinho.find(x=>x.id===id);
@@ -316,7 +328,8 @@ function renderCarrinho(){
         <button onclick="remover('${i.id}')">−</button>
       </div>`;
   });
-  document.getElementById("total").innerText=total.toFixed(2);
+  totalEl=document.getElementById("total");
+  totalEl.innerText=total.toFixed(2);
 }
 function remover(id){
   const i=carrinho.find(x=>x.id===id);
@@ -327,8 +340,6 @@ function remover(id){
     renderCarrinho();
   }
 }
-
-/* ===== FINALIZAR ===== */
 function finalizar(){
   if(!whatsapp){ alert("WhatsApp não configurado"); return; }
   let msg="🛒 *Novo Pedido*\n\n";
@@ -345,11 +356,9 @@ function finalizar(){
   fecharCarrinho();
 }
 
-/* TABS */
 btnBar.onclick=()=>{filtro="BAR";btnBar.classList.add("ativo");btnCozinha.classList.remove("ativo");render();};
 btnCozinha.onclick=()=>{filtro="COZINHA";btnCozinha.classList.add("ativo");btnBar.classList.remove("ativo");render();};
 
-/* START */
 (async()=>{
   await carregarConfig();
   await carregarProdutos();
