@@ -24,6 +24,7 @@ body{
 
 /* ===== BANNER ===== */
 .banner{
+  width:100%;
   height:260px;
   background-size:cover;
   background-position:center;
@@ -44,33 +45,38 @@ body{
 .banner-content h1{margin:0;font-size:26px}
 .banner-content p{opacity:.85}
 
-/* ===== SEÇÕES ===== */
+/* ===== SECTIONS ===== */
 .section{
-  max-width:1100px;
+  max-width:1200px;
   margin:auto;
-  padding:28px 16px;
+  padding:30px 16px;
 }
 
 /* ===== SOBRE ===== */
-.sobre p{margin:6px 0;opacity:.85}
+.sobre p{
+  margin:6px 0;
+  opacity:.85;
+}
 
-/* ===== CATEGORIA ===== */
-.categoria{margin-bottom:28px}
+/* ===== CATEGORIAS ===== */
+.categoria{
+  margin-bottom:32px;
+}
 .categoria h3{
-  font-size:18px;
   border-left:4px solid var(--primaria);
   padding-left:10px;
-  margin-bottom:12px;
+  margin-bottom:14px;
 }
 
 /* ===== GRID PRODUTOS ===== */
 .grid{
   display:grid;
   grid-template-columns:repeat(2,1fr);
-  gap:12px;
+  gap:14px;
 }
+
 @media(min-width:768px){
-  .grid{grid-template-columns:repeat(4,1fr)}
+  .grid{grid-template-columns:repeat(4,1fr);}
 }
 
 /* ===== CARD PRODUTO ===== */
@@ -93,210 +99,149 @@ body{
 .preco{
   color:var(--primaria);
   font-weight:700;
-  font-size:14px;
-}
-.produto button{
-  width:100%;
-  margin-top:6px;
-  padding:8px;
-  border:none;
-  border-radius:10px;
-  background:var(--primaria);
-  font-weight:700;
-  cursor:pointer;
+  font-size:15px;
 }
 
-/* ===== BOTÃO CARRINHO ===== */
-.cart-btn{
-  position:fixed;
-  right:16px;
-  bottom:16px;
-  background:var(--primaria);
-  color:#000;
-  padding:14px;
-  border-radius:50%;
-  font-size:18px;
-  font-weight:900;
-  cursor:pointer;
-  z-index:50;
-}
-
-/* ===== MODAL CARRINHO ===== */
-.cart{
-  position:fixed;
-  inset:0;
-  background:rgba(2,6,23,.95);
-  display:none;
-  z-index:100;
-}
-.cart-box{
-  max-width:420px;
-  margin:40px auto;
-  background:var(--card);
+/* ===== FOOTER ===== */
+footer{
+  text-align:center;
   padding:20px;
-  border-radius:18px;
-}
-.cart-item{
-  display:flex;
-  justify-content:space-between;
-  margin:6px 0;
-}
-.cart-box input,textarea{
-  width:100%;
-  margin-top:8px;
-  padding:10px;
-  border-radius:10px;
-  border:none;
-  background:#020617;
-  color:#fff;
-}
-.cart-box button{
-  width:100%;
-  margin-top:12px;
-  padding:12px;
-  border:none;
-  border-radius:12px;
-  background:var(--primaria);
-  font-weight:800;
-  cursor:pointer;
+  opacity:.6;
 }
 </style>
 </head>
 
 <body>
 
+<!-- ===== BANNER ===== -->
 <div class="banner" id="banner">
   <div class="banner-content">
-    <h1 id="nome">Carregando...</h1>
-    <p id="descricao"></p>
+    <h1 id="nomeMercado">Carregando...</h1>
+    <p id="descricaoMercado"></p>
   </div>
 </div>
 
+<!-- ===== SOBRE O MERCADO ===== -->
 <section class="section sobre">
   <h2>🏪 Sobre o mercado</h2>
-  <p id="sobre"></p>
-  <p id="endereco"></p>
+  <p id="sobreTexto"></p>
+  <p id="enderecoTexto"></p>
 </section>
 
+<!-- ===== PRODUTOS ===== -->
 <section class="section">
-  <h2>🛒 Catálogo</h2>
+  <h2>🛒 Produtos</h2>
   <div id="listaProdutos"></div>
 </section>
 
-<div class="cart-btn" onclick="abrirCarrinho()">🛒 <span id="qtd">0</span></div>
-
-<div class="cart" id="cart">
-  <div class="cart-box">
-    <h3>🧾 Seu pedido</h3>
-    <div id="cartItens"></div>
-    <b>Total: R$ <span id="total">0.00</span></b>
-
-    <input id="cliente" placeholder="Seu nome">
-    <input id="enderecoCli" placeholder="Endereço de entrega">
-    <input id="referencia" placeholder="Ponto de referência">
-    <textarea id="obs" placeholder="Observações"></textarea>
-
-    <button onclick="finalizar()">Enviar no WhatsApp</button>
-    <button onclick="fecharCarrinho()">Fechar</button>
-  </div>
-</div>
+<footer>
+  © <span id="ano"></span> <span id="rodapeNome"></span>
+</footer>
 
 <script>
+/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-const app = new URLSearchParams(location.search).get("app");
-if(!app){document.body.innerText="Mercado não encontrado";throw""}
-
-let whatsapp = "";
-let carrinho = JSON.parse(localStorage.getItem("carrinho_"+app)) || [];
-
-function salvarCarrinho(){
-  localStorage.setItem("carrinho_"+app, JSON.stringify(carrinho));
-  qtd.innerText = carrinho.reduce((s,i)=>s+i.qtd,0);
+/* ===== APP ===== */
+const params = new URLSearchParams(window.location.search);
+const app = params.get("app");
+if(!app){
+  document.body.innerText="Mercado não encontrado";
+  throw "";
 }
 
-async function carregarConfig(){
-  const {data} = await sb.from("config_site").select("*").eq("app_id",app).maybeSingle();
+/* ===== CONFIG SITE (AJUSTE DEFINITIVO) ===== */
+(async()=>{
+  const { data } = await sb
+    .from("config_site")
+    .select("*")
+    .eq("app_id",app)
+    .maybeSingle();
+
   if(!data) return;
 
-  nome.innerText = data.nome_site || "";
-  descricao.innerText = data.descricao || "";
-  sobre.innerText = data.sobre || "";
-  endereco.innerText = data.endereco ? "📍 "+data.endereco : "";
-  whatsapp = data.whatsapp || "";
+  nomeMercado.innerText = data.nome_site || "Mercado";
+  descricaoMercado.innerText = data.descricao || "";
+  rodapeNome.innerText = data.nome_site || "Mercado";
+  ano.innerText = new Date().getFullYear();
 
-  if(data.banner_url) banner.style.backgroundImage=`url(${data.banner_url})`;
+  /* SOBRE */
+  sobreTexto.innerText =
+    data.sobre && data.sobre.trim() !== ""
+      ? data.sobre
+      : "Atendemos com qualidade e preços justos para sua família.";
+
+  /* ENDEREÇO */
+  if(data.endereco){
+    enderecoTexto.innerText =
+      "📍 " + data.endereco + (data.cidade ? " – " + data.cidade : "");
+  }else{
+    enderecoTexto.style.display="none";
+  }
+
+  /* BANNER */
+  if(data.banner_url){
+    banner.style.backgroundImage = `url(${data.banner_url})`;
+  }
+
+  aplicarTema(data.tema_site);
+})();
+
+/* ===== TEMAS ===== */
+function aplicarTema(t){
+  if(t==="natal") setTema("#dc2626","#14532d");
+  if(t==="sao-joao") setTema("#facc15","#7c2d12");
+  if(t==="anonovo") setTema("#22c55e","#020617");
+  if(t==="carnaval") setTema("#ec4899","#581c87");
 }
-carregarConfig();
+function setTema(p,c){
+  document.documentElement.style.setProperty("--primaria",p);
+  document.documentElement.style.setProperty("--card",c);
+}
 
+/* ===== PRODUTOS POR CATEGORIA ===== */
 async function carregarProdutos(){
-  const {data} = await sb.from("produtos")
+  const { data } = await sb
+    .from("produtos")
     .select("*")
     .eq("app_id",app)
     .eq("ativo",true)
     .order("categoria")
-    .order("ordem");
+    .order("ordem")
+    .order("nome");
 
-  const grupos = {};
+  if(!data || data.length===0){
+    listaProdutos.innerHTML="<p>Nenhum produto disponível.</p>";
+    return;
+  }
+
+  const cats={};
   data.forEach(p=>{
     const c=p.categoria||"Outros";
-    if(!grupos[c]) grupos[c]=[];
-    grupos[c].push(p);
+    if(!cats[c]) cats[c]=[];
+    cats[c].push(p);
   });
 
-  listaProdutos.innerHTML = Object.keys(grupos).map(c=>`
+  listaProdutos.innerHTML = Object.keys(cats).map(cat=>`
     <div class="categoria">
-      <h3>${c}</h3>
+      <h3>${cat}</h3>
       <div class="grid">
-        ${grupos[c].map(p=>`
+        ${cats[cat].map(p=>`
           <div class="produto">
             ${p.imagem?`<img src="${p.imagem}">`:""}
             <h4>${p.nome}</h4>
-            <div class="preco">R$ ${p.preco.toFixed(2)}</div>
-            <button onclick='add(${JSON.stringify(p)})'>Adicionar</button>
+            <div class="preco">R$ ${Number(p.preco).toFixed(2)}</div>
           </div>
         `).join("")}
       </div>
     </div>
   `).join("");
 }
+
 carregarProdutos();
-
-function add(p){
-  const i=carrinho.find(i=>i.id===p.id);
-  if(i)i.qtd++;
-  else carrinho.push({...p,qtd:1});
-  salvarCarrinho();
-}
-
-function abrirCarrinho(){
-  cart.style.display="block";
-  atualizarCarrinho();
-}
-function fecharCarrinho(){cart.style.display="none"}
-
-function atualizarCarrinho(){
-  let t=0;
-  cartItens.innerHTML=carrinho.map(i=>{
-    t+=i.preco*i.qtd;
-    return `<div class="cart-item">${i.qtd}x ${i.nome}<span>R$ ${(i.preco*i.qtd).toFixed(2)}</span></div>`;
-  }).join("");
-  total.innerText=t.toFixed(2);
-}
-
-function finalizar(){
-  let msg="🛒 *Pedido*\n\n";
-  carrinho.forEach(i=>{
-    msg+=`${i.qtd}x ${i.nome} - R$ ${(i.preco*i.qtd).toFixed(2)}\n`;
-  });
-  msg+=`\nTotal: R$ ${total.innerText}\n\n`;
-  msg+=`👤 ${cliente.value}\n📍 ${enderecoCli.value}\n📌 ${referencia.value}\n📝 ${obs.value}`;
-  window.open(`https://wa.me/55${whatsapp}?text=${encodeURIComponent(msg)}`);
-}
-salvarCarrinho();
 </script>
 
 </body>
