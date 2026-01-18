@@ -49,7 +49,7 @@ body{
 .section{
   max-width:1200px;
   margin:auto;
-  padding:50px 20px;
+  padding:40px 20px;
 }
 
 .grid{
@@ -96,7 +96,7 @@ footer{
 <!-- BANNER -->
 <div class="banner" id="banner">
   <div class="banner-content">
-    <h1 id="nome"></h1>
+    <h1 id="nome">Carregando...</h1>
     <p id="descricao"></p>
   </div>
 </div>
@@ -104,12 +104,12 @@ footer{
 <!-- SOBRE -->
 <section class="section">
   <h2>🏪 Sobre o mercado</h2>
-  <p id="sobre"></p>
+  <p id="sobre">Informações não disponíveis.</p>
 </section>
 
-<!-- PRODUTOS (VITRINE) -->
+<!-- PRODUTOS -->
 <section class="section">
-  <h2>🧾 Produtos disponíveis</h2>
+  <h2>🛒 Produtos</h2>
   <div class="grid" id="listaProdutos"></div>
 </section>
 
@@ -119,42 +119,42 @@ footer{
 
 <script>
 /* ===== SUPABASE ===== */
-const supabaseClient = supabase.createClient(
+const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
 const params = new URLSearchParams(window.location.search);
 const app = params.get("app");
-if(!app){ document.body.innerText="Mercado não encontrado"; throw ""; }
+if(!app){
+  document.body.innerText="Mercado não encontrado";
+  throw "";
+}
 
 /* ===== CONFIG SITE ===== */
 (async()=>{
-  const { data } = await supabaseClient
+  const { data } = await sb
     .from("config_site")
-    .select("nome,descricao,sobre,banner,tema")
+    .select("nome_site, descricao, sobre, banner_url, tema_site")
     .eq("app_id",app)
-    .single();
+    .maybeSingle();
 
   if(!data) return;
 
-  document.title = data.nome;
-  nome.innerText = data.nome;
+  nome.innerText = data.nome_site || "Mercado";
   descricao.innerText = data.descricao || "";
   sobre.innerText = data.sobre || "";
-  nomeRodape.innerText = data.nome;
+  nomeRodape.innerText = data.nome_site || "Mercado";
   ano.innerText = new Date().getFullYear();
 
-  if(data.banner){
-    banner.style.backgroundImage = `url(${data.banner})`;
-  }else{
-    banner.style.backgroundImage =
-      "linear-gradient(135deg,#16a34a,#0f172a)";
+  if(data.banner_url){
+    banner.style.backgroundImage = `url(${data.banner_url})`;
   }
 
-  if(data.tema==="natal") setTema("#dc2626","#14532d");
-  if(data.tema==="saojoao") setTema("#facc15","#7c2d12");
-  if(data.tema==="anonovo") setTema("#22c55e","#020617");
+  if(data.tema_site==="natal") setTema("#dc2626","#14532d");
+  if(data.tema_site==="sao-joao") setTema("#facc15","#7c2d12");
+  if(data.tema_site==="anonovo") setTema("#22c55e","#020617");
+  if(data.tema_site==="carnaval") setTema("#ec4899","#581c87");
 })();
 
 function setTema(primaria,card){
@@ -162,23 +162,23 @@ function setTema(primaria,card){
   document.documentElement.style.setProperty("--card",card);
 }
 
-/* ===== PRODUTOS (SOMENTE VITRINE) ===== */
+/* ===== PRODUTOS ===== */
 async function carregarProdutos(){
-  const { data } = await supabaseClient
+  const { data } = await sb
     .from("produtos")
     .select("nome,preco,imagem")
     .eq("app_id",app)
     .eq("ativo",true)
     .order("nome");
 
-  if(!data || !data.length){
-    listaProdutos.innerHTML = "<p>Nenhum produto disponível.</p>";
+  if(!data || data.length===0){
+    listaProdutos.innerHTML="<p>Nenhum produto disponível.</p>";
     return;
   }
 
   listaProdutos.innerHTML = data.map(p=>`
     <div class="produto">
-      ${p.imagem?`<img src="${p.imagem}">`:""}
+      ${p.imagem ? `<img src="${p.imagem}">` : ""}
       <h3>${p.nome}</h3>
       <div class="preco">R$ ${Number(p.preco).toFixed(2)}</div>
     </div>
