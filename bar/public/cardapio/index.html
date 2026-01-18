@@ -163,12 +163,13 @@ body{
   border-radius:6px;
 }
 
-input,textarea{
+input,textarea,select{
   width:100%;
   margin-top:8px;
   padding:10px;
   border-radius:10px;
   border:1px solid #e5e7eb;
+  font-size:14px;
 }
 textarea{resize:none}
 
@@ -212,6 +213,18 @@ body[data-tema="anonovo"]{--primary:#22c55e;--bg:#020617;--text:#fff;}
 
     <input id="cliente" placeholder="Seu nome *">
     <input id="endereco" placeholder="Endereço / referência">
+
+    <select id="pagamento" onchange="verificarTroco()">
+      <option value="">Forma de pagamento *</option>
+      <option value="Pix">Pix</option>
+      <option value="Cartão">Cartão</option>
+      <option value="Dinheiro">Dinheiro</option>
+    </select>
+
+    <div id="trocoBox" style="display:none">
+      <input id="troco" placeholder="Troco para quanto? Ex: 50,00">
+    </div>
+
     <textarea id="obs" placeholder="Observações"></textarea>
 
     <button class="add-btn" onclick="finalizar()">Enviar no WhatsApp</button>
@@ -318,13 +331,17 @@ function remover(id){
   }
 }
 
+function verificarTroco(){
+  trocoBox.style.display = pagamento.value==="Dinheiro" ? "block" : "none";
+}
+
 function finalizar(){
   if(!cliente.value.trim()){
     alert("Informe seu nome");
     return;
   }
-  if(!whatsapp){
-    alert("WhatsApp não configurado");
+  if(!pagamento.value){
+    alert("Informe a forma de pagamento");
     return;
   }
 
@@ -340,6 +357,8 @@ function finalizar(){
   msg+=`\n💰 Total: R$ ${total.toFixed(2)}`;
   msg+=`\n👤 ${cliente.value}`;
   if(endereco.value) msg+=`\n📍 ${endereco.value}`;
+  msg+=`\n💳 Pagamento: ${pagamento.value}`;
+  if(pagamento.value==="Dinheiro" && troco.value) msg+=`\n💵 Troco para: R$ ${troco.value}`;
   if(obs.value) msg+=`\n📝 ${obs.value}`;
 
   window.open(`https://wa.me/55${whatsapp}?text=${encodeURIComponent(msg)}`,"_blank");
