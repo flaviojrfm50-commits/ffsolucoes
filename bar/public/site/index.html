@@ -7,12 +7,40 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+/* ===== VARIÁVEIS BASE ===== */
 :root{
   --primary:#8b5e3c;
   --bg:#f6f1eb;
   --text:#2e1f14;
   --border:#e6ded5;
 }
+
+/* ===== TEMAS ===== */
+body.tema-carnaval{
+  --primary:#ec4899;
+  --bg:#1a0b12;
+  --text:#fff;
+  --border:#3b1324;
+}
+body.tema-saojoao{
+  --primary:#f97316;
+  --bg:#1a0e05;
+  --text:#fff;
+  --border:#3b1f0b;
+}
+body.tema-natal{
+  --primary:#22c55e;
+  --bg:#041a10;
+  --text:#fff;
+  --border:#0f3d28;
+}
+body.tema-anonovo{
+  --primary:#eab308;
+  --bg:#1a1604;
+  --text:#fff;
+  --border:#3b3208;
+}
+
 *{box-sizing:border-box}
 body{
   margin:0;
@@ -21,7 +49,7 @@ body{
   color:var(--text);
 }
 
-/* TOPO */
+/* ===== TOPO ===== */
 .topo{
   height:220px;
   display:flex;
@@ -49,7 +77,7 @@ body{
 }
 .logo{max-height:70px;margin-bottom:10px}
 
-/* TABS */
+/* ===== TABS ===== */
 .tabs{
   display:flex;
   gap:12px;
@@ -72,7 +100,7 @@ body{
   border-color:var(--primary);
 }
 
-/* GRID */
+/* ===== GRID ===== */
 .container{
   max-width:1100px;
   margin:auto;
@@ -82,7 +110,7 @@ body{
   gap:18px;
 }
 
-/* CARD */
+/* ===== CARD ===== */
 .produto{
   background:#fff;
   border-radius:18px;
@@ -114,7 +142,7 @@ body{
   color:var(--primary);
 }
 
-/* INFO */
+/* ===== INFO ===== */
 .info{
   grid-column:1/-1;
   background:#fff;
@@ -164,7 +192,7 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* PARAMS (CORRIGIDO) */
+/* PARAMS */
 const params = new URLSearchParams(location.search);
 const app_id = params.get("app") || params.get("app_id");
 
@@ -172,9 +200,6 @@ if(!app_id){
   document.body.innerHTML = "Indisponível";
   throw "";
 }
-
-/* ELEMENTOS */
-const conteudo = document.getElementById("conteudo");
 
 /* STATE */
 let produtos = [];
@@ -191,8 +216,21 @@ async function carregarConfig(){
   if(!data) return;
 
   nome.innerText = data.nome_site || "Vitrine";
-  if(data.logo_url){ logo.src=data.logo_url; logo.style.display="block"; }
-  if(data.banner_url){ banner.src=data.banner_url; banner.style.display="block"; }
+
+  if(data.logo_url){
+    logo.src = data.logo_url;
+    logo.style.display = "block";
+  }
+
+  if(data.banner_url){
+    banner.src = data.banner_url;
+    banner.style.display = "block";
+  }
+
+  /* ===== APLICA TEMA ===== */
+  if(data.tema_site && data.tema_site !== "padrao"){
+    document.body.classList.add("tema-" + data.tema_site);
+  }
 }
 
 /* PRODUTOS */
