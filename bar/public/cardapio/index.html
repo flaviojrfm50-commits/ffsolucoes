@@ -13,6 +13,7 @@
   --text:#2e1f14;
   --border:#e6ded5;
 }
+
 *{box-sizing:border-box}
 body{
   margin:0;
@@ -21,7 +22,7 @@ body{
   color:var(--text);
 }
 
-/* TOPO */
+/* ===== TOPO ===== */
 .topo{
   height:220px;
   display:flex;
@@ -49,7 +50,7 @@ body{
 }
 .logo{max-height:70px;margin-bottom:10px}
 
-/* BOTÕES */
+/* ===== TABS ===== */
 .tabs{
   display:flex;
   gap:12px;
@@ -72,7 +73,7 @@ body{
   border-color:var(--primary);
 }
 
-/* GRID */
+/* ===== GRID ===== */
 .container{
   max-width:1100px;
   margin:auto;
@@ -82,7 +83,7 @@ body{
   gap:18px;
 }
 
-/* PRODUTO */
+/* ===== PRODUTO ===== */
 .produto{
   background:#fff;
   border-radius:16px;
@@ -111,7 +112,7 @@ body{
   font-weight:900;
 }
 
-/* CARRINHO */
+/* ===== CARRINHO ===== */
 .carrinho-btn{
   position:fixed;
   bottom:22px;
@@ -122,6 +123,32 @@ body{
   padding:16px 30px;
   border-radius:999px;
   font-weight:900;
+}
+
+/* ===== TEMAS ===== */
+body[data-tema="carnaval"]{
+  --primary:#ec4899;
+  --bg:#581c87;
+  --text:#fff;
+  --border:#a855f7;
+}
+body[data-tema="saojoao"]{
+  --primary:#facc15;
+  --bg:#7c2d12;
+  --text:#fff;
+  --border:#fde047;
+}
+body[data-tema="natal"]{
+  --primary:#dc2626;
+  --bg:#14532d;
+  --text:#fff;
+  --border:#16a34a;
+}
+body[data-tema="anonovo"]{
+  --primary:#22c55e;
+  --bg:#020617;
+  --text:#fff;
+  --border:#334155;
 }
 </style>
 </head>
@@ -137,7 +164,7 @@ body{
   </div>
 </div>
 
-<!-- BOTÕES -->
+<!-- TABS -->
 <div class="tabs">
   <button class="tab ativo" id="btnBar">🍺 Bar</button>
   <button class="tab" id="btnCozinha">🍽️ Restaurante</button>
@@ -152,7 +179,7 @@ body{
 </div>
 
 <script>
-/* SUPABASE */
+/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
@@ -161,88 +188,78 @@ const sb = supabase.createClient(
 /* PARAMS */
 const params = new URLSearchParams(location.search);
 const app_id = params.get("app") || params.get("app_id");
-if(!app_id){
-  document.body.innerHTML="Indisponível";
-  throw "";
-}
-
-/* ELEMENTOS */
-const conteudo = document.getElementById("conteudo");
-const btnBar = document.getElementById("btnBar");
-const btnCozinha = document.getElementById("btnCozinha");
+if(!app_id){ document.body.innerHTML="Indisponível"; throw ""; }
 
 /* STATE */
-let produtos = [];
-let carrinho = [];
-let filtro = "BAR"; // 🔥 BAR PRIMEIRO DE VERDADE
+let produtos=[];
+let carrinho=[];
+let filtro="BAR";
 
-/* CONFIG */
+/* ===== CONFIG ===== */
 async function carregarConfig(){
-  const {data} = await sb
-    .from("config_site")
-    .select("*")
-    .eq("app_id", app_id)
-    .single();
-
+  const {data}=await sb.from("config_site").select("*").eq("app_id",app_id).single();
   if(!data) return;
-  nome.innerText = data.nome_site || "Cardápio";
-  if(data.logo_url){ logo.src=data.logo_url; logo.style.display="block"; }
-  if(data.banner_url){ banner.src=data.banner_url; banner.style.display="block"; }
+
+  nome.innerText=data.nome_site||"Cardápio";
+  if(data.logo_url){logo.src=data.logo_url;logo.style.display="block";}
+  if(data.banner_url){banner.src=data.banner_url;banner.style.display="block";}
+
+  aplicarTema(data.tema_site || "padrao");
 }
 
-/* PRODUTOS */
+/* ===== TEMAS ===== */
+function aplicarTema(tema){
+  document.body.dataset.tema = tema;
+}
+
+/* ===== PRODUTOS ===== */
 async function carregarProdutos(){
-  const {data} = await sb
+  const {data}=await sb
     .from("produtos")
     .select("id,nome,preco,foto,destino")
-    .eq("app_id", app_id)
-    .eq("ativo", true)
+    .eq("app_id",app_id)
+    .eq("ativo",true)
     .order("nome");
-
-  produtos = data || [];
+  produtos=data||[];
   render();
 }
 
-/* RENDER */
 function render(){
   conteudo.innerHTML="";
   produtos
-    .filter(p => (p.destino||"").toUpperCase().trim() === filtro)
+    .filter(p=>(p.destino||"").toUpperCase()===filtro)
     .forEach(p=>{
-      conteudo.innerHTML += `
+      conteudo.innerHTML+=`
         <div class="produto">
-          ${p.foto ? `<img src="${p.foto}">` : ""}
+          ${p.foto?`<img src="${p.foto}">`:""}
           <b>${p.nome}</b>
           <div class="preco">R$ ${p.preco.toFixed(2)}</div>
           <button class="add-btn" onclick="addProduto('${p.id}')">Adicionar</button>
-        </div>
-      `;
+        </div>`;
     });
 }
 
-/* BOTÕES */
-btnBar.onclick = ()=>{
+/* ===== BOTÕES ===== */
+btnBar.onclick=()=>{
   filtro="BAR";
   btnBar.classList.add("ativo");
   btnCozinha.classList.remove("ativo");
   render();
 };
-
-btnCozinha.onclick = ()=>{
+btnCozinha.onclick=()=>{
   filtro="COZINHA";
   btnCozinha.classList.add("ativo");
   btnBar.classList.remove("ativo");
   render();
 };
 
-/* CARRINHO */
+/* ===== CARRINHO ===== */
 function addProduto(id){
-  const p = produtos.find(x=>x.id===id);
-  const i = carrinho.find(x=>x.id===id);
-  i ? i.qtd++ : carrinho.push({...p,qtd:1});
-  qtd.innerText = carrinho.reduce((s,i)=>s+i.qtd,0);
+  const p=produtos.find(x=>x.id===id);
+  const i=carrinho.find(x=>x.id===id);
+  i?i.qtd++:carrinho.push({...p,qtd:1});
+  qtd.innerText=carrinho.reduce((s,i)=>s+i.qtd,0);
 }
-
 function abrirCarrinho(){
   alert("Carrinho funcionando 😎");
 }
