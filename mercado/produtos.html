@@ -21,7 +21,7 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   margin-bottom:20px;
 }
 
-input,button{
+input,select,button{
   width:100%;
   padding:12px;
   margin-top:10px;
@@ -29,14 +29,21 @@ input,button{
   border:none;
 }
 
-input{background:#020617;color:#fff}
+input,select{background:#020617;color:#fff}
 button{background:#22c55e;font-weight:bold;cursor:pointer}
 
 #btnToggle{background:#334155}
-
 #leitor video{width:100%;border-radius:12px;margin-top:10px}
 
-/* LISTA COMPACTA */
+/* LISTA */
+.categoria{
+  margin-top:20px;
+}
+.categoria h3{
+  border-left:4px solid #22c55e;
+  padding-left:10px;
+}
+
 .produto{
   background:#020617;
   padding:10px;
@@ -81,19 +88,31 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
 
   <input id="preco" type="number" step="0.01" placeholder="Preço">
   <input id="estoque" type="number" placeholder="Estoque">
+
+  <!-- NOVO -->
+  <select id="categoria">
+    <option value="Mercearia">Mercearia</option>
+    <option value="Padaria">Padaria</option>
+    <option value="Bebidas">Bebidas</option>
+    <option value="Açougue">Açougue</option>
+    <option value="Higiene">Higiene</option>
+    <option value="Limpeza">Limpeza</option>
+    <option value="Outros">Outros</option>
+  </select>
+
+  <input id="ordem" type="number" placeholder="Ordem (0 = automático)">
+
   <input id="foto" type="file" accept="image/*">
 
   <button onclick="cadastrar()">Cadastrar</button>
 </div>
 
-<!-- BOTÃO MOSTRAR / OCULTAR -->
+<!-- LISTA -->
 <div class="box">
   <button id="btnToggle" onclick="toggleProdutos()">📋 Mostrar produtos</button>
 </div>
 
-<!-- LISTA (ESCONDIDA) -->
 <div class="box" id="boxProdutos" style="display:none">
-  <h2>📋 Produtos</h2>
   <div id="listaProdutos"></div>
 </div>
 
@@ -106,42 +125,27 @@ if(!admin || admin.tipo!=="mercado"){
   location.href="login.html";
 }
 
-const supabaseClient = supabase.createClient(
+const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-const nomeEl=nome,
-codigoEl=codigo_barra,
-precoEl=preco,
-estoqueEl=estoque,
-fotoEl=foto;
-
-/* MOSTRAR / OCULTAR */
+/* TOGGLE */
 function toggleProdutos(){
-  const box=document.getElementById("boxProdutos");
-  const btn=document.getElementById("btnToggle");
-  if(box.style.display==="none"){
-    box.style.display="block";
-    btn.innerText="❌ Ocultar produtos";
-  }else{
-    box.style.display="none";
-    btn.innerText="📋 Mostrar produtos";
-  }
+  boxProdutos.style.display =
+    boxProdutos.style.display==="none" ? "block" : "none";
 }
 
 /* LEITOR */
 function abrirLeitor(){
-  const leitor=document.getElementById("leitor");
   leitor.style.display="block";
-
   Quagga.init({
     inputStream:{type:"LiveStream",target:leitor,constraints:{facingMode:"environment"}},
     decoder:{readers:["ean_reader","code_128_reader"]}
   },()=>Quagga.start());
 
   Quagga.onDetected(res=>{
-    codigoEl.value=res.codeResult.code;
+    codigo_barra.value=res.codeResult.code;
     Quagga.stop();
     leitor.style.display="none";
   });
@@ -149,81 +153,73 @@ function abrirLeitor(){
 
 /* CADASTRAR */
 async function cadastrar(){
-  if(!nomeEl.value||!codigoEl.value||precoEl.value<=0||estoqueEl.value<0){
-    alert("Preencha tudo corretamente");
+  if(!nome.value || preco.value<=0){
+    alert("Preencha corretamente");
     return;
   }
 
   let imagem=null;
-  if(fotoEl.files[0]){
-    const nomeSeguro=fotoEl.files[0].name
-      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-      .replace(/[^a-zA-Z0-9._-]/g,"_");
-
-    const path=`${admin.app_id}/${Date.now()}_${nomeSeguro}`;
-    await supabaseClient.storage.from("produtos").upload(path,fotoEl.files[0]);
-    imagem=supabaseClient.storage.from("produtos").getPublicUrl(path).data.publicUrl;
+  if(foto.files[0]){
+    const path=`${admin.app_id}/${Date.now()}_${foto.files[0].name}`;
+    await sb.storage.from("produtos").upload(path,foto.files[0],{upsert:true});
+    imagem=sb.storage.from("produtos").getPublicUrl(path).data.publicUrl;
   }
 
-  await supabaseClient.from("produtos").insert({
-    app_id:admin.app_id,
-    nome:nomeEl.value,
-    codigo_barra:codigoEl.value,
-    preco:Number(precoEl.value),
-    estoque:Number(estoqueEl.value),
+  await sb.from("produtos").insert({
+    app_id: admin.app_id,
+    nome: nome.value,
+    codigo_barra: codigo_barra.value,
+    preco: Number(preco.value),
+    estoque: Number(estoque.value),
+    categoria: categoria.value,
+    ordem: Number(ordem.value) || 0,
     imagem,
-    ativo:true
+    ativo: true
   });
 
-  nomeEl.value=codigoEl.value=precoEl.value=estoqueEl.value="";
-  fotoEl.value="";
+  nome.value=codigo_barra.value=preco.value=estoque.value=ordem.value="";
   carregar();
 }
 
-/* LISTAR */
+/* LISTAR AGRUPADO */
 async function carregar(){
-  const {data}=await supabaseClient
+  const { data } = await sb
     .from("produtos")
     .select("*")
     .eq("app_id",admin.app_id)
+    .order("categoria")
+    .order("ordem")
     .order("nome");
 
-  listaProdutos.innerHTML="";
+  const grupos = {};
   data.forEach(p=>{
-    listaProdutos.innerHTML+=`
-      <div class="produto">
-        <b>${p.nome}</b><br>
-        <small>${p.codigo_barra}</small><br>
-        Estoque: ${p.estoque}<br>
-        R$ ${p.preco.toFixed(2)}<br>
-        ${p.imagem?`<img src="${p.imagem}">`:""}
-        <button class="editar" onclick="editar('${p.id}','${p.nome}','${p.codigo_barra}','${p.preco}','${p.estoque}')">Editar</button>
-        <button class="excluir" onclick="excluir('${p.id}')">Excluir</button>
-      </div>
-    `;
+    const cat=p.categoria||"Outros";
+    if(!grupos[cat]) grupos[cat]=[];
+    grupos[cat].push(p);
   });
+
+  listaProdutos.innerHTML = Object.keys(grupos).map(cat=>`
+    <div class="categoria">
+      <h3>${cat}</h3>
+      ${grupos[cat].map(p=>`
+        <div class="produto">
+          <b>${p.nome}</b><br>
+          <small>${p.codigo_barra||""}</small><br>
+          Estoque: ${p.estoque}<br>
+          R$ ${Number(p.preco).toFixed(2)}<br>
+          ${p.imagem?`<img src="${p.imagem}">`:""}
+          <button class="excluir" onclick="excluir('${p.id}')">Excluir</button>
+        </div>
+      `).join("")}
+    </div>
+  `).join("");
 }
 
-/* EDITAR */
-async function editar(id,n,c,p,e){
-  const nome=prompt("Nome",n);
-  if(!nome) return;
-  const codigo=prompt("Código",c);
-  const preco=prompt("Preço",p);
-  const estoque=prompt("Estoque",e);
-
-  await supabaseClient.from("produtos")
-    .update({nome,codigo_barra:codigo,preco:Number(preco),estoque:Number(estoque)})
-    .eq("id",id);
-
-  carregar();
-}
-
-/* EXCLUIR */
 async function excluir(id){
-  if(!confirm("Excluir produto?"))return;
-  await supabaseClient.from("produtos").delete().eq("id",id);
-  carregar();
+  if(confirm("Excluir produto?")){
+    await sb.from("produtos").delete().eq("id",id);
+    carregar();
+  }
 }
 
 carregar();
