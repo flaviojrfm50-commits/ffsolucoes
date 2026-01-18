@@ -47,38 +47,40 @@ body{
 
 /* ===== SEÇÕES ===== */
 .section{
-  max-width:1100px;
+  max-width:1200px;
   margin:auto;
   padding:50px 20px;
 }
 
-.cards{
+.grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:20px;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:16px;
 }
 
-.card{
+.produto{
   background:var(--card);
-  padding:24px;
-  border-radius:18px;
-}
-
-.cta{
-  text-align:center;
-  background:var(--card);
-  padding:50px 20px;
-}
-
-.cta a{
-  display:inline-block;
-  margin-top:20px;
-  padding:16px 28px;
-  background:var(--primaria);
-  color:#000;
+  padding:14px;
   border-radius:16px;
+  text-align:center;
+}
+
+.produto img{
+  width:100%;
+  height:140px;
+  object-fit:cover;
+  border-radius:12px;
+}
+
+.produto h3{
+  font-size:15px;
+  margin:8px 0;
+}
+
+.preco{
+  color:var(--primaria);
   font-weight:bold;
-  text-decoration:none;
+  font-size:16px;
 }
 
 footer{
@@ -105,17 +107,10 @@ footer{
   <p id="sobre"></p>
 </section>
 
-<!-- DIFERENCIAIS -->
+<!-- PRODUTOS (VITRINE) -->
 <section class="section">
-  <h2>⭐ Por que comprar aqui?</h2>
-  <div class="cards" id="beneficios"></div>
-</section>
-
-<!-- CTA -->
-<section class="cta">
-  <h2>🛒 Confira nossos produtos</h2>
-  <p>Veja preços, promoções e faça seu pedido</p>
-  <a id="btnCatalogo">Ver Cardápio</a>
+  <h2>🧾 Produtos disponíveis</h2>
+  <div class="grid" id="listaProdutos"></div>
 </section>
 
 <footer>
@@ -133,11 +128,11 @@ const params = new URLSearchParams(window.location.search);
 const app = params.get("app");
 if(!app){ document.body.innerText="Mercado não encontrado"; throw ""; }
 
-/* ===== CARREGA CONFIG ===== */
+/* ===== CONFIG SITE ===== */
 (async()=>{
   const { data } = await supabaseClient
     .from("config_site")
-    .select("nome,descricao,sobre,banner,tema,beneficios")
+    .select("nome,descricao,sobre,banner,tema")
     .eq("app_id",app)
     .single();
 
@@ -146,7 +141,7 @@ if(!app){ document.body.innerText="Mercado não encontrado"; throw ""; }
   document.title = data.nome;
   nome.innerText = data.nome;
   descricao.innerText = data.descricao || "";
-  sobre.innerText = data.sobre || "Estamos prontos para atender você com qualidade.";
+  sobre.innerText = data.sobre || "";
   nomeRodape.innerText = data.nome;
   ano.innerText = new Date().getFullYear();
 
@@ -157,20 +152,6 @@ if(!app){ document.body.innerText="Mercado não encontrado"; throw ""; }
       "linear-gradient(135deg,#16a34a,#0f172a)";
   }
 
-  /* BENEFÍCIOS */
-  const lista = data.beneficios || [
-    "Entrega rápida",
-    "Preços justos",
-    "Qualidade garantida"
-  ];
-
-  beneficios.innerHTML = lista.map(b=>`
-    <div class="card">
-      <h3>✔️ ${b}</h3>
-    </div>
-  `).join("");
-
-  /* TEMAS */
   if(data.tema==="natal") setTema("#dc2626","#14532d");
   if(data.tema==="saojoao") setTema("#facc15","#7c2d12");
   if(data.tema==="anonovo") setTema("#22c55e","#020617");
@@ -181,8 +162,30 @@ function setTema(primaria,card){
   document.documentElement.style.setProperty("--card",card);
 }
 
-/* CTA */
-btnCatalogo.href = `catalogo.html?app=${app}`;
+/* ===== PRODUTOS (SOMENTE VITRINE) ===== */
+async function carregarProdutos(){
+  const { data } = await supabaseClient
+    .from("produtos")
+    .select("nome,preco,imagem")
+    .eq("app_id",app)
+    .eq("ativo",true)
+    .order("nome");
+
+  if(!data || !data.length){
+    listaProdutos.innerHTML = "<p>Nenhum produto disponível.</p>";
+    return;
+  }
+
+  listaProdutos.innerHTML = data.map(p=>`
+    <div class="produto">
+      ${p.imagem?`<img src="${p.imagem}">`:""}
+      <h3>${p.nome}</h3>
+      <div class="preco">R$ ${Number(p.preco).toFixed(2)}</div>
+    </div>
+  `).join("");
+}
+
+carregarProdutos();
 </script>
 
 </body>
