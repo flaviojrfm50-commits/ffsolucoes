@@ -2,256 +2,211 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Configurar Site | Mercado</title>
+<title>Configurar Mercado</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<link rel="icon" href="data:,">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-:root{
-  --bg:#020617;
-  --card:#0f172a;
-  --primary:#22c55e;
-}
-
-*{box-sizing:border-box}
 body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:var(--bg);
+  background:#020617;
   color:#fff;
+  font-family:'Segoe UI',system-ui,sans-serif;
 }
-
-.topo{
-  background:#0f172a;
-  padding:18px;
-  text-align:center;
-}
-
 .container{
-  max-width:900px;
-  margin:30px auto;
-  padding:20px;
+  max-width:520px;
+  margin:40px auto;
+  padding:24px;
+  background:#0f172a;
+  border-radius:18px;
 }
-
-.box{
-  background:var(--card);
-  padding:20px;
-  border-radius:16px;
-  margin-bottom:20px;
-}
-
+h2{text-align:center;margin-bottom:10px}
+label{display:block;margin-top:14px}
 input,textarea,select,button{
   width:100%;
-  padding:12px;
-  margin-top:10px;
-  border-radius:10px;
+  padding:14px;
+  margin-top:6px;
+  border-radius:12px;
   border:none;
-  font-family:inherit;
 }
-
-input,textarea,select{
-  background:#020617;
-  color:#fff;
-}
-
-textarea{min-height:80px}
-
+input,textarea,select{background:#020617;color:#fff}
+textarea{resize:none;height:90px}
 button{
-  background:var(--primary);
-  font-weight:bold;
+  background:#22c55e;
+  color:#022c22;
+  font-weight:700;
+  margin-top:22px;
   cursor:pointer;
 }
-
 .preview{
+  margin-top:10px;
   width:100%;
-  height:200px;
-  background:#020617;
-  background-size:cover;
-  background-position:center;
-  border-radius:14px;
-  margin-top:10px;
-  border:1px solid #1e293b;
-}
-
-.tema-preview{
-  margin-top:10px;
-  padding:10px;
+  max-height:180px;
+  object-fit:cover;
   border-radius:12px;
-  text-align:center;
-  font-weight:bold;
+  display:none;
 }
+small{opacity:.7}
 </style>
 </head>
 
 <body>
 
-<div class="topo">
-  <h2>⚙️ Configurar Site do Mercado</h2>
-</div>
-
 <div class="container">
+  <h2>🛒 Configurar Mercado</h2>
 
-<div class="box">
-  <h3>🏪 Informações do Mercado</h3>
-  <input id="nome" placeholder="Nome do mercado">
-  <input id="descricao" placeholder="Descrição curta">
-  <textarea id="sobre" placeholder="Sobre o mercado"></textarea>
-</div>
+  <label>Nome do mercado</label>
+  <input id="nome" placeholder="Ex: Mercado Central">
 
-<div class="box">
-  <h3>🖼️ Banner do Site</h3>
-  <input type="file" id="bannerFile" accept="image/*">
-  <div class="preview" id="preview"></div>
-</div>
+  <label>Descrição curta</label>
+  <input id="descricao" placeholder="Ex: Tudo para sua casa">
 
-<div class="box">
-  <h3>🎨 Tema do Site</h3>
-  <select id="tema" onchange="previewTema()">
-    <option value="padrao">Padrão</option>
-    <option value="saojoao">São João</option>
-    <option value="natal">Natal</option>
-    <option value="anonovo">Ano Novo</option>
-    <option value="carnaval">Carnaval</option>
-  </select>
-  <div class="tema-preview" id="temaPreview">Tema padrão</div>
-</div>
+  <label>Sobre o mercado</label>
+  <textarea id="sobre" placeholder="Fale sobre seu mercado"></textarea>
 
-<div class="box">
-  <h3>⭐ Benefícios (um por linha)</h3>
-  <textarea id="beneficios"
-    placeholder="Entrega rápida&#10;Preços justos&#10;Qualidade garantida"></textarea>
-</div>
-
-<div class="box">
-  <h3>📲 WhatsApp do Mercado</h3>
+  <label>WhatsApp</label>
   <input id="whatsapp" placeholder="Ex: 88999999999">
-</div>
 
-<div class="box">
-  <button onclick="salvar()">💾 Salvar Configurações</button>
-</div>
+  <label>Tema do site</label>
+  <select id="tema">
+    <option value="padrao">Padrão</option>
+    <option value="saojoao">🔥 São João</option>
+    <option value="natal">🎄 Natal</option>
+    <option value="anonovo">✨ Ano Novo</option>
+    <option value="carnaval">🎭 Carnaval</option>
+  </select>
 
+  <label>Banner do site</label>
+  <input type="file" id="bannerInput" accept="image/*">
+  <img id="bannerPreview" class="preview">
+
+  <label>Benefícios (um por linha)</label>
+  <textarea id="beneficios"
+    placeholder="Entrega rápida&#10;Preços baixos&#10;Qualidade garantida"></textarea>
+
+  <button onclick="salvar()">Salvar configurações</button>
+  <small id="status"></small>
 </div>
 
 <script>
-/* ===== VALIDA ADMIN ===== */
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-if(!admin || admin.tipo!=="mercado"){
-  location.href="login.html";
-  throw "";
-}
-const app = admin.app_id;
-
 /* ===== SUPABASE ===== */
-const supabaseClient = supabase.createClient(
+const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-let bannerUrlAtual="";
-
-/* ===== PREVIEW TEMA ===== */
-function previewTema(){
-  const t = tema.value;
-  const map = {
-    padrao:["#22c55e","#0f172a","Padrão"],
-    saojoao:["#facc15","#7c2d12","🎉 São João"],
-    natal:["#dc2626","#14532d","🎄 Natal"],
-    anonovo:["#22c55e","#020617","✨ Ano Novo"],
-    carnaval:["#ec4899","#581c87","🎭 Carnaval"]
-  };
-  const [p,b,label] = map[t];
-  temaPreview.style.background = `linear-gradient(135deg,${p},${b})`;
-  temaPreview.innerText = label;
+/* ===== ADMIN ===== */
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+if(!admin?.app_id){
+  alert("Sessão expirada");
+  location.href="login.html";
 }
+const app_id = admin.app_id;
 
-/* ===== CARREGAR CONFIG (AJUSTADO) ===== */
-(async()=>{
-  const { data, error } = await supabaseClient
-    .from("config_site")
-    .select("*")
-    .eq("app_id", app)
-    .maybeSingle();
+/* ===== ELEMENTOS ===== */
+const nomeInput = nome;
+const descricaoInput = descricao;
+const sobreInput = sobre;
+const whatsappInput = whatsapp;
+const temaSelect = tema;
+const bannerInput = document.getElementById("bannerInput");
+const bannerPreview = document.getElementById("bannerPreview");
+const beneficiosInput = beneficios;
+const statusEl = status;
 
-  if(error){
-    console.error(error);
-    return;
+/* ===== PREVIEW ===== */
+bannerInput.onchange = ()=>{
+  const f = bannerInput.files[0];
+  if(f){
+    bannerPreview.src = URL.createObjectURL(f);
+    bannerPreview.style.display="block";
   }
-
-  if(!data){
-    previewTema();
-    return;
-  }
-
-  nome.value = data.nome || "";
-  descricao.value = data.descricao || "";
-  sobre.value = data.sobre || "";
-  whatsapp.value = data.whatsapp || "";
-  tema.value = data.tema || "padrao";
-
-  if(data.beneficios){
-    beneficios.value = data.beneficios.join("\n");
-  }
-
-  if(data.banner){
-    bannerUrlAtual = data.banner;
-    preview.style.backgroundImage = `url(${data.banner})`;
-  }
-
-  previewTema();
-})();
-
-/* ===== UPLOAD BANNER ===== */
-bannerFile.onchange = async ()=>{
-  const file = bannerFile.files[0];
-  if(!file) return;
-
-  const path = `${app}/banner_${Date.now()}.jpg`;
-
-  await supabaseClient
-    .storage
-    .from("site-banners")
-    .upload(path, file, { upsert:true });
-
-  bannerUrlAtual = supabaseClient
-    .storage
-    .from("site-banners")
-    .getPublicUrl(path)
-    .data.publicUrl;
-
-  preview.style.backgroundImage = `url(${bannerUrlAtual})`;
 };
+
+/* ===== UPLOAD ===== */
+async function uploadBanner(file){
+  if(!file) return null;
+
+  const ext = file.name.split(".").pop();
+  const path = `${app_id}/${Date.now()}.${ext}`;
+
+  const { error } = await sb.storage
+    .from("site-banners")
+    .upload(path,file,{upsert:true});
+
+  if(error) return null;
+
+  return sb.storage.from("site-banners")
+    .getPublicUrl(path).data.publicUrl;
+}
 
 /* ===== SALVAR ===== */
 async function salvar(){
+  statusEl.innerText = "Salvando...";
+
+  let banner_url = null;
+  if(bannerInput.files[0]){
+    banner_url = await uploadBanner(bannerInput.files[0]);
+  }
+
   const payload = {
-    app_id: app,
-    nome: nome.value,
-    descricao: descricao.value,
-    sobre: sobre.value,
-    whatsapp: whatsapp.value,
-    tema: tema.value,
-    banner: bannerUrlAtual,
-    beneficios: beneficios.value
-      .split("\n")
-      .map(b=>b.trim())
-      .filter(b=>b)
+    app_id,
+    nome: nomeInput.value || null,
+    descricao: descricaoInput.value || null,
+    sobre: sobreInput.value || null,
+    whatsapp: whatsappInput.value || null,
+    tema: temaSelect.value || "padrao",
+    beneficios: beneficiosInput.value
+      ? beneficiosInput.value.split("\n").map(b=>b.trim()).filter(b=>b)
+      : null
   };
 
-  const { error } = await supabaseClient
-    .from("config_site")
-    .upsert(payload, { onConflict:"app_id" });
+  if(banner_url) payload.banner = banner_url;
 
-  if(error){
-    console.error(error);
-    alert("Erro ao salvar configurações");
+  const { data: existente } = await sb
+    .from("config_site")
+    .select("id")
+    .eq("app_id",app_id)
+    .maybeSingle();
+
+  const res = existente
+    ? await sb.from("config_site").update(payload).eq("app_id",app_id)
+    : await sb.from("config_site").insert(payload);
+
+  if(res.error){
+    console.error(res.error);
+    statusEl.innerText="";
+    alert("Erro ao salvar no banco");
     return;
   }
 
-  alert("Configurações salvas com sucesso!");
+  statusEl.innerText="Salvo com sucesso 🔥";
 }
+
+/* ===== LOAD ===== */
+(async()=>{
+  const { data } = await sb
+    .from("config_site")
+    .select("nome,descricao,sobre,whatsapp,tema,banner,beneficios")
+    .eq("app_id",app_id)
+    .maybeSingle();
+
+  if(!data) return;
+
+  nomeInput.value = data.nome || "";
+  descricaoInput.value = data.descricao || "";
+  sobreInput.value = data.sobre || "";
+  whatsappInput.value = data.whatsapp || "";
+  temaSelect.value = data.tema || "padrao";
+
+  if(data.beneficios){
+    beneficiosInput.value = data.beneficios.join("\n");
+  }
+
+  if(data.banner){
+    bannerPreview.src = data.banner;
+    bannerPreview.style.display="block";
+  }
+})();
 </script>
 
 </body>
