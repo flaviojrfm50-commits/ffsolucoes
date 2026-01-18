@@ -24,7 +24,7 @@ body{
 
 /* ===== BANNER ===== */
 .banner{
-  height:260px;
+  height:220px;
   background-size:cover;
   background-position:center;
   position:relative;
@@ -37,83 +37,107 @@ body{
 }
 .banner-content{
   position:absolute;
-  bottom:16px;
-  left:16px;
+  bottom:14px;
+  left:14px;
   z-index:2;
 }
-.banner-content h1{margin:0;font-size:24px}
-.banner-content p{opacity:.85}
+.banner-content h1{margin:0;font-size:22px}
+.banner-content p{opacity:.85;font-size:14px}
 
 /* ===== SEÇÕES ===== */
 .section{
-  padding:24px 16px;
+  padding:20px 12px;
   max-width:1200px;
   margin:auto;
 }
 
+/* ===== SOBRE ===== */
+.sobre p{
+  font-size:14px;
+  line-height:1.5;
+  opacity:.9;
+}
+.endereco{
+  margin-top:8px;
+  font-size:13px;
+  opacity:.75;
+}
+
+/* ===== CATEGORIA ===== */
 .categoria{
-  margin-bottom:32px;
+  margin-bottom:26px;
 }
 .categoria h3{
   border-left:4px solid var(--primaria);
-  padding-left:10px;
-  margin-bottom:12px;
+  padding-left:8px;
+  font-size:16px;
+  margin-bottom:10px;
 }
 
-/* ===== GRID ===== */
+/* ===== GRID MOBILE FIRST ===== */
 .grid{
   display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:10px;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
 }
 
 /* ===== PRODUTO ===== */
 .produto{
   background:var(--card);
-  border-radius:12px;
+  border-radius:10px;
   overflow:hidden;
 }
 .produto img{
   width:100%;
-  height:110px;
+  height:90px;
   object-fit:cover;
 }
 .produto .info{
-  padding:8px;
+  padding:6px;
   text-align:center;
 }
 .produto h4{
-  font-size:14px;
-  margin:4px 0;
+  font-size:12px;
+  margin:2px 0;
 }
 .preco{
   color:var(--primaria);
   font-weight:700;
-  font-size:15px;
+  font-size:13px;
 }
 .produto button{
-  margin-top:6px;
-  padding:6px;
+  margin-top:4px;
+  padding:5px;
   width:100%;
   border:none;
-  border-radius:8px;
+  border-radius:6px;
   background:var(--primaria);
+  font-size:12px;
   font-weight:700;
-  cursor:pointer;
+}
+
+/* ===== RESPONSIVO MAIOR ===== */
+@media(min-width:768px){
+  .grid{
+    grid-template-columns:repeat(5,1fr);
+  }
+  .produto img{
+    height:120px;
+  }
 }
 
 /* ===== CARRINHO ===== */
 .carrinho-btn{
   position:fixed;
-  bottom:16px;
-  right:16px;
+  bottom:14px;
+  right:14px;
   background:var(--primaria);
   color:#022c22;
   padding:14px;
   border-radius:50%;
   font-size:18px;
-  cursor:pointer;
   z-index:10;
+  cursor:pointer;
 }
 
 .carrinho{
@@ -127,38 +151,32 @@ body{
 .carrinho .box{
   padding:16px;
 }
-.item{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:8px;
-  font-size:14px;
-}
 
-/* ===== FORM ===== */
 input,textarea{
   width:100%;
-  margin-top:10px;
-  padding:12px;
-  border-radius:10px;
+  padding:10px;
+  margin-top:8px;
+  border-radius:8px;
   border:none;
   background:#0f172a;
   color:#fff;
 }
 
 .finalizar{
-  margin-top:16px;
-  padding:14px;
-  background:var(--primaria);
-  border:none;
-  border-radius:12px;
-  font-weight:700;
+  margin-top:12px;
+  padding:12px;
   width:100%;
-  cursor:pointer;
+  border:none;
+  border-radius:10px;
+  background:var(--primaria);
+  font-weight:700;
 }
 
+/* ===== FOOTER ===== */
 footer{
   text-align:center;
-  padding:20px;
+  padding:16px;
+  font-size:13px;
   opacity:.6;
 }
 </style>
@@ -173,10 +191,10 @@ footer{
   </div>
 </div>
 
-<section class="section">
+<section class="section sobre">
   <h2>🏪 Sobre o mercado</h2>
-  <p id="sobre"></p>
-  <p id="endereco" style="opacity:.8"></p>
+  <p id="sobreTexto"></p>
+  <p class="endereco" id="enderecoTexto"></p>
 </section>
 
 <section class="section">
@@ -196,7 +214,7 @@ footer{
     <div id="itens"></div>
 
     <input id="cliente" placeholder="Seu nome">
-    <input id="localizacao" placeholder="Localização / ponto de referência">
+    <input id="localizacao" placeholder="Endereço / ponto de referência">
     <textarea id="observacao" placeholder="Observações"></textarea>
 
     <button class="finalizar" onclick="finalizar()">Finalizar no WhatsApp</button>
@@ -222,17 +240,29 @@ let whatsappMercado = "";
   const { data } = await sb.from("config_site").select("*").eq("app_id",app).maybeSingle();
   if(!data) return;
 
-  nome.innerText = data.nome_site;
+  nome.innerText = data.nome_site || "";
   descricao.innerText = data.descricao || "";
-  sobre.innerText = data.sobre || "";
-  endereco.innerText = data.endereco ? "📍 "+data.endereco : "";
-  nomeRodape.innerText = data.nome_site;
+  nomeRodape.innerText = data.nome_site || "";
   ano.innerText = new Date().getFullYear();
-  whatsappMercado = data.whatsapp || "";
+
+  const sobreFinal = data.sobre || data.sobre_site || "";
+  if(sobreFinal){
+    sobreTexto.innerText = sobreFinal;
+  }else{
+    sobreTexto.style.display="none";
+  }
+
+  if(data.endereco){
+    enderecoTexto.innerText = "📍 " + data.endereco + (data.cidade ? " – "+data.cidade : "");
+  }else{
+    enderecoTexto.style.display="none";
+  }
 
   if(data.banner_url){
     banner.style.backgroundImage = `url(${data.banner_url})`;
   }
+
+  whatsappMercado = data.whatsapp || "";
 })();
 
 /* PRODUTOS */
@@ -261,7 +291,7 @@ async function carregarProdutos(){
             <div class="info">
               <h4>${p.nome}</h4>
               <div class="preco">R$ ${p.preco.toFixed(2)}</div>
-              <button onclick='addCarrinho(${JSON.stringify(p)})'>Adicionar</button>
+              <button onclick='addCarrinho(${JSON.stringify(p)})'>+</button>
             </div>
           </div>
         `).join("")}
@@ -273,10 +303,12 @@ async function carregarProdutos(){
 function addCarrinho(p){
   carrinho.push(p);
   localStorage.setItem(carrinhoKey, JSON.stringify(carrinho));
-  alert("Adicionado ao carrinho");
+  alert("Adicionado");
 }
 
 /* CARRINHO */
+const carrinhoEl = document.getElementById("carrinho");
+
 function abrirCarrinho(){
   renderCarrinho();
   carrinhoEl.style.display="block";
@@ -284,16 +316,14 @@ function abrirCarrinho(){
 function fecharCarrinho(){
   carrinhoEl.style.display="none";
 }
-const carrinhoEl = document.getElementById("carrinho");
-
 function renderCarrinho(){
-  itens.innerHTML = "";
-  let total = 0;
+  itens.innerHTML="";
+  let total=0;
   carrinho.forEach(p=>{
-    total += p.preco;
-    itens.innerHTML += `<div class="item">${p.nome} — R$ ${p.preco.toFixed(2)}</div>`;
+    total+=p.preco;
+    itens.innerHTML+=`<div>${p.nome} — R$ ${p.preco.toFixed(2)}</div>`;
   });
-  itens.innerHTML += `<hr><b>Total: R$ ${total.toFixed(2)}</b>`;
+  itens.innerHTML+=`<hr><b>Total: R$ ${total.toFixed(2)}</b>`;
 }
 
 /* FINALIZAR */
@@ -303,21 +333,21 @@ function finalizar(){
     return;
   }
 
-  const nomeCliente = cliente.value || "Não informado";
-  const loc = localizacao.value || "Não informado";
-  const obs = observacao.value || "";
-
-  let msg = `🛒 *Novo Pedido*\n\n`;
+  let msg="🛒 *Novo Pedido*\n\n";
   carrinho.forEach(p=>{
-    msg += `• ${p.nome} - R$ ${p.preco.toFixed(2)}\n`;
+    msg+=`• ${p.nome} - R$ ${p.preco.toFixed(2)}\n`;
   });
 
-  msg += `\n👤 Cliente: ${nomeCliente}\n📍 Local: ${loc}\n📝 Obs: ${obs}`;
+  msg+=`\n👤 ${cliente.value || "Não informado"}`;
+  msg+=`\n📍 ${localizacao.value || "Não informado"}`;
+  msg+=`\n📝 ${observacao.value || ""}`;
 
-  const url = `https://wa.me/55${whatsappMercado}?text=${encodeURIComponent(msg)}`;
-  window.open(url,"_blank");
+  window.open(
+    `https://wa.me/55${whatsappMercado}?text=${encodeURIComponent(msg)}`,
+    "_blank"
+  );
 
-  carrinho = [];
+  carrinho=[];
   localStorage.removeItem(carrinhoKey);
   fecharCarrinho();
 }
