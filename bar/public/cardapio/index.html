@@ -77,7 +77,7 @@ body{
 .container{
   max-width:1100px;
   margin:auto;
-  padding:10px 16px 140px;
+  padding:10px 16px 160px;
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
   gap:18px;
@@ -110,9 +110,10 @@ body{
   background:var(--primary);
   color:#fff;
   font-weight:900;
+  cursor:pointer;
 }
 
-/* ===== CARRINHO ===== */
+/* ===== BOTÃO CARRINHO ===== */
 .carrinho-btn{
   position:fixed;
   bottom:22px;
@@ -123,6 +124,41 @@ body{
   padding:16px 30px;
   border-radius:999px;
   font-weight:900;
+  cursor:pointer;
+  z-index:20;
+}
+
+/* ===== MODAL CARRINHO ===== */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  display:none;
+  z-index:30;
+}
+.modal-box{
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  background:#fff;
+  color:#000;
+  border-radius:20px 20px 0 0;
+  padding:16px;
+  max-height:85vh;
+  overflow:auto;
+}
+.item{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:8px;
+  font-size:14px;
+}
+.item button{
+  border:none;
+  background:#e5e7eb;
+  padding:2px 8px;
+  border-radius:6px;
 }
 
 /* ===== TEMAS ===== */
@@ -173,9 +209,21 @@ body[data-tema="anonovo"]{
 <!-- PRODUTOS -->
 <div class="container" id="conteudo"></div>
 
-<!-- CARRINHO -->
+<!-- BOTÃO CARRINHO -->
 <div class="carrinho-btn" onclick="abrirCarrinho()">
   🛒 Ver pedido (<span id="qtd">0</span>)
+</div>
+
+<!-- MODAL -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <h3>🛒 Seu pedido</h3>
+    <div id="lista"></div>
+    <b>Total: R$ <span id="total">0.00</span></b>
+    <br><br>
+    <button class="add-btn" onclick="finalizar()">Finalizar no WhatsApp</button>
+    <button class="add-btn" style="background:#64748b" onclick="fecharCarrinho()">Fechar</button>
+  </div>
 </div>
 
 <script>
@@ -192,8 +240,10 @@ if(!app_id){ document.body.innerHTML="Indisponível"; throw ""; }
 
 /* STATE */
 let produtos=[];
-let carrinho=[];
 let filtro="BAR";
+const carrinhoKey="carrinho_"+app_id;
+let carrinho=JSON.parse(localStorage.getItem(carrinhoKey))||[];
+let whatsapp="";
 
 /* ===== CONFIG ===== */
 async function carregarConfig(){
@@ -203,19 +253,13 @@ async function carregarConfig(){
   nome.innerText=data.nome_site||"Cardápio";
   if(data.logo_url){logo.src=data.logo_url;logo.style.display="block";}
   if(data.banner_url){banner.src=data.banner_url;banner.style.display="block";}
-
-  aplicarTema(data.tema_site || "padrao");
-}
-
-/* ===== TEMAS ===== */
-function aplicarTema(tema){
-  document.body.dataset.tema = tema;
+  if(data.tema_site) document.body.dataset.tema=data.tema_site;
+  whatsapp=data.whatsapp||"";
 }
 
 /* ===== PRODUTOS ===== */
 async function carregarProdutos(){
-  const {data}=await sb
-    .from("produtos")
+  const {data}=await sb.from("produtos")
     .select("id,nome,preco,foto,destino")
     .eq("app_id",app_id)
     .eq("ativo",true)
@@ -224,10 +268,10 @@ async function carregarProdutos(){
   render();
 }
 
+/* ===== RENDER ===== */
 function render(){
   conteudo.innerHTML="";
-  produtos
-    .filter(p=>(p.destino||"").toUpperCase()===filtro)
+  produtos.filter(p=>(p.destino||"").toUpperCase()===filtro)
     .forEach(p=>{
       conteudo.innerHTML+=`
         <div class="produto">
@@ -237,32 +281,73 @@ function render(){
           <button class="add-btn" onclick="addProduto('${p.id}')">Adicionar</button>
         </div>`;
     });
+  atualizarQtd();
 }
-
-/* ===== BOTÕES ===== */
-btnBar.onclick=()=>{
-  filtro="BAR";
-  btnBar.classList.add("ativo");
-  btnCozinha.classList.remove("ativo");
-  render();
-};
-btnCozinha.onclick=()=>{
-  filtro="COZINHA";
-  btnCozinha.classList.add("ativo");
-  btnBar.classList.remove("ativo");
-  render();
-};
 
 /* ===== CARRINHO ===== */
 function addProduto(id){
   const p=produtos.find(x=>x.id===id);
   const i=carrinho.find(x=>x.id===id);
-  i?i.qtd++:carrinho.push({...p,qtd:1});
+  i?i.qtd++:carrinho.push({id:p.id,nome:p.nome,preco:p.preco,qtd:1});
+  salvarCarrinho();
+}
+function salvarCarrinho(){
+  localStorage.setItem(carrinhoKey,JSON.stringify(carrinho));
+  atualizarQtd();
+}
+function atualizarQtd(){
   qtd.innerText=carrinho.reduce((s,i)=>s+i.qtd,0);
 }
 function abrirCarrinho(){
-  alert("Carrinho funcionando 😎");
+  modal.style.display="block";
+  renderCarrinho();
 }
+function fecharCarrinho(){
+  modal.style.display="none";
+}
+function renderCarrinho(){
+  lista.innerHTML="";
+  let total=0;
+  carrinho.forEach(i=>{
+    total+=i.preco*i.qtd;
+    lista.innerHTML+=`
+      <div class="item">
+        ${i.nome} x${i.qtd}
+        <button onclick="remover('${i.id}')">−</button>
+      </div>`;
+  });
+  document.getElementById("total").innerText=total.toFixed(2);
+}
+function remover(id){
+  const i=carrinho.find(x=>x.id===id);
+  if(i){
+    i.qtd--;
+    if(i.qtd<=0) carrinho=carrinho.filter(x=>x.id!==id);
+    salvarCarrinho();
+    renderCarrinho();
+  }
+}
+
+/* ===== FINALIZAR ===== */
+function finalizar(){
+  if(!whatsapp){ alert("WhatsApp não configurado"); return; }
+  let msg="🛒 *Novo Pedido*\n\n";
+  let total=0;
+  carrinho.forEach(i=>{
+    const sub=i.preco*i.qtd;
+    total+=sub;
+    msg+=`• ${i.nome} x${i.qtd} - R$ ${sub.toFixed(2)}\n`;
+  });
+  msg+=`\n💰 Total: R$ ${total.toFixed(2)}`;
+  window.open(`https://wa.me/55${whatsapp}?text=${encodeURIComponent(msg)}`,"_blank");
+  carrinho=[];
+  salvarCarrinho();
+  fecharCarrinho();
+}
+
+/* TABS */
+btnBar.onclick=()=>{filtro="BAR";btnBar.classList.add("ativo");btnCozinha.classList.remove("ativo");render();};
+btnCozinha.onclick=()=>{filtro="COZINHA";btnCozinha.classList.add("ativo");btnBar.classList.remove("ativo");render();};
 
 /* START */
 (async()=>{
