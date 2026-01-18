@@ -8,10 +8,29 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+/* ===== VARIÁVEIS BASE ===== */
 :root{
   --primaria:#22c55e;
   --fundo:#020617;
   --card:#0f172a;
+}
+
+/* ===== TEMAS ===== */
+body.tema-carnaval{
+  --primaria:#ec4899;
+  --card:#1f0a16;
+}
+body.tema-saojoao{
+  --primaria:#f97316;
+  --card:#2a1608;
+}
+body.tema-natal{
+  --primaria:#22c55e;
+  --card:#052e1a;
+}
+body.tema-anonovo{
+  --primaria:#eab308;
+  --card:#1f1a00;
 }
 
 *{box-sizing:border-box}
@@ -60,7 +79,7 @@ body{
   margin-bottom:8px;
 }
 
-/* ===== GRID MOBILE ===== */
+/* ===== GRID ===== */
 .grid{
   display:grid;
   grid-template-columns:repeat(3,1fr);
@@ -98,11 +117,12 @@ body{
   border:none;
   border-radius:6px;
   background:var(--primaria);
+  color:#022c22;
   font-size:12px;
   font-weight:700;
 }
 
-/* ===== RESPONSIVO MAIOR ===== */
+/* ===== RESPONSIVO ===== */
 @media(min-width:768px){
   .grid{grid-template-columns:repeat(5,1fr)}
   .produto img{height:120px}
@@ -253,7 +273,7 @@ let whatsappMercado = "";
   if(!data) return;
 
   nome.innerText = data.nome_site || "";
-  descricao.innerText = data.descricao || "";
+  descricao.innerText = data.descricao_site || "";
   nomeRodape.innerText = data.nome_site || "";
   ano.innerText = new Date().getFullYear();
 
@@ -272,6 +292,11 @@ let whatsappMercado = "";
 
   if(data.banner_url){
     banner.style.backgroundImage = `url(${data.banner_url})`;
+  }
+
+  /* ===== APLICA TEMA ===== */
+  if(data.tema_site && data.tema_site !== "padrao"){
+    document.body.classList.add("tema-" + data.tema_site);
   }
 
   whatsappMercado = data.whatsapp || "";
