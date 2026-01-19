@@ -10,17 +10,24 @@
 body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .container{max-width:1200px;margin:40px auto;padding:30px;border-radius:20px;background:linear-gradient(135deg,#0f172a,#4b1fa0)}
 h1,h2,h3{margin-top:25px}
-input,select,button{width:100%;padding:14px;margin-top:10px;border-radius:12px;border:none}
-button{background:#22c55e;color:#000;font-weight:bold;cursor:pointer}
+button{padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:bold}
+button.block{background:#f59e0b;color:#000}
+button.ok{background:#22c55e;color:#000}
 button.danger{background:#e53935;color:#fff}
-button.warn{background:#f59e0b;color:#000}
-.card{background:#020617;padding:16px;margin-top:12px;border-radius:14px;display:flex;justify-content:space-between;gap:10px}
-.login{max-width:420px;margin:80px auto}
-hr{margin:40px 0;border:none;height:1px;background:rgba(255,255,255,.2)}
-a{color:#22c55e;text-decoration:none}
-.btn-small{width:auto;padding:6px 12px;font-size:12px;border-radius:8px}
+.card{
+  background:#020617;
+  padding:16px;
+  margin-top:12px;
+  border-radius:14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px
+}
 .badge{background:#334155;padding:4px 8px;border-radius:6px;font-size:12px}
-.badge.warn{background:#7c2d12}
+.badge.red{background:#7c2d12}
+a{color:#22c55e;text-decoration:none}
+.login{max-width:420px;margin:80px auto}
 </style>
 </head>
 
@@ -31,9 +38,9 @@ a{color:#22c55e;text-decoration:none}
 
 <!-- LOGIN -->
 <div class="login" id="loginBox">
-  <input id="usuarioSuper" placeholder="Usuário">
-  <input id="senhaSuper" type="password" placeholder="Senha">
-  <button onclick="login()">Entrar</button>
+  <input id="usuarioSuper" placeholder="Usuário"><br><br>
+  <input id="senhaSuper" type="password" placeholder="Senha"><br><br>
+  <button class="ok" onclick="login()">Entrar</button>
 </div>
 
 <!-- PAINEL -->
@@ -42,7 +49,7 @@ a{color:#22c55e;text-decoration:none}
 <h2>🏢 Negócios (com vendedor)</h2>
 <div id="listaNegocios"></div>
 
-<hr>
+<hr style="margin:40px 0">
 
 <h2>💰 Vendedores</h2>
 <div id="listaVendedores"></div>
@@ -63,9 +70,9 @@ window.login = async ()=>{
   const { data } = await supabase
     .from("super_admins")
     .select("*")
-    .eq("usuario",usuarioSuper.value)
-    .eq("senha",senhaSuper.value)
-    .eq("ativo",true)
+    .eq("usuario", usuarioSuper.value)
+    .eq("senha", senhaSuper.value)
+    .eq("ativo", true)
     .maybeSingle();
 
   if(!data) return alert("Login inválido");
@@ -76,9 +83,9 @@ window.login = async ()=>{
   carregarVendedores();
 };
 
-/* NEGÓCIOS + VENDEDOR */
+/* ===== NEGÓCIOS ===== */
 async function carregarNegocios(){
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("apps")
     .select(`
       id,
@@ -88,15 +95,20 @@ async function carregarNegocios(){
       vendedor_id,
       usuarios (
         id,
-        nome,
-        ativo
+        nome
       )
     `);
 
-  listaNegocios.innerHTML="";
+  if(error){
+    console.error(error);
+    alert("Erro ao carregar negócios");
+    return;
+  }
 
-  (data||[]).forEach(n=>{
-    const v = n.usuarios;
+  listaNegocios.innerHTML = "";
+
+  data.forEach(n=>{
+    const vendedor = n.usuarios?.nome || "—";
 
     const link =
       n.tipo==="hotel"
@@ -111,21 +123,19 @@ async function carregarNegocios(){
       <div class="card">
         <div>
           <b>${n.nome}</b> <span class="badge">${n.tipo}</span><br>
-          <small>Criado por:</small> ${v?.nome || "—"}<br>
-          <small>Status negócio:</small> ${n.ativo ? "🟢 ativo" : "🔴 bloqueado"}<br>
-          <small>Status vendedor:</small> ${v?.ativo ? "🟢 ativo" : "🔴 bloqueado"}<br>
-          <a href="${link}" target="_blank">🌍 Site público</a>
+          <small>Criado por:</small> <b>${vendedor}</b><br>
+          <small>Status:</small>
+          ${n.ativo ? "🟢 ativo" : "<span class='badge red'>bloqueado</span>"}<br>
+          <a href="${link}" target="_blank">🌍 site público</a>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:6px">
-          <button class="btn-small"
-            onclick="toggleNegocio('${n.id}', ${n.ativo})">
-            ${n.ativo ? "🔒 Bloquear negócio" : "🔓 Desbloquear negócio"}
+          <button class="block" onclick="toggleNegocio('${n.id}', ${n.ativo})">
+            ${n.ativo ? "🔒 Bloquear" : "🔓 Desbloquear"}
           </button>
 
-          <button class="btn-small danger"
-            onclick="excluirNegocio('${n.id}', ${n.ativo})">
-            🗑️ Excluir negócio
+          <button class="danger" onclick="excluirNegocio('${n.id}')">
+            🗑️ Excluir
           </button>
         </div>
       </div>
@@ -133,92 +143,47 @@ async function carregarNegocios(){
   });
 }
 
-/* BLOQUEAR / DESBLOQUEAR NEGÓCIO */
-window.toggleNegocio = async (id,ativo)=>{
-  await supabase.from("apps")
-    .update({ ativo: !ativo })
-    .eq("id", id);
-
+window.toggleNegocio = async (id, ativo)=>{
+  await supabase.from("apps").update({ativo: !ativo}).eq("id", id);
   carregarNegocios();
 };
 
-/* EXCLUIR NEGÓCIO (6 MESES SEM PAGAR) */
-window.excluirNegocio = async (id,ativo)=>{
-  if(ativo){
-    alert("Bloqueie o negócio antes de excluir.");
-    return;
-  }
-
-  const { data } = await supabase
-    .from("pagamentos")
-    .select("created_at")
-    .eq("app_id", id)
-    .order("created_at",{ascending:false})
-    .limit(1);
-
-  const ultimo = data?.[0]?.created_at;
-  const seisMeses = 1000*60*60*24*180;
-
-  if(ultimo && (Date.now()-new Date(ultimo)) < seisMeses){
-    alert("Pagamento recente. Não pode excluir.");
-    return;
-  }
-
+window.excluirNegocio = async id=>{
   if(!confirm("Excluir negócio definitivamente?")) return;
-
-  await supabase.from("apps").delete().eq("id",id);
+  await supabase.from("apps").delete().eq("id", id);
   carregarNegocios();
 };
 
-/* VENDEDORES */
+/* ===== VENDEDORES ===== */
 async function carregarVendedores(){
   const { data } = await supabase
     .from("usuarios")
     .select("*")
     .eq("tipo","vendedor");
 
-  listaVendedores.innerHTML="";
+  listaVendedores.innerHTML = "";
 
-  (data||[]).forEach(v=>{
+  data.forEach(v=>{
     listaVendedores.innerHTML += `
       <div class="card">
         <div>
           <b>${v.nome}</b><br>
           <small>${v.email}</small><br>
           <span class="badge">Comissão ${v.comissao_percentual}%</span>
-          ${!v.ativo ? `<span class="badge warn">Bloqueado</span>` : ""}
+          ${!v.ativo ? `<span class="badge red">bloqueado</span>` : ""}
         </div>
 
-        <button class="btn-small danger"
-          onclick="excluirVendedor('${v.id}', ${v.ativo})">
-          🗑️ Excluir vendedor
+        <button class="danger" onclick="excluirVendedor('${v.id}')">
+          🗑️ Excluir
         </button>
       </div>
     `;
   });
 }
 
-/* EXCLUIR VENDEDOR (SEGURO) */
-window.excluirVendedor = async (id,ativo)=>{
-  if(ativo){
-    alert("Bloqueie o vendedor antes de excluir.");
-    return;
-  }
-
-  const { count } = await supabase
-    .from("apps")
-    .select("*",{count:"exact",head:true})
-    .eq("vendedor_id", id)
-    .eq("ativo", true);
-
-  if(count>0){
-    alert("Vendedor possui negócios ativos.");
-    return;
-  }
-
+window.excluirVendedor = async id=>{
   if(!confirm("Excluir vendedor definitivamente?")) return;
-
-  await supabase.from("usuarios").delete().eq("id",id);
+  await supabase.from("usuarios").delete().eq("id", id);
   carregarVendedores();
 };
 </script>
