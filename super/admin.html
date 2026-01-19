@@ -2,24 +2,81 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Super Admin | FF Soluções</title>
+<title>👑 Super Admin | FF Soluções</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial;background:#020617;color:#fff}
-.container{max-width:1200px;margin:40px auto;padding:30px;border-radius:20px;background:linear-gradient(135deg,#0f172a,#4b1fa0)}
+body{
+  margin:0;
+  font-family:Arial,system-ui,sans-serif;
+  background:#020617;
+  color:#fff;
+}
+.container{
+  max-width:1200px;
+  margin:40px auto;
+  padding:30px;
+  border-radius:20px;
+  background:linear-gradient(135deg,#0f172a,#4b1fa0);
+}
 h1,h2,h3{margin-top:25px}
-input,select,button{width:100%;padding:14px;margin-top:10px;border-radius:12px;border:none}
-button{background:#22c55e;color:#000;font-weight:bold;cursor:pointer}
+input,select,button{
+  width:100%;
+  padding:14px;
+  margin-top:10px;
+  border-radius:12px;
+  border:none;
+}
+button{
+  background:#22c55e;
+  color:#000;
+  font-weight:bold;
+  cursor:pointer;
+}
 button.danger{background:#e53935;color:#fff}
-.card{background:#020617;padding:16px;margin-top:12px;border-radius:14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+button.warn{background:#f59e0b;color:#000}
+.card{
+  background:#020617;
+  padding:16px;
+  margin-top:12px;
+  border-radius:14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
 .login{max-width:420px;margin:80px auto}
 hr{margin:40px 0;border:none;height:1px;background:rgba(255,255,255,.2)}
 a{color:#22c55e;text-decoration:none}
-.btn-small{width:auto;padding:6px 12px;font-size:12px;border-radius:8px}
-.badge{background:#334155;padding:4px 8px;border-radius:6px;font-size:12px}
-.badge.warn{background:#7c2d12}
+.btn-small{
+  width:auto;
+  padding:6px 12px;
+  font-size:12px;
+  border-radius:8px;
+}
+.badge{
+  background:#334155;
+  padding:4px 8px;
+  border-radius:6px;
+  font-size:12px;
+}
+.badge.off{background:#7c2d12}
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+.modal .box{
+  background:#020617;
+  padding:20px;
+  border-radius:16px;
+  width:100%;
+  max-width:420px;
+}
 </style>
 </head>
 
@@ -38,53 +95,23 @@ a{color:#22c55e;text-decoration:none}
 <!-- PAINEL -->
 <div id="painel" style="display:none">
 
-<!-- NEGÓCIOS -->
-<h2>🏢 Criar / Editar Negócio</h2>
-<input id="nomeNegocio" placeholder="Nome do negócio">
-<select id="tipoNegocio">
-  <option value="bar">Bar</option>
-  <option value="restaurante">Restaurante</option>
-  <option value="mercado">Mercado</option>
-  <option value="locadora">Locadora</option>
-  <option value="hotel">Hotel</option>
-</select>
-<button onclick="criarNegocio()">Salvar Negócio</button>
-
-<h3>📋 Negócios</h3>
-<div id="listaNegocios"></div>
-
-<hr>
-
-<!-- ADMINS -->
-<h2>👤 Criar Admin</h2>
-<input id="usuarioAdmin" placeholder="Usuário">
-<input id="senhaAdmin" type="password" placeholder="Senha">
-<select id="permissaoAdmin">
-  <option value="editar">Editar</option>
-  <option value="visualizar">Visualizar</option>
-</select>
-<select id="appAdmin"></select>
-<button onclick="criarAdmin()">Criar Admin</button>
-
-<h3>👥 Admins</h3>
-<div id="listaAdmins"></div>
-
-<hr>
-
-<!-- VENDEDORES -->
-<h2>💰 Cadastro de Vendedor</h2>
-<div class="card" style="flex-direction:column;align-items:stretch">
-  <input id="nomeVendedor" placeholder="Nome completo">
-  <input id="emailVendedor" placeholder="E-mail / usuário">
-  <input id="senhaVendedor" type="password" placeholder="Senha">
-  <input id="comissaoVendedor" type="number" value="10" placeholder="Comissão (%)">
-  <button onclick="criarVendedor()">Cadastrar Vendedor</button>
-</div>
-
-<h3>🧾 Vendedores (Acompanhamento)</h3>
+<h2>💰 Vendedores</h2>
 <div id="listaVendedores"></div>
 
 </div>
+</div>
+
+<!-- MODAL EDITAR -->
+<div class="modal" id="modalEditar">
+  <div class="box">
+    <h3>✏️ Editar Vendedor</h3>
+    <input id="editNome" placeholder="Nome">
+    <input id="editEmail" placeholder="Email">
+    <input id="editSenha" type="password" placeholder="Nova senha (opcional)">
+    <input id="editComissao" type="number" placeholder="Comissão %">
+    <button onclick="salvarEdicao()">Salvar</button>
+    <button class="warn" onclick="fecharModal()">Cancelar</button>
+  </div>
 </div>
 
 <script type="module">
@@ -95,12 +122,7 @@ const supabase = createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-let mapaApps = {};
-
-function getPublicUrlBase(tipo){
-  if(tipo==="locadora") return "locadora/public/index.html?app_id=";
-  return "bar/public/cardapio/index.html?app=";
-}
+let vendedorEditando = null;
 
 /* LOGIN */
 window.login = async ()=>{
@@ -116,137 +138,77 @@ window.login = async ()=>{
 
   loginBox.style.display="none";
   painel.style.display="block";
-  carregarNegocios();
-  carregarAdmins();
   carregarVendedores();
 };
 
-/* NEGÓCIOS */
-window.criarNegocio = async ()=>{
-  await supabase.from("apps").insert({
-    nome:nomeNegocio.value,
-    tipo:tipoNegocio.value,
-    public_url:getPublicUrlBase(tipoNegocio.value)
-  });
-  nomeNegocio.value="";
-  carregarNegocios();
-};
-window.criarNegocio = async ()=>{
-  const { error } = await supabase.from("apps").insert({
-    nome: nomeNegocio.value,
-    tipo: tipoNegocio.value,
-    usar_categorias: tipoNegocio.value !== "hotel"
-  });
-
-  if (error) {
-    console.error(error);
-    alert("Erro ao criar negócio: " + error.message);
-    return;
-  }
-
-  nomeNegocio.value = "";
-  carregarNegocios();
-};
-
-async function carregarNegocios(){
-  const { data } = await supabase.from("apps").select("*");
-  listaNegocios.innerHTML="";
-  appAdmin.innerHTML="";
-  mapaApps = {};
-
-  (data||[]).forEach(n=>{
-    mapaApps[n.id] = `${n.nome} (${n.tipo})`;
-
-    const link = `https://anajuliafarias659-cloud.github.io/ffsolucoes/${getPublicUrlBase(n.tipo)}${n.id}`;
-
-    listaNegocios.innerHTML += `
-      <div class="card">
-        <div>
-          <b>${n.nome}</b><br>
-          <a href="${link}" target="_blank">🌍 Site Público</a>
-        </div>
-      </div>
-    `;
-
-    appAdmin.innerHTML += `<option value="${n.id}">${n.nome}</option>`;
-  });
-}
-
-/* ADMINS */
-window.criarAdmin = async ()=>{
-  await supabase.from("admins").insert({
-    usuario:usuarioAdmin.value,
-    senha:senhaAdmin.value,
-    permissao:permissaoAdmin.value,
-    app_id:appAdmin.value,
-    ativo:true
-  });
-  usuarioAdmin.value="";
-  senhaAdmin.value="";
-  carregarAdmins();
-};
-
-async function carregarAdmins(){
-  const { data } = await supabase.from("admins").select("*");
-  listaAdmins.innerHTML="";
-  (data||[]).forEach(a=>{
-    const negocio = mapaApps[a.app_id];
-    listaAdmins.innerHTML += `
-      <div class="card">
-        <div>
-          <b>${a.usuario}</b><br>
-          ${
-            negocio
-            ? `<span class="badge">${negocio}</span>`
-            : `<span class="badge warn">não identificado</span>`
-          }
-        </div>
-        <button class="danger btn-small" onclick="excluirAdmin('${a.id}')">Excluir</button>
-      </div>
-    `;
-  });
-}
-
-window.excluirAdmin = async id=>{
-  if(confirm("Excluir admin?")){
-    await supabase.from("admins").delete().eq("id",id);
-    carregarAdmins();
-  }
-};
-
-/* VENDEDORES — SEM QUALQUER ALTERAÇÃO */
-window.criarVendedor = async ()=>{
-  await supabase.from("usuarios").insert({
-    nome:nomeVendedor.value,
-    email:emailVendedor.value,
-    senha:senhaVendedor.value,
-    tipo:"vendedor",
-    comissao_percentual:Number(comissaoVendedor.value),
-    ativo:true
-  });
-
-  nomeVendedor.value="";
-  emailVendedor.value="";
-  senhaVendedor.value="";
-  comissaoVendedor.value=10;
-  carregarVendedores();
-};
-
+/* VENDEDORES */
 async function carregarVendedores(){
-  const { data } = await supabase.from("usuarios").select("*").eq("tipo","vendedor");
+  const { data } = await supabase
+    .from("usuarios")
+    .select("*")
+    .eq("tipo","vendedor");
+
   listaVendedores.innerHTML="";
+
   (data||[]).forEach(v=>{
     listaVendedores.innerHTML += `
       <div class="card">
         <div>
           <b>${v.nome}</b><br>
           <small>${v.email}</small><br>
-          <span class="badge">Comissão: ${v.comissao_percentual}%</span>
+          <span class="badge">Comissão ${v.comissao_percentual}%</span>
+          ${!v.ativo ? `<span class="badge off">Bloqueado</span>` : ``}
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-small" onclick="abrirEditar('${v.id}')">✏️</button>
+          <button class="btn-small warn" onclick="toggle('${v.id}',${v.ativo})">
+            ${v.ativo ? "🔒" : "🔓"}
+          </button>
+          <button class="btn-small danger" onclick="excluir('${v.id}')">🗑️</button>
         </div>
       </div>
     `;
   });
 }
+
+/* EDITAR */
+window.abrirEditar = async id=>{
+  const { data } = await supabase.from("usuarios").select("*").eq("id",id).single();
+  vendedorEditando = id;
+  editNome.value = data.nome;
+  editEmail.value = data.email;
+  editComissao.value = data.comissao_percentual;
+  editSenha.value = "";
+  modalEditar.style.display="flex";
+};
+
+window.salvarEdicao = async ()=>{
+  const payload = {
+    nome: editNome.value,
+    email: editEmail.value,
+    comissao_percentual: Number(editComissao.value)
+  };
+  if(editSenha.value) payload.senha = editSenha.value;
+
+  await supabase.from("usuarios").update(payload).eq("id",vendedorEditando);
+  fecharModal();
+  carregarVendedores();
+};
+
+window.fecharModal = ()=> modalEditar.style.display="none";
+
+/* BLOQUEAR */
+window.toggle = async (id,ativo)=>{
+  await supabase.from("usuarios").update({ativo:!ativo}).eq("id",id);
+  carregarVendedores();
+};
+
+/* EXCLUIR */
+window.excluir = async id=>{
+  if(!confirm("Excluir vendedor? Essa ação não pode ser desfeita.")) return;
+  await supabase.from("usuarios").delete().eq("id",id);
+  carregarVendedores();
+};
 </script>
 
 </body>
