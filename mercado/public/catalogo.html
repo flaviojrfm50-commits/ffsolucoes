@@ -7,11 +7,31 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+/* ===== VARIÁVEIS BASE ===== */
 :root{
   --primaria:#22c55e;
   --fundo:#020617;
   --card:#0f172a;
 }
+
+/* ===== TEMAS ===== */
+body.tema-carnaval{
+  --primaria:#ec4899;
+  --card:#1f0a16;
+}
+body.tema-saojoao{
+  --primaria:#f97316;
+  --card:#2a1608;
+}
+body.tema-natal{
+  --primaria:#22c55e;
+  --card:#052e1a;
+}
+body.tema-anonovo{
+  --primaria:#eab308;
+  --card:#1f1a00;
+}
+
 *{box-sizing:border-box}
 body{
   margin:0;
@@ -154,13 +174,11 @@ input,select,textarea{
   <div class="grid" id="listaProdutos"></div>
 </section>
 
-<!-- BOTÃO -->
 <div class="carrinho-btn" onclick="abrirCarrinho()">
   🛒
   <span class="badge" id="badgeCarrinho">0</span>
 </div>
 
-<!-- MODAL -->
 <div class="carrinho" id="carrinhoModal">
   <div class="box">
     <h2>Seu pedido</h2>
@@ -177,7 +195,6 @@ input,select,textarea{
     </select>
 
     <input id="troco" placeholder="Precisa de troco? Ex: 50" />
-
     <textarea id="observacao" placeholder="Observações"></textarea>
 
     <button class="finalizar" onclick="finalizar()">Enviar no WhatsApp</button>
@@ -202,10 +219,19 @@ let whatsapp="";
 (async()=>{
   const {data}=await sb.from("config_site").select("*").eq("app_id",app).maybeSingle();
   if(!data)return;
+
   nome.innerText=data.nome_site||"";
   descricao.innerText=data.descricao_site||"";
-  if(data.banner_url) banner.style.backgroundImage=`url(${data.banner_url})`;
+
+  if(data.banner_url)
+    banner.style.backgroundImage=`url(${data.banner_url})`;
+
   whatsapp=data.whatsapp||"";
+
+  /* APLICA TEMA */
+  if(data.tema_site && data.tema_site!=="padrao"){
+    document.body.classList.add("tema-"+data.tema_site);
+  }
 })();
 
 /* PRODUTOS */
@@ -240,10 +266,10 @@ function salvar(){
 }
 function abrirCarrinho(){
   renderCarrinho();
-  document.getElementById("carrinhoModal").style.display="block";
+  carrinhoModal.style.display="block";
 }
 function fecharCarrinho(){
-  document.getElementById("carrinhoModal").style.display="none";
+  carrinhoModal.style.display="none";
 }
 function renderCarrinho(){
   itens.innerHTML="";
