@@ -2,81 +2,25 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>👑 Super Admin | FF Soluções</title>
+<title>Super Admin | FF Soluções</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Arial,system-ui,sans-serif;
-  background:#020617;
-  color:#fff;
-}
-.container{
-  max-width:1200px;
-  margin:40px auto;
-  padding:30px;
-  border-radius:20px;
-  background:linear-gradient(135deg,#0f172a,#4b1fa0);
-}
+body{margin:0;font-family:Arial;background:#020617;color:#fff}
+.container{max-width:1200px;margin:40px auto;padding:30px;border-radius:20px;background:linear-gradient(135deg,#0f172a,#4b1fa0)}
 h1,h2,h3{margin-top:25px}
-input,select,button{
-  width:100%;
-  padding:14px;
-  margin-top:10px;
-  border-radius:12px;
-  border:none;
-}
-button{
-  background:#22c55e;
-  color:#000;
-  font-weight:bold;
-  cursor:pointer;
-}
+input,select,button{width:100%;padding:14px;margin-top:10px;border-radius:12px;border:none}
+button{background:#22c55e;color:#000;font-weight:bold;cursor:pointer}
 button.danger{background:#e53935;color:#fff}
 button.warn{background:#f59e0b;color:#000}
-.card{
-  background:#020617;
-  padding:16px;
-  margin-top:12px;
-  border-radius:14px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:10px;
-}
+.card{background:#020617;padding:16px;margin-top:12px;border-radius:14px;display:flex;justify-content:space-between;gap:10px}
 .login{max-width:420px;margin:80px auto}
 hr{margin:40px 0;border:none;height:1px;background:rgba(255,255,255,.2)}
 a{color:#22c55e;text-decoration:none}
-.btn-small{
-  width:auto;
-  padding:6px 12px;
-  font-size:12px;
-  border-radius:8px;
-}
-.badge{
-  background:#334155;
-  padding:4px 8px;
-  border-radius:6px;
-  font-size:12px;
-}
-.badge.off{background:#7c2d12}
-.modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.6);
-  display:none;
-  align-items:center;
-  justify-content:center;
-}
-.modal .box{
-  background:#020617;
-  padding:20px;
-  border-radius:16px;
-  width:100%;
-  max-width:420px;
-}
+.btn-small{width:auto;padding:6px 12px;font-size:12px;border-radius:8px}
+.badge{background:#334155;padding:4px 8px;border-radius:6px;font-size:12px}
+.badge.warn{background:#7c2d12}
 </style>
 </head>
 
@@ -95,23 +39,15 @@ a{color:#22c55e;text-decoration:none}
 <!-- PAINEL -->
 <div id="painel" style="display:none">
 
+<h2>🏢 Negócios (com vendedor)</h2>
+<div id="listaNegocios"></div>
+
+<hr>
+
 <h2>💰 Vendedores</h2>
 <div id="listaVendedores"></div>
 
 </div>
-</div>
-
-<!-- MODAL EDITAR -->
-<div class="modal" id="modalEditar">
-  <div class="box">
-    <h3>✏️ Editar Vendedor</h3>
-    <input id="editNome" placeholder="Nome">
-    <input id="editEmail" placeholder="Email">
-    <input id="editSenha" type="password" placeholder="Nova senha (opcional)">
-    <input id="editComissao" type="number" placeholder="Comissão %">
-    <button onclick="salvarEdicao()">Salvar</button>
-    <button class="warn" onclick="fecharModal()">Cancelar</button>
-  </div>
 </div>
 
 <script type="module">
@@ -121,8 +57,6 @@ const supabase = createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
-
-let vendedorEditando = null;
 
 /* LOGIN */
 window.login = async ()=>{
@@ -138,7 +72,102 @@ window.login = async ()=>{
 
   loginBox.style.display="none";
   painel.style.display="block";
+  carregarNegocios();
   carregarVendedores();
+};
+
+/* NEGÓCIOS + VENDEDOR */
+async function carregarNegocios(){
+  const { data } = await supabase
+    .from("apps")
+    .select(`
+      id,
+      nome,
+      tipo,
+      ativo,
+      vendedor_id,
+      usuarios (
+        id,
+        nome,
+        ativo
+      )
+    `);
+
+  listaNegocios.innerHTML="";
+
+  (data||[]).forEach(n=>{
+    const v = n.usuarios;
+
+    const link =
+      n.tipo==="hotel"
+      ? `https://anajuliafarias659-cloud.github.io/ffsolucoes/hotel/public/site/index.html?id=${n.id}`
+      : n.tipo==="locadora"
+      ? `https://anajuliafarias659-cloud.github.io/ffsolucoes/locadora/public/index.html?app_id=${n.id}`
+      : n.tipo==="mercado"
+      ? `https://anajuliafarias659-cloud.github.io/ffsolucoes/mercado/public/catalogo.html?app=${n.id}`
+      : `https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/public/cardapio/index.html?app=${n.id}`;
+
+    listaNegocios.innerHTML += `
+      <div class="card">
+        <div>
+          <b>${n.nome}</b> <span class="badge">${n.tipo}</span><br>
+          <small>Criado por:</small> ${v?.nome || "—"}<br>
+          <small>Status negócio:</small> ${n.ativo ? "🟢 ativo" : "🔴 bloqueado"}<br>
+          <small>Status vendedor:</small> ${v?.ativo ? "🟢 ativo" : "🔴 bloqueado"}<br>
+          <a href="${link}" target="_blank">🌍 Site público</a>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="btn-small"
+            onclick="toggleNegocio('${n.id}', ${n.ativo})">
+            ${n.ativo ? "🔒 Bloquear negócio" : "🔓 Desbloquear negócio"}
+          </button>
+
+          <button class="btn-small danger"
+            onclick="excluirNegocio('${n.id}', ${n.ativo})">
+            🗑️ Excluir negócio
+          </button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+/* BLOQUEAR / DESBLOQUEAR NEGÓCIO */
+window.toggleNegocio = async (id,ativo)=>{
+  await supabase.from("apps")
+    .update({ ativo: !ativo })
+    .eq("id", id);
+
+  carregarNegocios();
+};
+
+/* EXCLUIR NEGÓCIO (6 MESES SEM PAGAR) */
+window.excluirNegocio = async (id,ativo)=>{
+  if(ativo){
+    alert("Bloqueie o negócio antes de excluir.");
+    return;
+  }
+
+  const { data } = await supabase
+    .from("pagamentos")
+    .select("created_at")
+    .eq("app_id", id)
+    .order("created_at",{ascending:false})
+    .limit(1);
+
+  const ultimo = data?.[0]?.created_at;
+  const seisMeses = 1000*60*60*24*180;
+
+  if(ultimo && (Date.now()-new Date(ultimo)) < seisMeses){
+    alert("Pagamento recente. Não pode excluir.");
+    return;
+  }
+
+  if(!confirm("Excluir negócio definitivamente?")) return;
+
+  await supabase.from("apps").delete().eq("id",id);
+  carregarNegocios();
 };
 
 /* VENDEDORES */
@@ -157,55 +186,38 @@ async function carregarVendedores(){
           <b>${v.nome}</b><br>
           <small>${v.email}</small><br>
           <span class="badge">Comissão ${v.comissao_percentual}%</span>
-          ${!v.ativo ? `<span class="badge off">Bloqueado</span>` : ``}
+          ${!v.ativo ? `<span class="badge warn">Bloqueado</span>` : ""}
         </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn-small" onclick="abrirEditar('${v.id}')">✏️</button>
-          <button class="btn-small warn" onclick="toggle('${v.id}',${v.ativo})">
-            ${v.ativo ? "🔒" : "🔓"}
-          </button>
-          <button class="btn-small danger" onclick="excluir('${v.id}')">🗑️</button>
-        </div>
+
+        <button class="btn-small danger"
+          onclick="excluirVendedor('${v.id}', ${v.ativo})">
+          🗑️ Excluir vendedor
+        </button>
       </div>
     `;
   });
 }
 
-/* EDITAR */
-window.abrirEditar = async id=>{
-  const { data } = await supabase.from("usuarios").select("*").eq("id",id).single();
-  vendedorEditando = id;
-  editNome.value = data.nome;
-  editEmail.value = data.email;
-  editComissao.value = data.comissao_percentual;
-  editSenha.value = "";
-  modalEditar.style.display="flex";
-};
+/* EXCLUIR VENDEDOR (SEGURO) */
+window.excluirVendedor = async (id,ativo)=>{
+  if(ativo){
+    alert("Bloqueie o vendedor antes de excluir.");
+    return;
+  }
 
-window.salvarEdicao = async ()=>{
-  const payload = {
-    nome: editNome.value,
-    email: editEmail.value,
-    comissao_percentual: Number(editComissao.value)
-  };
-  if(editSenha.value) payload.senha = editSenha.value;
+  const { count } = await supabase
+    .from("apps")
+    .select("*",{count:"exact",head:true})
+    .eq("vendedor_id", id)
+    .eq("ativo", true);
 
-  await supabase.from("usuarios").update(payload).eq("id",vendedorEditando);
-  fecharModal();
-  carregarVendedores();
-};
+  if(count>0){
+    alert("Vendedor possui negócios ativos.");
+    return;
+  }
 
-window.fecharModal = ()=> modalEditar.style.display="none";
+  if(!confirm("Excluir vendedor definitivamente?")) return;
 
-/* BLOQUEAR */
-window.toggle = async (id,ativo)=>{
-  await supabase.from("usuarios").update({ativo:!ativo}).eq("id",id);
-  carregarVendedores();
-};
-
-/* EXCLUIR */
-window.excluir = async id=>{
-  if(!confirm("Excluir vendedor? Essa ação não pode ser desfeita.")) return;
   await supabase.from("usuarios").delete().eq("id",id);
   carregarVendedores();
 };
