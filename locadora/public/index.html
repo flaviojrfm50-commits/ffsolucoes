@@ -5,7 +5,6 @@
 <title>Locadora</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -27,14 +26,15 @@ body{
 /* BANNER */
 .banner{
   width:100%;
-  background:#000;
+  background:#020617;
 }
 .banner img{
   width:100%;
   height:360px;
-  object-fit:cover;
+  object-fit:contain; /* 🔥 logo como banner */
   display:block;
 }
+
 @media(max-width:600px){
   .banner img{height:220px}
 }
@@ -99,22 +99,15 @@ body{
 
 <body>
 
-<!-- BANNER -->
 <header class="banner">
-  <img id="bannerImg"
-       src="https://via.placeholder.com/1600x400?text=Locadora"
-       alt="Banner">
+  <img id="bannerImg" alt="Banner">
 </header>
 
-<!-- LISTA -->
 <section class="lista" id="listaVeiculos"></section>
 
 <script>
-/* ================= APP_ID ================= */
 const params = new URLSearchParams(window.location.search);
 const appId = params.get("app_id");
-
-console.log("APP_ID:", appId);
 
 if(!appId){
   document.body.innerHTML = `
@@ -122,11 +115,10 @@ if(!appId){
       Locadora não identificada
     </h2>
   `;
-} else {
+}else{
   iniciarApp(appId);
 }
 
-/* ================= APP ================= */
 async function iniciarApp(APP_ID){
 
   const sb = supabase.createClient(
@@ -138,7 +130,7 @@ async function iniciarApp(APP_ID){
   async function carregarConfig(){
     const { data } = await sb
       .from("config_site")
-      .select("nome_site,banner_url,cor_primaria")
+      .select("nome_site,logo_url,cor_primaria")
       .eq("app_id", APP_ID)
       .single();
 
@@ -150,8 +142,8 @@ async function iniciarApp(APP_ID){
       data.cor_primaria || "#e30613"
     );
 
-    if(data.banner_url){
-      document.getElementById("bannerImg").src = data.banner_url;
+    if(data.logo_url){
+      document.getElementById("bannerImg").src = data.logo_url;
     }
   }
 
@@ -198,7 +190,7 @@ async function iniciarApp(APP_ID){
   }
 
   window.verVeiculo = function(id){
-    window.location.href = `./veiculo.html?app_id=${APP_ID}&id=${id}`;
+    location.href = `./veiculo.html?app_id=${APP_ID}&id=${id}`;
   };
 
   await carregarConfig();
