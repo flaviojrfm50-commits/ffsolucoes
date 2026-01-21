@@ -44,7 +44,7 @@ button{
   cursor:pointer;
 }
 .preview{text-align:center;margin-top:16px}
-.preview img{max-width:180px;border-radius:12px}
+.preview img{max-width:220px;border-radius:12px;background:#020617}
 </style>
 </head>
 
@@ -76,7 +76,7 @@ if(!admin){
   <label>Cor Secundária</label>
   <input id="corSecundaria" type="color">
 
-  <label>Logo</label>
+  <label>Logo / Banner</label>
   <input type="file" id="logoInput" accept="image/*">
 
   <div class="preview">
@@ -108,7 +108,7 @@ logoInput.addEventListener("change", ()=>{
   reader.readAsDataURL(logoFile);
 });
 
-/* CARREGAR */
+/* CARREGAR CONFIG */
 async function carregar(){
   const { data } = await sb
     .from("config_site")
@@ -116,16 +116,16 @@ async function carregar(){
     .eq("app_id", appId)
     .single();
 
-  if(data){
-    nomeSite.value = data.nome_site || "";
-    whatsapp.value = data.whatsapp || "";
-    corPrimaria.value = data.cor_primaria || "#e30613";
-    corSecundaria.value = data.cor_secundaria || "#ffffff";
+  if(!data) return;
 
-    if(data.logo_url){
-      logoPreview.src = data.logo_url;
-      logoPreview.style.display="block";
-    }
+  nomeSite.value = data.nome_site || "";
+  whatsapp.value = data.whatsapp || "";
+  corPrimaria.value = data.cor_primaria || "#e30613";
+  corSecundaria.value = data.cor_secundaria || "#ffffff";
+
+  if(data.logo_url){
+    logoPreview.src = data.logo_url;
+    logoPreview.style.display = "block";
   }
 }
 
@@ -136,22 +136,14 @@ async function uploadLogo(){
   const ext = logoFile.name.split(".").pop();
   const filePath = `${appId}/logo.${ext}`;
 
-  const { error } = await sb
-    .storage
+  await sb.storage
     .from("logos")
     .upload(filePath, logoFile, {
       upsert:true,
-      contentType: logoFile.type
+      contentType:logoFile.type
     });
 
-  if(error){
-    alert("Erro ao enviar logo");
-    console.error(error);
-    throw error;
-  }
-
-  const { data } = sb
-    .storage
+  const { data } = sb.storage
     .from("logos")
     .getPublicUrl(filePath);
 
@@ -160,7 +152,7 @@ async function uploadLogo(){
 
 /* SALVAR */
 async function salvar(){
-  let logoUrl = null;
+  let logoUrl = logoPreview.src || null;
 
   if(logoFile){
     logoUrl = await uploadLogo();
@@ -172,7 +164,7 @@ async function salvar(){
     whatsapp: whatsapp.value,
     cor_primaria: corPrimaria.value,
     cor_secundaria: corSecundaria.value,
-    logo_url: logoUrl || logoPreview.src || null
+    logo_url: logoUrl
   }, { onConflict:"app_id" });
 
   alert("Configurações salvas com sucesso!");
