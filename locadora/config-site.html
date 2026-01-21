@@ -26,7 +26,7 @@ body{
   border-radius:16px;
 }
 label{display:block;margin-top:16px;font-weight:bold}
-input{
+input,select{
   width:100%;
   padding:10px;
   margin-top:6px;
@@ -44,11 +44,7 @@ button{
   cursor:pointer;
 }
 .preview{text-align:center;margin-top:16px}
-.preview img{
-  max-width:220px;
-  border-radius:12px;
-  background:#020617;
-}
+.preview img{max-width:220px;border-radius:12px}
 </style>
 </head>
 
@@ -71,17 +67,24 @@ if(!admin){
   <label>Nome do Site</label>
   <input id="nomeSite">
 
-  <label>WhatsApp (somente números)</label>
+  <label>WhatsApp</label>
   <input id="whatsapp">
 
   <label>Cor Primária</label>
   <input id="corPrimaria" type="color">
 
-  <label>Cor Secundária</label>
-  <input id="corSecundaria" type="color">
-
   <label>Logo / Banner</label>
   <input type="file" id="logoInput" accept="image/*">
+
+  <label>Tema do Site</label>
+  <select id="tema">
+    <option value="padrao">Padrão</option>
+    <option value="automatico">Automático (datas)</option>
+    <option value="ano_novo">🎆 Ano Novo</option>
+    <option value="carnaval">🎭 Carnaval</option>
+    <option value="sao_joao">🔥 São João</option>
+    <option value="natal">🎄 Natal</option>
+  </select>
 
   <div class="preview">
     <img id="logoPreview" style="display:none">
@@ -99,84 +102,50 @@ const sb = supabase.createClient(
 const appId = admin.app_id;
 let logoFile = null;
 
-/* PREVIEW */
 logoInput.addEventListener("change", ()=>{
   logoFile = logoInput.files[0];
-  if(!logoFile) return;
-
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    logoPreview.src = reader.result;
-    logoPreview.style.display = "block";
-  };
-  reader.readAsDataURL(logoFile);
+  const r = new FileReader();
+  r.onload = ()=>{ logoPreview.src=r.result; logoPreview.style.display="block"; };
+  r.readAsDataURL(logoFile);
 });
 
-/* CARREGAR CONFIG */
 async function carregar(){
-  const { data } = await sb
-    .from("config_site")
-    .select("*")
-    .eq("app_id", appId)
-    .single();
-
+  const { data } = await sb.from("config_site").select("*").eq("app_id",appId).single();
   if(!data) return;
 
   nomeSite.value = data.nome_site || "";
   whatsapp.value = data.whatsapp || "";
   corPrimaria.value = data.cor_primaria || "#e30613";
-  corSecundaria.value = data.cor_secundaria || "#ffffff";
+  tema.value = data.tema || "padrao";
 
   if(data.logo_url){
     logoPreview.src = data.logo_url;
-    logoPreview.style.display = "block";
+    logoPreview.style.display="block";
   }
 }
 
-/* UPLOAD LOGO — FIX DEFINITIVO */
 async function uploadLogo(){
-  if(!logoFile) return null;
+  if(!logoFile) return logoPreview.src || null;
 
   const ext = logoFile.name.split(".").pop();
-  const filePath = `${appId}/logo-${Date.now()}.${ext}`;
-
-  const { error } = await sb.storage
-    .from("logos")
-    .upload(filePath, logoFile, {
-      contentType: logoFile.type
-    });
-
-  if(error){
-    alert("Erro ao enviar logo");
-    console.error(error);
-    throw error;
-  }
-
-  const { data } = sb.storage
-    .from("logos")
-    .getPublicUrl(filePath);
-
-  return data.publicUrl;
+  const path = `${appId}/logo-${Date.now()}.${ext}`;
+  await sb.storage.from("logos").upload(path, logoFile);
+  return sb.storage.from("logos").getPublicUrl(path).data.publicUrl;
 }
 
-/* SALVAR */
 async function salvar(){
-  let logoUrl = logoPreview.src || null;
-
-  if(logoFile){
-    logoUrl = await uploadLogo();
-  }
+  const logoUrl = await uploadLogo();
 
   await sb.from("config_site").upsert({
     app_id: appId,
     nome_site: nomeSite.value,
     whatsapp: whatsapp.value,
     cor_primaria: corPrimaria.value,
-    cor_secundaria: corSecundaria.value,
-    logo_url: logoUrl
-  }, { onConflict:"app_id" });
+    logo_url: logoUrl,
+    tema: tema.value
+  },{ onConflict:"app_id" });
 
-  alert("Configurações salvas com sucesso!");
+  alert("Configurações salvas!");
 }
 
 carregar();
