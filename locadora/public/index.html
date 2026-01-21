@@ -5,6 +5,7 @@
 <title>Locadora</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -117,12 +118,10 @@ body{
 <script>
 /* ================= RESOLVER APP_ID ================= */
 function obterAppId(){
-  // 1️⃣ tenta pela URL
   const params = new URLSearchParams(window.location.search);
-  const urlAppId = params.get("app_id");
-  if(urlAppId) return urlAppId;
+  const urlId = params.get("app_id");
+  if(urlId) return urlId;
 
-  // 2️⃣ tenta pelo localStorage (admin)
   try{
     const admin = JSON.parse(localStorage.getItem("admin_logado"));
     if(admin?.app_id) return admin.app_id;
@@ -169,11 +168,10 @@ const temas = {
 
 function aplicarTema(nome){
   const t = temas[nome];
-  if(!t) return false;
+  if(!t) return;
 
   document.documentElement.style.setProperty("--primaria", t.cor);
   document.getElementById("bannerImg").src = t.banner;
-  return true;
 }
 
 /* ================= APP ================= */
@@ -184,7 +182,7 @@ async function iniciarApp(APP_ID){
     "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
   );
 
-  /* CONFIG SITE */
+  /* ===== CONFIG SITE ===== */
   async function carregarConfig(){
     const { data, error } = await sb
       .from("config_site")
@@ -193,7 +191,7 @@ async function iniciarApp(APP_ID){
       .maybeSingle();
 
     if(error){
-      console.error(error);
+      console.error("Erro config_site:", error);
       return;
     }
 
@@ -201,7 +199,7 @@ async function iniciarApp(APP_ID){
 
     document.title = data.nome_site || "Locadora";
 
-    // padrão
+    /* padrão */
     document.documentElement.style.setProperty(
       "--primaria",
       data.cor_primaria || "#e30613"
@@ -211,7 +209,7 @@ async function iniciarApp(APP_ID){
       document.getElementById("bannerImg").src = data.logo_url;
     }
 
-    // tema do painel (prioridade)
+    /* tema do painel */
     if(data.tema_site && data.tema_site !== "padrao"){
       aplicarTema(data.tema_site);
     }
@@ -221,7 +219,7 @@ async function iniciarApp(APP_ID){
     return new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
   }
 
-  /* VEÍCULOS */
+  /* ===== VEÍCULOS ===== */
   async function carregarVeiculos(){
     const { data, error } = await sb
       .from("veiculos")
@@ -229,7 +227,7 @@ async function iniciarApp(APP_ID){
       .eq("app_id", APP_ID);
 
     if(error){
-      console.error(error);
+      console.error("Erro veículos:", error);
       return;
     }
 
