@@ -13,30 +13,81 @@
   --bg:#f4f4f4;
 }
 
-*{box-sizing:border-box;font-family:Arial,sans-serif}
+*{
+  box-sizing:border-box;
+  font-family:Arial,sans-serif;
+}
 
 body{
   margin:0;
   background:var(--bg);
+  color:#111;
 }
 
-/* THEMES */
+/* ===== TEMAS ===== */
 body.tema-natal{--bg:#fff5f5}
 body.tema-sao-joao{--bg:#fff7ed}
-body.tema-black{--bg:#020617;color:#fff}
+body.tema-black{
+  --bg:#020617;
+  color:#fff;
+}
 
-/* BANNER */
+/* ===== BANNER ===== */
+.banner{
+  width:100%;
+  position:relative;
+}
+
 .banner img{
   width:100%;
-  height:360px;
+  height:420px;
   object-fit:cover;
   display:block;
 }
-@media(max-width:600px){
-  .banner img{height:220px}
+
+/* overlay */
+.banner-overlay{
+  position:absolute;
+  inset:0;
+  background:linear-gradient(
+    to bottom,
+    rgba(0,0,0,.35),
+    rgba(0,0,0,.75)
+  );
+  display:flex;
+  align-items:flex-end;
+  padding:24px;
 }
 
-/* LISTA */
+.banner-info{
+  color:#fff;
+}
+
+.banner-info h1{
+  margin:0;
+  font-size:2.2rem;
+}
+
+.banner-info p{
+  margin:6px 0;
+  font-size:1rem;
+  opacity:.95;
+}
+
+.banner-info a{
+  color:#22c55e;
+  font-weight:700;
+  text-decoration:none;
+}
+
+/* CELULAR */
+@media(max-width:768px){
+  .banner img{height:240px}
+  .banner-info h1{font-size:1.4rem}
+  .banner-info p{font-size:.9rem}
+}
+
+/* ===== LISTA ===== */
 .lista{
   max-width:1200px;
   margin:20px auto;
@@ -55,7 +106,9 @@ body.tema-black{--bg:#020617;color:#fff}
   flex-direction:column;
 }
 
-body.tema-black .card{background:#0f172a}
+body.tema-black .card{
+  background:#0f172a;
+}
 
 .card img{
   width:100%;
@@ -64,11 +117,23 @@ body.tema-black .card{background:#0f172a}
   background:#f1f1f1;
 }
 
-.card .info{padding:14px;flex:1}
-.preco{font-weight:700;margin:6px 0}
+.card .info{
+  padding:14px;
+  flex:1;
+}
 
-.status.disponivel{color:#16a34a;font-weight:700}
-.status.alugado{color:#e30613;font-weight:700}
+.card h3{margin:0}
+
+.preco{
+  font-weight:700;
+  margin:6px 0;
+}
+
+.status{
+  font-weight:700;
+}
+.status.disponivel{color:#16a34a}
+.status.alugado{color:#e30613}
 
 .btn{
   margin:12px;
@@ -85,47 +150,87 @@ body.tema-black .card{background:#0f172a}
 
 <body>
 
+<!-- ===== BANNER ===== -->
 <header class="banner">
   <img id="bannerImg" src="https://via.placeholder.com/1600x400?text=Locadora">
+
+  <div class="banner-overlay">
+    <div class="banner-info">
+      <h1 id="nomeLocadora">Locadora</h1>
+      <p id="enderecoLocadora"></p>
+      <p id="whatsLocadora"></p>
+    </div>
+  </div>
 </header>
 
+<!-- ===== LISTA ===== -->
 <section class="lista" id="listaVeiculos"></section>
 
 <script>
-const params = new URLSearchParams(location.search);
+/* ===== APP_ID ===== */
+const params = new URLSearchParams(window.location.search);
 const APP_ID = params.get("app_id");
 
 if(!APP_ID){
-  document.body.innerHTML="<h2 style='padding:30px;text-align:center'>Locadora não identificada</h2>";
+  document.body.innerHTML =
+    "<h2 style='padding:30px;text-align:center'>Locadora não identificada</h2>";
   throw "";
 }
 
+/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* ===== CONFIG ===== */
 async function carregarConfig(){
   const { data } = await sb
     .from("config_site")
-    .select("nome_site,banner_url,cor_primaria,tema_site")
+    .select(`
+      nome_site,
+      banner_url,
+      cor_primaria,
+      tema_site,
+      whatsapp,
+      endereco
+    `)
     .eq("app_id",APP_ID)
     .single();
 
   if(!data) return;
 
   document.title = data.nome_site || "Locadora";
-  document.documentElement.style.setProperty("--primaria", data.cor_primaria || "#e30613");
+  document.documentElement.style.setProperty(
+    "--primaria",
+    data.cor_primaria || "#e30613"
+  );
 
   if(data.banner_url){
     document.getElementById("bannerImg").src = data.banner_url;
   }
 
+  if(data.nome_site){
+    document.getElementById("nomeLocadora").innerText = data.nome_site;
+  }
+
+  if(data.endereco){
+    document.getElementById("enderecoLocadora").innerText =
+      "📍 " + data.endereco;
+  }
+
+  if(data.whatsapp){
+    const num = data.whatsapp.replace(/\D/g,"");
+    document.getElementById("whatsLocadora").innerHTML =
+      `📲 <a href="https://wa.me/55${num}" target="_blank">${data.whatsapp}</a>`;
+  }
+
   if(data.tema_site && data.tema_site !== "padrao"){
-    document.body.classList.add("tema-"+data.tema_site);
+    document.body.classList.add("tema-" + data.tema_site);
   }
 }
 
+/* ===== VEÍCULOS ===== */
 function formatarData(d){
   return new Date(d+"T00:00:00").toLocaleDateString("pt-BR");
 }
@@ -139,34 +244,38 @@ async function carregarVeiculos(){
   const lista = document.getElementById("listaVeiculos");
   lista.innerHTML="";
 
-  if(!data?.length){
+  if(!data || !data.length){
     lista.innerHTML="<p>Nenhum veículo cadastrado.</p>";
     return;
   }
 
   data.forEach(v=>{
-    lista.innerHTML+=`
+    lista.innerHTML += `
       <div class="card">
         <img src="${v.foto_url || 'https://via.placeholder.com/400x200'}">
         <div class="info">
           <h3>${v.modelo}</h3>
           <div class="preco">R$ ${v.diaria} / diária</div>
           ${
-            v.status==="alugado"
+            v.status === "alugado"
               ? `<div class="status alugado">🔒 Alugado até ${formatarData(v.data_fim)}</div>`
               : `<div class="status disponivel">✅ Disponível</div>`
           }
         </div>
-        <div class="btn" onclick="verVeiculo('${v.id}')">Ver detalhes</div>
+        <div class="btn" onclick="verVeiculo('${v.id}')">
+          Ver detalhes
+        </div>
       </div>
     `;
   });
 }
 
-window.verVeiculo=id=>{
-  location.href=`veiculo.html?app_id=${APP_ID}&id=${id}`;
+window.verVeiculo = (id)=>{
+  window.location.href =
+    `veiculo.html?app_id=${APP_ID}&id=${id}`;
 };
 
+/* ===== INIT ===== */
 (async()=>{
   await carregarConfig();
   await carregarVeiculos();
