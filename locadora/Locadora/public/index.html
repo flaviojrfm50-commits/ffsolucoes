@@ -10,15 +10,38 @@
 <style>
 :root{
   --primaria:#e30613;
-  --bg:#f4f4f4;
 }
-*{box-sizing:border-box;font-family:Arial,sans-serif}
-body{margin:0;background:var(--bg)}
 
-.banner{width:100%;background:#000}
-.banner img{width:100%;height:360px;object-fit:cover}
-@media(max-width:600px){.banner img{height:220px}}
+*{
+  box-sizing:border-box;
+  font-family:'Segoe UI',system-ui,sans-serif;
+}
 
+body{
+  margin:0;
+  background:#f4f4f4;
+}
+
+/* ===== BANNER ===== */
+.banner{
+  width:100%;
+  background:#020617;
+}
+.banner img{
+  width:100%;
+  height:360px;
+  object-fit:cover;
+  display:block;
+}
+@media(max-width:600px){
+  .banner img{
+    height:220px;
+    object-fit:contain;
+    background:#020617;
+  }
+}
+
+/* ===== LISTA ===== */
 .lista{
   max-width:1200px;
   margin:20px auto;
@@ -36,18 +59,33 @@ body{margin:0;background:var(--bg)}
   display:flex;
   flex-direction:column;
 }
+
 .card img{
   width:100%;
   height:180px;
   object-fit:contain;
   background:#f1f1f1;
 }
-.card .info{padding:14px;flex:1}
+
+.card .info{
+  padding:14px;
+  flex:1;
+}
+
 .card h3{margin:0}
-.preco{font-weight:700;margin:6px 0}
-.status{font-weight:700;margin-top:4px}
+
+.preco{
+  font-weight:700;
+  margin:6px 0;
+}
+
+.status{
+  font-weight:700;
+  margin-top:4px;
+}
 .status.disponivel{color:#16a34a}
 .status.alugado{color:#e30613}
+
 .btn{
   margin:12px;
   background:var(--primaria);
@@ -63,77 +101,97 @@ body{margin:0;background:var(--bg)}
 
 <body>
 
+<!-- BANNER -->
 <header class="banner">
-  <img id="bannerImg" src="https://via.placeholder.com/1600x400?text=Locadora">
+  <img id="bannerImg" style="display:none" alt="Banner da locadora">
 </header>
 
+<!-- LISTA -->
 <section class="lista" id="listaVeiculos"></section>
 
 <script>
-/* ================= APP_ID (UUID) ================= */
-(function(){
-  const params = new URLSearchParams(window.location.search);
-  const appId = params.get("app_id");
+/* ===== APP_ID ===== */
+const params = new URLSearchParams(window.location.search);
+const app_id = params.get("app_id");
 
-  console.log("URL:", window.location.href);
-  console.log("APP_ID:", appId);
+if(!app_id){
+  document.body.innerHTML = "<h2 style='text-align:center;padding:40px'>Locadora não identificada</h2>";
+  throw new Error("Sem app_id");
+}
 
-  if(!appId){
-    document.body.innerHTML = `
-      <h2 style="padding:40px;text-align:center">
-        🚫 Locadora não identificada
-      </h2>
-    `;
-    return;
-  }
-
-  window.APP_ID = appId;
-})();
-
-/* ================= SUPABASE ================= */
+/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw",
+  { auth:{ persistSession:false } }
 );
 
-/* ================= CONFIG SITE ================= */
+/* ===== BANNER (IGUAL HOTEL) ===== */
+const banner = document.getElementById("bannerImg");
+banner.src = `https://pdajixsoowcyhnjwhgpc.supabase.co/storage/v1/object/public/banners/${app_id}/banner.jpg`;
+banner.style.display = "block";
+banner.onerror = () => banner.style.display = "none";
+
+/* ===== CONFIG SITE ===== */
 async function carregarConfig(){
-  const { data } = await sb
+  const { data, error } = await sb
     .from("config_site")
-    .select("nome_site,banner_url,cor_primaria")
-    .eq("app_id", window.APP_ID)
-    .single();
+    .select("nome_site, cor_primaria, tema_site")
+    .eq("app_id", app_id)
+    .maybeSingle();
+
+  if(error){
+    console.error("Erro config:", error);
+    return;
+  }
 
   if(!data) return;
 
   document.title = data.nome_site || "Locadora";
-  document.documentElement.style.setProperty(
-    "--primaria",
-    data.cor_primaria || "#e30613"
-  );
 
-  if(data.banner_url){
-    document.getElementById("bannerImg").src = data.banner_url;
+  if(data.cor_primaria){
+    document.documentElement.style
+      .setProperty("--primaria", data.cor_primaria);
+  }
+
+  if(data.tema_site){
+    aplicarTema(data.tema_site);
   }
 }
 
-/* ================= UTIL ================= */
-function formatarData(d){
-  return new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
+/* ===== TEMAS (SÓ COR) ===== */
+const temas = {
+  carnaval:"#9333ea",
+  "sao-joao":"#ea580c",
+  natal:"#dc2626",
+  pascoa:"#16a34a",
+  black:"#111827"
+};
+
+function aplicarTema(nome){
+  if(temas[nome]){
+    document.documentElement
+      .style.setProperty("--primaria", temas[nome]);
+  }
 }
 
-/* ================= VEÍCULOS ================= */
+/* ===== VEÍCULOS ===== */
 async function carregarVeiculos(){
-  const { data } = await sb
+  const { data, error } = await sb
     .from("veiculos")
-    .select("id,modelo,diaria,status,data_fim,foto_url")
-    .eq("app_id", window.APP_ID);
+    .select("id, modelo, diaria, status, data_fim, foto_url")
+    .eq("app_id", app_id);
 
   const lista = document.getElementById("listaVeiculos");
   lista.innerHTML = "";
 
+  if(error){
+    lista.innerHTML = "Erro ao carregar veículos";
+    return;
+  }
+
   if(!data || !data.length){
-    lista.innerHTML = "<p>Nenhum veículo cadastrado.</p>";
+    lista.innerHTML = "Nenhum veículo disponível";
     return;
   }
 
@@ -141,33 +199,32 @@ async function carregarVeiculos(){
     const alugado = v.status === "alugado" && v.data_fim;
     lista.innerHTML += `
       <div class="card">
-        <img src="${v.foto_url || 'https://via.placeholder.com/400x200?text=Veículo'}">
+        <img src="${v.foto_url || 'https://via.placeholder.com/400x200'}">
         <div class="info">
           <h3>${v.modelo}</h3>
           <div class="preco">R$ ${v.diaria} / diária</div>
           ${
             alugado
-            ? `<div class="status alugado">🔒 Alugado até ${formatarData(v.data_fim)}</div>`
-            : `<div class="status disponivel">✅ Disponível</div>`
+              ? `<div class="status alugado">🔒 Alugado até ${formatarData(v.data_fim)}</div>`
+              : `<div class="status disponivel">✅ Disponível</div>`
           }
         </div>
-        <div class="btn" onclick="ver('${v.id}')">Ver detalhes</div>
+        <div class="btn" onclick="verVeiculo('${v.id}')">Ver detalhes</div>
       </div>
     `;
   });
 }
 
-/* ================= AÇÃO ================= */
-function ver(id){
-  location.href = `veiculo.html?app_id=${window.APP_ID}&id=${id}`;
+function formatarData(d){
+  return new Date(d+"T00:00:00").toLocaleDateString("pt-BR");
 }
 
-/* ================= INIT ================= */
-(async()=>{
-  if(!window.APP_ID) return;
-  await carregarConfig();
-  await carregarVeiculos();
-})();
+function verVeiculo(id){
+  location.href = `./veiculo.html?app_id=${app_id}&id=${id}`;
+}
+
+carregarConfig();
+carregarVeiculos();
 </script>
 
 </body>
