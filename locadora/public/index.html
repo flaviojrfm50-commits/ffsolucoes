@@ -38,7 +38,7 @@ body{
   gap:20px;
 }
 
-/* LOGO (APENAS VISUAL) */
+/* LOGO – VISUAL APENAS */
 .logo-wrap{
   width:120px;
   height:120px;
@@ -79,11 +79,6 @@ body{
   box-shadow:0 8px 24px rgba(0,0,0,.12);
   display:flex;
   flex-direction:column;
-  transition:.2s;
-}
-
-.card:hover{
-  transform:translateY(-4px);
 }
 
 .card img{
@@ -106,7 +101,6 @@ body{
 .preco{
   font-weight:700;
   margin:8px 0;
-  color:#111;
 }
 
 .status{
@@ -115,7 +109,7 @@ body{
 .status.disponivel{color:#16a34a}
 .status.alugado{color:#dc2626}
 
-/* BOTÃO – NÃO MUDA FLUXO */
+/* BOTÃO – SÓ REDIRECIONA */
 .btn{
   margin:14px;
   background:var(--primaria);
@@ -185,7 +179,7 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===== CONFIG (VISUAL APENAS) ===== */
+/* ===== CONFIG (VISUAL) ===== */
 async function carregarConfig(){
   const { data } = await sb
     .from("config_site")
@@ -212,7 +206,7 @@ async function carregarConfig(){
   }
 }
 
-/* ===== VITRINE DE CARROS (NÃO MUDA FLUXO) ===== */
+/* ===== VITRINE DE VEÍCULOS ===== */
 async function carregarVeiculos(){
   const { data } = await sb
     .from("veiculos")
@@ -239,14 +233,14 @@ async function carregarVeiculos(){
           </div>
         </div>
         <div class="btn" onclick="abrirVeiculo('${v.id}')">
-          Ver detalhes
+          Alugar veículo
         </div>
       </div>
     `;
   });
 }
 
-/* ===== NAVEGAÇÃO ORIGINAL ===== */
+/* ===== REDIRECIONAMENTO CORRETO ===== */
 function abrirVeiculo(id){
   window.location.href = `veiculo.html?app_id=${APP_ID}&id=${id}`;
 }
