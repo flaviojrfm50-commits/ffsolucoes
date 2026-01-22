@@ -32,23 +32,21 @@ body.tema-black{
   color:#fff;
 }
 
-/* ===== BANNER (PC 100% SEM CORTE) ===== */
+/* ===== BANNER (AJUSTE DEFINITIVO) ===== */
 .banner{
   width:100%;
   background:#000;
-  overflow:visible; /* 🔑 garante que nada seja cortado */
 }
 
-/* IMAGEM SEM NENHUMA FORÇA */
+/* PC: inteiro, mas limitado */
 .banner img{
   width:100%;
-  height:auto;          /* 🔑 mostra a imagem inteira */
-  max-width:100%;
+  height:auto;
+  max-height:420px;     /* ⭐ equilíbrio perfeito */
   display:block;
-  object-fit:unset;     /* 🔑 remove qualquer crop */
 }
 
-/* INFO ABAIXO DA IMAGEM */
+/* faixa de informações */
 .banner-info-wrap{
   background:linear-gradient(
     to bottom,
@@ -84,8 +82,9 @@ body.tema-black{
 /* ===== MOBILE ===== */
 @media(max-width:768px){
   .banner img{
-    height:240px;       /* controla no celular */
-    object-fit:cover;  /* pode cortar SOMENTE no cel */
+    height:220px;
+    max-height:none;
+    object-fit:cover;   /* pode cortar só no cel */
   }
 
   .banner-info{
@@ -177,6 +176,7 @@ body.tema-black .card{
   </div>
 </header>
 
+<!-- ===== LISTA ===== -->
 <section class="lista" id="listaVeiculos"></section>
 
 <script>
@@ -217,7 +217,7 @@ async function carregarConfig(){
   );
 
   if(data.banner_url){
-    document.getElementById("bannerImg").src = data.banner_url;
+    bannerImg.src = data.banner_url;
   }
 
   if(data.nome_site){
