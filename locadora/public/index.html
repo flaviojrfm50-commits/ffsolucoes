@@ -9,7 +9,7 @@
 
 <style>
 :root{
-  --primaria:#e30613;
+  --primaria:#16a34a;
   --bg:#f4f6f8;
 }
 
@@ -27,39 +27,40 @@ body{
 /* ================= TOPO ================= */
 .topo{
   background:#020617;
+  border-bottom:1px solid rgba(255,255,255,.08);
 }
 
 .topo-container{
   max-width:1200px;
   margin:auto;
-  padding:20px 16px;
+  padding:16px;
   display:flex;
   align-items:center;
-  gap:20px;
+  gap:18px;
 }
 
-/* LOGO – VISUAL APENAS */
-.logo-wrap{
-  width:120px;
-  height:120px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:#020617;
-  border:3px solid var(--primaria);
-}
-
+/* LOGO (SEM CÍRCULO, SEM ENFEITE) */
 .logo{
-  height:90px;
+  height:70px;     /* tamanho correto p/ PC */
   width:auto;
   object-fit:contain;
 }
 
+.topo-info{
+  display:flex;
+  flex-direction:column;
+}
+
 .topo-info h1{
   margin:0;
-  font-size:1.5rem;
+  font-size:1.4rem;
   color:#fff;
+}
+
+.topo-info span{
+  margin-top:4px;
+  color:#22c55e;
+  font-weight:700;
 }
 
 /* ================= VITRINE ================= */
@@ -109,10 +110,10 @@ body{
 .status.disponivel{color:#16a34a}
 .status.alugado{color:#dc2626}
 
-/* BOTÃO – SÓ REDIRECIONA */
+/* BOTÃO – NÃO MEXE NO FLUXO */
 .btn{
   margin:14px;
-  background:var(--primaria);
+  background:#020617;
   color:#fff;
   padding:14px;
   border-radius:14px;
@@ -126,19 +127,11 @@ body{
   .topo-container{
     flex-direction:column;
     text-align:center;
-  }
-
-  .logo-wrap{
-    width:100px;
-    height:100px;
+    gap:10px;
   }
 
   .logo{
-    height:72px;
-  }
-
-  .card img{
-    height:170px;
+    height:56px;   /* proporcional no celular */
   }
 }
 </style>
@@ -149,12 +142,11 @@ body{
 <!-- ================= TOPO ================= -->
 <header class="topo">
   <div class="topo-container">
-    <div class="logo-wrap">
-      <img id="logoLocadora" class="logo">
-    </div>
+    <img id="logoLocadora" class="logo">
 
     <div class="topo-info">
       <h1 id="nomeLocadora">Locadora</h1>
+      <span id="telefoneLocadora"></span>
     </div>
   </div>
 </header>
@@ -179,11 +171,11 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===== CONFIG (VISUAL) ===== */
+/* ===== CONFIG (VISUAL APENAS) ===== */
 async function carregarConfig(){
   const { data } = await sb
     .from("config_site")
-    .select("nome_site,banner_url,cor_primaria")
+    .select("nome_site,banner_url,cor_primaria,whatsapp")
     .eq("app_id", APP_ID)
     .single();
 
@@ -198,6 +190,10 @@ async function carregarConfig(){
     logoLocadora.src = data.banner_url;
   }
 
+  if(data.whatsapp){
+    telefoneLocadora.innerText = data.whatsapp;
+  }
+
   if(data.cor_primaria){
     document.documentElement.style.setProperty(
       "--primaria",
@@ -206,7 +202,7 @@ async function carregarConfig(){
   }
 }
 
-/* ===== VITRINE DE VEÍCULOS ===== */
+/* ===== VITRINE DE VEÍCULOS (INALTERADA) ===== */
 async function carregarVeiculos(){
   const { data } = await sb
     .from("veiculos")
@@ -240,7 +236,7 @@ async function carregarVeiculos(){
   });
 }
 
-/* ===== REDIRECIONAMENTO CORRETO ===== */
+/* ===== NAVEGAÇÃO ORIGINAL ===== */
 function abrirVeiculo(id){
   window.location.href = `veiculo.html?app_id=${APP_ID}&id=${id}`;
 }
