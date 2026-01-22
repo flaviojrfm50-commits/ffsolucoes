@@ -23,21 +23,21 @@ body{
   background:var(--bg);
 }
 
-/* ================= BANNER (AGORA CERTO) ================= */
+/* ================= BANNER (CERTO AGORA) ================= */
 .banner{
   width:100%;
-  height:180px;                 /* TAMANHO CERTO NO PC */
+  height:180px;                 /* altura correta no PC */
   background-color:#000;
   background-repeat:no-repeat;
   background-position:center;
-  background-size:contain;      /* NÃO CORTA, NÃO ESTICA */
+  background-size:cover;        /* PC: sem faixa preta */
 }
 
 /* 📱 MOBILE */
 @media(max-width:600px){
   .banner{
-    height:110px;
-    background-size:contain;
+    height:120px;
+    background-size:contain;    /* mobile: não corta */
   }
 }
 
