@@ -14,23 +14,6 @@
   --bg:#f4f4f4;
 }
 
-/* ===== TEMAS ===== */
-body.tema-carnaval{
-  --primaria:#9333ea;
-}
-body.tema-sao-joao{
-  --primaria:#ea580c;
-}
-body.tema-natal{
-  --primaria:#dc2626;
-}
-body.tema-pascoa{
-  --primaria:#16a34a;
-}
-body.tema-black{
-  --primaria:#111827;
-}
-
 *{
   box-sizing:border-box;
   font-family:Arial,sans-serif;
@@ -131,6 +114,8 @@ body{
 const params = new URLSearchParams(window.location.search);
 const appId = params.get("app_id");
 
+console.log("APP_ID:", appId);
+
 if(!appId){
   document.body.innerHTML = `
     <h2 style="padding:30px;text-align:center">
@@ -153,26 +138,20 @@ async function iniciarApp(APP_ID){
   async function carregarConfig(){
     const { data } = await sb
       .from("config_site")
-      .select("nome_site,banner_url,cor_primaria,tema_site")
+      .select("nome_site,banner_url,cor_primaria")
       .eq("app_id", APP_ID)
       .single();
 
     if(!data) return;
 
     document.title = data.nome_site || "Locadora";
-
-    if(data.cor_primaria){
-      document.documentElement.style
-        .setProperty("--primaria", data.cor_primaria);
-    }
+    document.documentElement.style.setProperty(
+      "--primaria",
+      data.cor_primaria || "#e30613"
+    );
 
     if(data.banner_url){
       document.getElementById("bannerImg").src = data.banner_url;
-    }
-
-    /* 👉 AQUI É O TEMA (SIMPLES) */
-    if(data.tema_site && data.tema_site !== "padrao"){
-      document.body.classList.add(`tema-${data.tema_site}`);
     }
   }
 
