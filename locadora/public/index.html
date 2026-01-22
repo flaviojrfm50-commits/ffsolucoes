@@ -28,22 +28,29 @@ body{
 .banner{
   width:100%;
   background:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
-/* 🔥 AJUSTE REAL (SÓ ISSO AQUI) */
+/* mobile first (continua OK) */
 .banner img{
-  width:auto;
-  max-width:100%;
-  height:90px;          /* logo legível no PC */
+  max-width:90%;
+  height:64px;
   object-fit:contain;
-  display:block;
   margin:16px auto;
+  display:block;
 }
 
-/* celular */
-@media(max-width:600px){
+/* 💻 AJUSTE SÓ PARA PC */
+@media (min-width:768px){
+  .banner{
+    height:120px; /* controla a faixa preta */
+  }
+
   .banner img{
-    height:64px;        /* proporcional no celular */
+    height:90px;  /* logo bem legível */
+    margin:0;
   }
 }
 
@@ -78,7 +85,9 @@ body{
   flex:1;
 }
 
-.card h3{margin:0}
+.card h3{
+  margin:0;
+}
 
 .preco{
   font-weight:700;
@@ -89,6 +98,7 @@ body{
   font-weight:700;
   margin-top:4px;
 }
+
 .status.disponivel{color:#16a34a}
 .status.alugado{color:#e30613}
 
@@ -109,9 +119,11 @@ body{
 
 <!-- ================= BANNER / LOGO ================= -->
 <header class="banner">
-  <img id="bannerImg"
-       src="https://via.placeholder.com/600x200?text=Locadora"
-       alt="Logo da locadora">
+  <img
+    id="bannerImg"
+    src="https://via.placeholder.com/600x200?text=Locadora"
+    alt="Logo da locadora"
+  >
 </header>
 
 <!-- ================= LISTA ================= -->
