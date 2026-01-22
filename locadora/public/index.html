@@ -5,12 +5,13 @@
 <title>Locadora</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 :root{
-  --primaria:#16a34a;
-  --bg:#f4f6f8;
+  --primaria:#e30613;
+  --bg:#f4f4f4;
 }
 
 *{
@@ -21,231 +22,194 @@
 body{
   margin:0;
   background:var(--bg);
-  color:#111;
 }
 
-/* ================= TOPO ================= */
-.topo{
-  background:#020617;
-  border-bottom:1px solid rgba(255,255,255,.08);
+/* ================= BANNER / LOGO ================= */
+.banner{
+  width:100%;
+  background:#000;
 }
 
-.topo-container{
-  max-width:1200px;
-  margin:auto;
-  padding:16px;
-  display:flex;
-  align-items:center;
-  gap:18px;
-}
-
-/* LOGO (SEM CÍRCULO, SEM ENFEITE) */
-.logo{
-  height:70px;     /* tamanho correto p/ PC */
+/* 🔥 AJUSTE REAL (SÓ ISSO AQUI) */
+.banner img{
   width:auto;
+  max-width:100%;
+  height:90px;          /* logo legível no PC */
   object-fit:contain;
+  display:block;
+  margin:16px auto;
 }
 
-.topo-info{
-  display:flex;
-  flex-direction:column;
+/* celular */
+@media(max-width:600px){
+  .banner img{
+    height:64px;        /* proporcional no celular */
+  }
 }
 
-.topo-info h1{
-  margin:0;
-  font-size:1.4rem;
-  color:#fff;
-}
-
-.topo-info span{
-  margin-top:4px;
-  color:#22c55e;
-  font-weight:700;
-}
-
-/* ================= VITRINE ================= */
+/* ================= LISTA ================= */
 .lista{
   max-width:1200px;
-  margin:28px auto;
-  padding:0 16px;
+  margin:20px auto;
+  padding:16px;
   display:grid;
   grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
-  gap:22px;
+  gap:20px;
 }
 
 .card{
   background:#fff;
   border-radius:18px;
   overflow:hidden;
-  box-shadow:0 8px 24px rgba(0,0,0,.12);
+  box-shadow:0 10px 25px rgba(0,0,0,.12);
   display:flex;
   flex-direction:column;
 }
 
 .card img{
   width:100%;
-  height:190px;
-  object-fit:cover;
-  background:#e5e7eb;
+  height:180px;
+  object-fit:contain;
+  background:#f1f1f1;
 }
 
 .card .info{
-  padding:16px;
+  padding:14px;
   flex:1;
 }
 
-.card h3{
-  margin:0;
-  font-size:1.1rem;
-}
+.card h3{margin:0}
 
 .preco{
   font-weight:700;
-  margin:8px 0;
+  margin:6px 0;
 }
 
 .status{
   font-weight:700;
+  margin-top:4px;
 }
 .status.disponivel{color:#16a34a}
-.status.alugado{color:#dc2626}
+.status.alugado{color:#e30613}
 
-/* BOTÃO – NÃO MEXE NO FLUXO */
 .btn{
-  margin:14px;
-  background:#020617;
+  margin:12px;
+  background:var(--primaria);
   color:#fff;
-  padding:14px;
-  border-radius:14px;
+  padding:12px;
+  border-radius:12px;
   text-align:center;
   font-weight:700;
   cursor:pointer;
-}
-
-/* ================= MOBILE ================= */
-@media(max-width:768px){
-  .topo-container{
-    flex-direction:column;
-    text-align:center;
-    gap:10px;
-  }
-
-  .logo{
-    height:56px;   /* proporcional no celular */
-  }
 }
 </style>
 </head>
 
 <body>
 
-<!-- ================= TOPO ================= -->
-<header class="topo">
-  <div class="topo-container">
-    <img id="logoLocadora" class="logo">
-
-    <div class="topo-info">
-      <h1 id="nomeLocadora">Locadora</h1>
-      <span id="telefoneLocadora"></span>
-    </div>
-  </div>
+<!-- ================= BANNER / LOGO ================= -->
+<header class="banner">
+  <img id="bannerImg"
+       src="https://via.placeholder.com/600x200?text=Locadora"
+       alt="Logo da locadora">
 </header>
 
-<!-- ================= VITRINE ================= -->
+<!-- ================= LISTA ================= -->
 <section class="lista" id="listaVeiculos"></section>
 
 <script>
-/* ===== APP_ID ===== */
-const params = new URLSearchParams(location.search);
-const APP_ID = params.get("app_id");
+/* ================= APP_ID ================= */
+const params = new URLSearchParams(window.location.search);
+const appId = params.get("app_id");
 
-if(!APP_ID){
-  document.body.innerHTML =
-    "<h2 style='padding:30px;text-align:center'>Locadora não identificada</h2>";
-  throw "";
+if(!appId){
+  document.body.innerHTML = `
+    <h2 style="padding:30px;text-align:center">
+      Locadora não identificada
+    </h2>
+  `;
+} else {
+  iniciarApp(appId);
 }
 
-/* ===== SUPABASE ===== */
-const sb = supabase.createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-);
+/* ================= APP ================= */
+async function iniciarApp(APP_ID){
 
-/* ===== CONFIG (VISUAL APENAS) ===== */
-async function carregarConfig(){
-  const { data } = await sb
-    .from("config_site")
-    .select("nome_site,banner_url,cor_primaria,whatsapp")
-    .eq("app_id", APP_ID)
-    .single();
+  const sb = supabase.createClient(
+    "https://pdajixsoowcyhnjwhgpc.supabase.co",
+    "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+  );
 
-  if(!data) return;
+  /* CONFIG SITE */
+  async function carregarConfig(){
+    const { data } = await sb
+      .from("config_site")
+      .select("nome_site,banner_url,cor_primaria")
+      .eq("app_id", APP_ID)
+      .single();
 
-  if(data.nome_site){
-    nomeLocadora.innerText = data.nome_site;
-    document.title = data.nome_site;
-  }
+    if(!data) return;
 
-  if(data.banner_url){
-    logoLocadora.src = data.banner_url;
-  }
-
-  if(data.whatsapp){
-    telefoneLocadora.innerText = data.whatsapp;
-  }
-
-  if(data.cor_primaria){
+    document.title = data.nome_site || "Locadora";
     document.documentElement.style.setProperty(
       "--primaria",
-      data.cor_primaria
+      data.cor_primaria || "#e30613"
     );
-  }
-}
 
-/* ===== VITRINE DE VEÍCULOS (INALTERADA) ===== */
-async function carregarVeiculos(){
-  const { data } = await sb
-    .from("veiculos")
-    .select("id,modelo,diaria,status,foto_url")
-    .eq("app_id", APP_ID);
-
-  const lista = document.getElementById("listaVeiculos");
-  lista.innerHTML = "";
-
-  if(!data || !data.length){
-    lista.innerHTML = "<p>Nenhum veículo cadastrado.</p>";
-    return;
+    if(data.banner_url){
+      document.getElementById("bannerImg").src = data.banner_url;
+    }
   }
 
-  data.forEach(v=>{
-    lista.innerHTML += `
-      <div class="card">
-        <img src="${v.foto_url || 'https://via.placeholder.com/400x200'}">
-        <div class="info">
-          <h3>${v.modelo}</h3>
-          <div class="preco">R$ ${v.diaria} / diária</div>
-          <div class="status ${v.status}">
-            ${v.status === "alugado" ? "🔒 Alugado" : "✅ Disponível"}
+  function formatarData(d){
+    return new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
+  }
+
+  /* VEÍCULOS */
+  async function carregarVeiculos(){
+    const { data } = await sb
+      .from("veiculos")
+      .select("id,modelo,diaria,status,data_fim,foto_url")
+      .eq("app_id", APP_ID);
+
+    const lista = document.getElementById("listaVeiculos");
+    lista.innerHTML = "";
+
+    if(!data || !data.length){
+      lista.innerHTML = "<p>Nenhum veículo cadastrado.</p>";
+      return;
+    }
+
+    data.forEach(v=>{
+      const alugado = v.status === "alugado" && v.data_fim;
+
+      lista.innerHTML += `
+        <div class="card">
+          <img src="${v.foto_url || 'https://via.placeholder.com/400x200?text=Veículo'}">
+          <div class="info">
+            <h3>${v.modelo}</h3>
+            <div class="preco">R$ ${v.diaria} / diária</div>
+            ${
+              alugado
+                ? `<div class="status alugado">🔒 Alugado até ${formatarData(v.data_fim)}</div>`
+                : `<div class="status disponivel">✅ Disponível</div>`
+            }
+          </div>
+          <div class="btn" onclick="verVeiculo('${v.id}')">
+            Alugar veículo
           </div>
         </div>
-        <div class="btn" onclick="abrirVeiculo('${v.id}')">
-          Alugar veículo
-        </div>
-      </div>
-    `;
-  });
-}
+      `;
+    });
+  }
 
-/* ===== NAVEGAÇÃO ORIGINAL ===== */
-function abrirVeiculo(id){
-  window.location.href = `veiculo.html?app_id=${APP_ID}&id=${id}`;
-}
+  window.verVeiculo = function(id){
+    window.location.href = `./veiculo.html?app_id=${APP_ID}&id=${id}`;
+  };
 
-/* ===== INIT ===== */
-(async()=>{
   await carregarConfig();
   await carregarVeiculos();
-})();
+}
 </script>
 
 </body>
