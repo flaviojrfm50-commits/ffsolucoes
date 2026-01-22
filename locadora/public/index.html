@@ -24,47 +24,56 @@ body{
   background:var(--bg);
 }
 
-/* ================= BANNER (SEM DISTORCER) ================= */
+/* ================= BANNER PERFEITO ================= */
 .banner{
   width:100%;
   background:#000;
   background-repeat:no-repeat;
   background-position:center;
-  background-size:contain;      /* regra: não corta, não estica */
-  min-height:200px;             /* PC: não fica anão */
+  background-size:contain;
+
+  height:clamp(120px, 22vw, 260px);
+
   display:flex;
   align-items:flex-end;
   justify-content:center;
-  padding:18px 16px;
+
+  padding:16px;
   position:relative;
 }
 
-@media (min-width:1024px){
-  .banner{
-    min-height:240px;           /* PC: proporcional */
-    padding:22px 16px;
-  }
-}
-
-/* Mobile (tua base tava ok) */
+/* Mobile */
 @media (max-width:600px){
   .banner{
-    min-height:120px;
-    padding:12px 12px;
+    height:140px;
+    padding:10px;
   }
 }
 
-/* Barra com nome + telefone */
+/* Desktop */
+@media (min-width:1024px){
+  .banner{
+    height:260px;
+  }
+}
+
+/* ================= BARRA ================= */
 .brand{
-  width:min(1200px, 100%);
+  width:100%;
+  max-width:1100px;
+
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:14px;
-  padding:12px 14px;
-  border-radius:14px;
-  background:rgba(0,0,0,.55);
-  backdrop-filter: blur(6px);
+
+  padding:14px 18px;
+  border-radius:16px;
+
+  background:rgba(0,0,0,.4);
+  backdrop-filter: blur(10px);
+
+  margin-bottom:6px;
 }
 
 .brand .left{
@@ -78,7 +87,6 @@ body{
   color:#fff;
   font-size:18px;
   font-weight:800;
-  line-height:1.1;
   margin:0;
   white-space:nowrap;
   overflow:hidden;
@@ -98,14 +106,13 @@ body{
   display:flex;
   gap:10px;
   flex-wrap:wrap;
-  justify-content:flex-end;
 }
 
 .pill{
   display:inline-flex;
   align-items:center;
   gap:8px;
-  padding:10px 12px;
+  padding:10px 14px;
   border-radius:12px;
   font-weight:800;
   text-decoration:none;
@@ -121,7 +128,7 @@ body{
 }
 
 .pill.ghost{
-  background:rgba(255,255,255,.12);
+  background:rgba(255,255,255,.15);
   color:#fff;
 }
 
@@ -156,7 +163,9 @@ body{
   flex:1;
 }
 
-.card h3{margin:0}
+.card h3{
+  margin:0;
+}
 
 .preco{
   font-weight:700;
@@ -165,7 +174,6 @@ body{
 
 .status{
   font-weight:700;
-  margin-top:4px;
 }
 .status.disponivel{color:#16a34a}
 .status.alugado{color:#e30613}
@@ -190,12 +198,12 @@ body{
   <div class="brand">
     <div class="left">
       <h1 class="title" id="siteNome">Locadora</h1>
-      <p class="subtitle" id="siteFone"> </p>
+      <p class="subtitle" id="siteFone"></p>
     </div>
 
     <div class="actions">
-      <a class="pill ghost" id="btnLigar" href="#" style="display:none;">📞 Ligar</a>
-      <a class="pill primary" id="btnWhats" href="#" target="_blank" rel="noopener" style="display:none;">💬 WhatsApp</a>
+      <a class="pill ghost" id="btnLigar" style="display:none">📞 Ligar</a>
+      <a class="pill primary" id="btnWhats" target="_blank" style="display:none">💬 WhatsApp</a>
     </div>
   </div>
 </header>
@@ -204,141 +212,87 @@ body{
 <section class="lista" id="listaVeiculos"></section>
 
 <script>
-/* ================= APP_ID ================= */
 const params = new URLSearchParams(window.location.search);
 const appId = params.get("app_id");
 
 if(!appId){
-  document.body.innerHTML = `
-    <h2 style="padding:30px;text-align:center">
-      Locadora não identificada
-    </h2>
-  `;
-} else {
+  document.body.innerHTML = "<h2 style='text-align:center;padding:40px'>Locadora não identificada</h2>";
+}else{
   iniciarApp(appId);
 }
 
-function soNumeros(str){
-  return (str || "").toString().replace(/\D/g, "");
+function soNumeros(v){
+  return (v||"").replace(/\D/g,"");
 }
 
-function formatarTelefoneBr(num){
-  const n = soNumeros(num);
-  // tenta formatar +55 (se vier sem)
-  const with55 = n.startsWith("55") ? n : ("55" + n);
-  return with55;
+function telBr(v){
+  const n = soNumeros(v);
+  return n.startsWith("55") ? n : "55"+n;
 }
 
 async function iniciarApp(APP_ID){
-
   const sb = supabase.createClient(
     "https://pdajixsoowcyhnjwhgpc.supabase.co",
     "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
   );
 
-  /* CONFIG SITE */
   async function carregarConfig(){
-    const { data, error } = await sb
-      .from("config_site")
-      .select("*")
-      .eq("app_id", APP_ID)
-      .single();
+    const {data} = await sb.from("config_site").select("*").eq("app_id",APP_ID).single();
+    if(!data) return;
 
-    if(error || !data) return;
-
-    // título / cor
     document.title = data.nome_site || "Locadora";
     document.documentElement.style.setProperty("--primaria", data.cor_primaria || "#e30613");
 
-    // nome no banner
-    document.getElementById("siteNome").textContent = data.nome_site || "Locadora";
+    siteNome.textContent = data.nome_site || "Locadora";
 
-    // pega telefone de vários campos possíveis
-    const foneRaw =
-      data.celular ||
-      data.telefone ||
-      data.whatsapp ||
-      data.contato ||
-      data.fone ||
-      "";
+    if(data.celular){
+      siteFone.textContent = "📱 " + data.celular;
+      const tel = telBr(data.celular);
 
-    const siteFone = document.getElementById("siteFone");
-    if(foneRaw){
-      siteFone.textContent = `📱 ${foneRaw}`;
-    } else {
-      siteFone.textContent = ""; // se não tiver, some
-    }
+      btnLigar.href = "tel:+"+tel;
+      btnWhats.href = "https://wa.me/"+tel;
 
-    // botões ligar/whats
-    const btnLigar = document.getElementById("btnLigar");
-    const btnWhats = document.getElementById("btnWhats");
-
-    if(foneRaw){
-      const tel = formatarTelefoneBr(foneRaw);
-      btnLigar.href = `tel:+${tel}`;
       btnLigar.style.display = "inline-flex";
-
-      btnWhats.href = `https://wa.me/${tel}`;
       btnWhats.style.display = "inline-flex";
-    } else {
-      btnLigar.style.display = "none";
-      btnWhats.style.display = "none";
     }
 
-    // banner (mata cache)
     if(data.banner_url){
-      document.getElementById("banner").style.backgroundImage =
-        `url('${data.banner_url}?v=${Date.now()}')`;
-    } else {
-      document.getElementById("banner").style.backgroundImage = "none";
+      banner.style.backgroundImage = `url('${data.banner_url}?v=${Date.now()}')`;
     }
   }
 
-  function formatarData(d){
-    return new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
-  }
-
-  /* VEÍCULOS */
   async function carregarVeiculos(){
-    const { data } = await sb
-      .from("veiculos")
+    const {data} = await sb.from("veiculos")
       .select("id,modelo,diaria,status,data_fim,foto_url")
-      .eq("app_id", APP_ID);
+      .eq("app_id",APP_ID);
 
-    const lista = document.getElementById("listaVeiculos");
-    lista.innerHTML = "";
+    listaVeiculos.innerHTML = "";
 
     if(!data || !data.length){
-      lista.innerHTML = "<p>Nenhum veículo cadastrado.</p>";
+      listaVeiculos.innerHTML = "<p>Nenhum veículo cadastrado.</p>";
       return;
     }
 
     data.forEach(v=>{
-      const alugado = v.status === "alugado" && v.data_fim;
-
-      lista.innerHTML += `
+      listaVeiculos.innerHTML += `
         <div class="card">
-          <img src="${v.foto_url || 'https://via.placeholder.com/400x200?text=Veículo'}" alt="">
+          <img src="${v.foto_url || 'https://via.placeholder.com/400x200'}">
           <div class="info">
             <h3>${v.modelo}</h3>
             <div class="preco">R$ ${v.diaria} / diária</div>
-            ${
-              alugado
-                ? `<div class="status alugado">🔒 Alugado até ${formatarData(v.data_fim)}</div>`
-                : `<div class="status disponivel">✅ Disponível</div>`
-            }
+            <div class="status ${v.status === 'alugado' ? 'alugado':'disponivel'}">
+              ${v.status === 'alugado' ? '🔒 Alugado' : '✅ Disponível'}
+            </div>
           </div>
-          <div class="btn" onclick="verVeiculo('${v.id}')">
-            Alugar veículo
-          </div>
+          <div class="btn" onclick="verVeiculo('${v.id}')">Alugar veículo</div>
         </div>
       `;
     });
   }
 
-  window.verVeiculo = function(id){
-    window.location.href = `./veiculo.html?app_id=${APP_ID}&id=${id}`;
-  };
+  window.verVeiculo = id=>{
+    location.href = `./veiculo.html?app_id=${APP_ID}&id=${id}`;
+  }
 
   await carregarConfig();
   await carregarVeiculos();
