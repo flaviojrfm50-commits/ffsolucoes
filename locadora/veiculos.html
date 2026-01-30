@@ -212,37 +212,47 @@
   }
 
   /* 🗑️ EXCLUIR */
-  async function excluir(id) {
-    if (!confirm("Excluir veículo?")) return;
+async function excluir(id) {
+  if (!confirm("Excluir veículo?")) return;
 
-    // Verificar se o veículo está em uma locação ativa
-    const { data, error } = await db
-      .from("locacoes")
-      .select("id")
-      .eq("veiculo", id)  // Verifica se o veículo está em locação
-      .eq("status", "ativa");  // Verifica se a locação está ativa
+  // Verificar se o veículo está em uma locação ativa
+  const { data, error } = await db
+    .from("locacoes")
+    .select("id")
+    .eq("veiculo", id)  // Verifica se o veículo está em locação
+    .eq("status", "ativa");  // Verifica se a locação está ativa
 
-    if (data.length > 0) {
-      alert("Não é possível excluir o veículo porque ele está em uma locação ativa.");
-      return;
-    }
+  if (data.length > 0) {
+    alert("Não é possível excluir o veículo porque ele está em uma locação ativa.");
+    
+    // Se houver locações ativas, atualizamos o status para 'finalizada' ao invés de excluir
+    await db.from("locacoes")
+      .update({ status: "finalizada" })
+      .eq("veiculo", id)
+      .eq("status", "ativa");
 
-    // Excluir o veículo
-    try {
-      const { error } = await db.from("veiculos").delete().eq("id", id);
+    alert("Locação do veículo foi finalizada com sucesso.");
+    carregarVeiculos(); // Atualiza a lista de veículos
+    return;
+  }
 
-      if (error) {
-        console.error("Erro ao excluir o veículo:", error);
-        alert("Erro ao excluir o veículo.");
-      } else {
-        alert("Veículo excluído com sucesso!");
-        carregarVeiculos(); // Atualiza a lista de veículos
-      }
-    } catch (error) {
+  // Excluir o veículo
+  try {
+    const { error } = await db.from("veiculos").delete().eq("id", id);
+
+    if (error) {
       console.error("Erro ao excluir o veículo:", error);
       alert("Erro ao excluir o veículo.");
+    } else {
+      alert("Veículo excluído com sucesso!");
+      carregarVeiculos(); // Atualiza a lista de veículos
     }
+  } catch (error) {
+    console.error("Erro ao excluir o veículo:", error);
+    alert("Erro ao excluir o veículo.");
   }
+}
+
 
   /* 🖋️ EDITAR */
   async function editarVeiculo(id) {
@@ -306,3 +316,4 @@
 
 </body>
 </html>
+
