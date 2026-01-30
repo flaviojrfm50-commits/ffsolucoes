@@ -160,57 +160,6 @@
     });
   }
 
-  /* 🔁 STATUS + LOCAÇÃO */
-  async function toggleStatus(id, status, modelo, diaria) {
-    if (status === "disponivel") {
-      const nome = prompt("Nome do cliente:");
-      if (!nome) return;
-
-      const telefone = prompt("Telefone:");
-      if (!telefone) return;
-
-      const dias = Number(prompt("Quantos dias?"));
-      if (!dias || dias <= 0) return;
-
-      const total = dias * diaria;
-      const fim = new Date();
-      fim.setDate(fim.getDate() + dias);
-
-      await db.from("locacoes").insert({
-        app_id: admin.app_id,
-        nome,
-        telefone,
-        veiculo: modelo,
-        diaria,
-        dias,
-        total,
-        status: "ativa"
-      });
-
-      await db.from("veiculos").update({
-        status: "alugado",
-        dias_alugado: dias,
-        data_fim: fim.toISOString().split("T")[0]
-      }).eq("id", id);
-
-    } else {
-      if (!confirm("Finalizar locação?")) return;
-
-      await db.from("locacoes")
-        .update({ status: "finalizada" })
-        .eq("veiculo", modelo)
-        .eq("status", "ativa");
-
-      await db.from("veiculos").update({
-        status: "disponivel",
-        dias_alugado: null,
-        data_fim: null
-      }).eq("id", id);
-    }
-
-    carregarVeiculos();
-  }
-
   /* 🗑️ EXCLUIR */
 async function excluir(id) {
   if (!confirm("Excluir veículo?")) return;
@@ -253,67 +202,8 @@ async function excluir(id) {
   }
 }
 
-
-  /* 🖋️ EDITAR */
-  async function editarVeiculo(id) {
-    const { data } = await db
-      .from("veiculos")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    // Preencher os campos com os dados do veículo
-    document.getElementById("modelo").value = data.modelo;
-    document.getElementById("diaria").value = data.diaria;
-    document.getElementById("status").value = data.status;
-    setStatus(data.status);
-
-    if (data.status === "alugado") {
-      document.getElementById("dias").style.display = "block";
-      document.getElementById("dias").value = data.dias_alugado || "";
-    }
-
-    // Atualizar o botão de cadastrar para atualizar o veículo
-    const button = document.querySelector("button");
-    button.textContent = "Atualizar Veículo";
-    button.setAttribute("onclick", `atualizarVeiculo('${id}')`);
-  }
-
-  /* ✏️ ATUALIZAR */
-  async function atualizarVeiculo(id) {
-    const modelo = document.getElementById("modelo").value.trim();
-    const diaria = Number(document.getElementById("diaria").value);
-    const status = document.getElementById("status").value;
-    const dias = Number(document.getElementById("dias").value) || null;
-
-    if (!modelo || !diaria) {
-      alert("Preencha tudo");
-      return;
-    }
-
-    await db.from("veiculos").update({
-      modelo,
-      diaria,
-      status,
-      dias_alugado: dias,
-    }).eq("id", id);
-
-    carregarVeiculos();
-
-    // Resetar formulário
-    document.getElementById("modelo").value = "";
-    document.getElementById("diaria").value = "";
-    document.getElementById("dias").value = "";
-    setStatus("disponivel");
-
-    const button = document.querySelector("button");
-    button.textContent = "Cadastrar Veículo";
-    button.setAttribute("onclick", "cadastrarVeiculo()");
-  }
-
   carregarVeiculos();
 </script>
 
 </body>
 </html>
-
