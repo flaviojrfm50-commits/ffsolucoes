@@ -219,8 +219,8 @@
     const { data, error } = await db
       .from("locacoes")
       .select("id")
-      .eq("veiculo", id)
-      .eq("status", "ativa");
+      .eq("veiculo", id)  // Verifica se o veículo está em locação
+      .eq("status", "ativa");  // Verifica se a locação está ativa
 
     if (data.length > 0) {
       alert("Não é possível excluir o veículo porque ele está em uma locação ativa.");
@@ -229,8 +229,15 @@
 
     // Excluir o veículo
     try {
-      await db.from("veiculos").delete().eq("id", id);
-      carregarVeiculos(); // Atualiza a lista de veículos
+      const { error } = await db.from("veiculos").delete().eq("id", id);
+
+      if (error) {
+        console.error("Erro ao excluir o veículo:", error);
+        alert("Erro ao excluir o veículo.");
+      } else {
+        alert("Veículo excluído com sucesso!");
+        carregarVeiculos(); // Atualiza a lista de veículos
+      }
     } catch (error) {
       console.error("Erro ao excluir o veículo:", error);
       alert("Erro ao excluir o veículo.");
