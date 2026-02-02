@@ -2,204 +2,291 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Admin | Loja de Roupas</title>
+<title>Catálogo | Loja de Roupas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+:root{
+  --primaria:#ec4899;
+  --fundo:#020617;
+  --card:#0f172a;
+}
+
+/* TEMAS */
+body.tema-carnaval{--primaria:#ec4899}
+body.tema-saojoao{--primaria:#f97316}
+body.tema-natal{--primaria:#22c55e}
+body.tema-anonovo{--primaria:#eab308}
+
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial;background:#020617;color:#fff}
-.topo{background:#0f172a;padding:18px;text-align:center}
-.container{max-width:1100px;margin:30px auto;padding:0 20px}
-
-.box{
-  background:#0f172a;
-  padding:20px;
-  border-radius:16px;
-  margin-bottom:20px;
+body{
+  margin:0;
+  font-family:system-ui,sans-serif;
+  background:var(--fundo);
+  color:#fff;
 }
 
-input,select,button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border-radius:10px;
-  border:none;
+/* BANNER */
+.banner{
+  height:220px;
+  background-size:cover;
+  background-position:center;
+  position:relative;
 }
+.banner::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(to top,rgba(2,6,23,.95),rgba(2,6,23,.35));
+}
+.banner-content{
+  position:absolute;
+  bottom:14px;
+  left:14px;
+}
+.banner-content h1{margin:0;font-size:22px}
+.banner-content p{opacity:.85;font-size:14px}
 
-input,select{background:#020617;color:#fff}
-button{background:#22c55e;font-weight:bold;cursor:pointer}
-.excluir{background:#e53935}
-
+/* PRODUTOS */
+.section{padding:16px}
 .grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-  gap:14px;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
 }
-
 .produto{
-  background:#020617;
-  padding:12px;
-  border-radius:14px;
-  text-align:center;
-  font-size:13px;
+  background:var(--card);
+  border-radius:12px;
+  overflow:hidden;
 }
 .produto img{
   width:100%;
-  height:110px;
+  height:140px;
   object-fit:cover;
-  border-radius:10px;
 }
-.preco{color:#22c55e;font-weight:bold}
-small{opacity:.7}
-.sem-foto{
-  height:110px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  opacity:.3;
+.info{padding:8px;text-align:center}
+.info h4{font-size:13px;margin:4px 0}
+.preco{color:var(--primaria);font-weight:700}
+
+select,button{
+  width:100%;
+  margin-top:6px;
+  padding:8px;
+  border:none;
+  border-radius:8px;
+  font-weight:700;
+}
+select{background:#020617;color:#fff}
+button{background:var(--primaria)}
+
+/* BOTÃO CARRINHO */
+.carrinho-btn{
+  position:fixed;
+  bottom:16px;
+  right:16px;
+  background:var(--primaria);
+  padding:14px;
+  border-radius:50%;
+  font-size:18px;
+}
+.badge{
+  position:absolute;
+  top:-4px;
+  right:-4px;
+  background:#ef4444;
+  color:#fff;
   font-size:12px;
+  padding:2px 6px;
+  border-radius:999px;
+  display:none;
+}
+
+/* MODAL */
+.carrinho{
+  position:fixed;
+  inset:0;
+  background:#020617;
+  display:none;
+  z-index:20;
+}
+.carrinho .box{padding:16px}
+.item{
+  display:flex;
+  justify-content:space-between;
+  font-size:14px;
+  margin-bottom:6px;
+}
+input,textarea{
+  width:100%;
+  margin-top:8px;
+  padding:10px;
+  border-radius:8px;
+  border:none;
+  background:#0f172a;
+  color:#fff;
+}
+.finalizar{
+  margin-top:12px;
+  padding:12px;
+  width:100%;
+  border:none;
+  border-radius:10px;
+  background:var(--primaria);
+  font-weight:700;
 }
 </style>
 </head>
 
 <body>
 
-<div class="topo">
-  <h1>👕 Admin – Loja de Roupas</h1>
-</div>
-
-<div class="container">
-
-<!-- CADASTRO -->
-<div class="box">
-  <h2>➕ Cadastrar Roupa</h2>
-
-  <input id="nome" placeholder="Nome da peça">
-  <input id="preco" type="number" step="0.01" placeholder="Preço">
-  <input id="estoque" type="number" placeholder="Estoque total">
-
-  <select id="categoria">
-    <option>Camisetas</option>
-    <option>Calças</option>
-    <option>Bermudas</option>
-    <option>Vestidos</option>
-    <option>Casacos</option>
-    <option>Outros</option>
-  </select>
-
-  <div style="margin-top:10px">
-    <b>Tamanhos</b><br>
-    <label><input type="checkbox" class="tam" value="PP"> PP</label>
-    <label><input type="checkbox" class="tam" value="P"> P</label>
-    <label><input type="checkbox" class="tam" value="M"> M</label>
-    <label><input type="checkbox" class="tam" value="G"> G</label>
-    <label><input type="checkbox" class="tam" value="GG"> GG</label>
-    <label><input type="checkbox" class="tam" value="XG"> XG</label>
+<div class="banner" id="banner">
+  <div class="banner-content">
+    <h1 id="nome"></h1>
+    <p id="descricao"></p>
   </div>
+</div>
 
-  <div style="margin-top:10px">
-    <b>Cores</b><br>
-    <label><input type="checkbox" class="cor" value="Preto"> Preto</label>
-    <label><input type="checkbox" class="cor" value="Branco"> Branco</label>
-    <label><input type="checkbox" class="cor" value="Azul"> Azul</label>
-    <label><input type="checkbox" class="cor" value="Vermelho"> Vermelho</label>
+<section class="section">
+  <h2>👗 Catálogo</h2>
+  <div class="grid" id="listaProdutos"></div>
+</section>
+
+<div class="carrinho-btn" onclick="abrirCarrinho()">
+  🛍️
+  <span class="badge" id="badgeCarrinho">0</span>
+</div>
+
+<div class="carrinho" id="carrinhoModal">
+  <div class="box">
+    <h2>Seu pedido</h2>
+    <div id="itens"></div>
+
+    <input id="cliente" placeholder="Seu nome">
+    <input id="localizacao" placeholder="Endereço / referência">
+    <textarea id="observacao" placeholder="Observações"></textarea>
+
+    <button class="finalizar" onclick="finalizar()">Enviar no WhatsApp</button>
+    <button class="finalizar" style="background:#334155" onclick="fecharCarrinho()">Fechar</button>
   </div>
-
-  <input id="foto" type="file" accept="image/*">
-
-  <button onclick="cadastrar()">Cadastrar peça</button>
-</div>
-
-<!-- LISTA -->
-<div class="box">
-  <h2>📦 Peças cadastradas</h2>
-  <div id="lista" class="grid"></div>
-</div>
-
 </div>
 
 <script>
-// ================== LOGIN SIMPLES ==================
-const admin = JSON.parse(localStorage.getItem("admin_logado")) || {
-  app_id: "loja_roupas_01"
-};
-// Se quiser forçar login depois, descomenta:
-// if(!admin) location.href="login.html";
-
-// ================== SUPABASE ==================
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-// ================== CADASTRO ==================
-async function cadastrar(){
-  if(!nome.value || preco.value <= 0){
-    alert("Preencha nome e preço corretamente");
-    return;
-  }
+const app = new URLSearchParams(location.search).get("app");
+if(!app){ document.body.innerText="Loja não encontrada"; throw ""; }
 
-  const tamanhos = [...document.querySelectorAll(".tam:checked")].map(i=>i.value);
-  const cores = [...document.querySelectorAll(".cor:checked")].map(i=>i.value);
+const carrinhoKey="carrinho_"+app;
+let carrinho=JSON.parse(localStorage.getItem(carrinhoKey))||[];
+let whatsapp="";
 
-  let imagem = null;
-  if(foto.files[0]){
-    const path = `${admin.app_id}/${Date.now()}_${foto.files[0].name}`;
-    await sb.storage.from("produtos").upload(path, foto.files[0], { upsert:true });
-    imagem = sb.storage.from("produtos").getPublicUrl(path).data.publicUrl;
-  }
+/* CONFIG */
+(async()=>{
+  const {data}=await sb.from("config_site").select("*").eq("app_id",app).maybeSingle();
+  if(!data)return;
 
-  await sb.from("produtos").insert({
-    app_id: admin.app_id,
-    nome: nome.value,
-    preco: Number(preco.value),
-    estoque: Number(estoque.value || 0),
-    categoria: categoria.value,
-    tamanhos,
-    cores,
-    imagem,
-    ativo: true
-  });
+  nome.innerText=data.nome_site||"Loja";
+  descricao.innerText=data.descricao_site||"Moda & estilo";
+  whatsapp=data.whatsapp||"";
 
-  nome.value = preco.value = estoque.value = "";
-  document.querySelectorAll("input[type=checkbox]").forEach(i=>i.checked=false);
-  foto.value = "";
+  if(data.banner_url)
+    banner.style.backgroundImage=`url(${data.banner_url})`;
 
-  carregar();
-}
+  if(data.tema_site)
+    document.body.classList.add("tema-"+data.tema_site);
+})();
 
-// ================== LISTAGEM ==================
-async function carregar(){
-  const { data } = await sb.from("produtos")
-    .select("*")
-    .eq("app_id", admin.app_id)
-    .order("categoria");
+/* PRODUTOS */
+async function carregarProdutos(){
+  const {data}=await sb.from("produtos")
+    .select("id,nome,preco,imagem,tamanhos")
+    .eq("app_id",app)
+    .eq("ativo",true);
 
-  lista.innerHTML = (data || []).map(p=>`
+  listaProdutos.innerHTML=data.map(p=>`
     <div class="produto">
-      ${p.imagem 
-        ? `<img src="${p.imagem}">`
-        : `<div class="sem-foto">Sem foto</div>`}
-      <b>${p.nome}</b>
-      <div class="preco">R$ ${p.preco.toFixed(2)}</div>
-      <small>${(p.tamanhos||[]).join(", ")} | ${(p.cores||[]).join(", ")}</small>
-      <br><br>
-      <button class="excluir" onclick="excluir('${p.id}')">Excluir</button>
+      ${p.imagem?`<img src="${p.imagem}">`:""}
+      <div class="info">
+        <h4>${p.nome}</h4>
+        <div class="preco">R$ ${p.preco.toFixed(2)}</div>
+        <select id="t-${p.id}">
+          <option value="">Tamanho</option>
+          ${p.tamanhos?.map(t=>`<option>${t}</option>`).join("")}
+        </select>
+        <button onclick="addCarrinho(${p.id},'${p.nome}',${p.preco})">
+          Adicionar
+        </button>
+      </div>
     </div>
   `).join("");
 }
 
-// ================== EXCLUIR ==================
-async function excluir(id){
-  if(confirm("Excluir esta peça?")){
-    await sb.from("produtos").delete().eq("id", id);
-    carregar();
-  }
+/* CARRINHO */
+function addCarrinho(id,nome,preco){
+  const tam=document.getElementById("t-"+id).value;
+  if(!tam){alert("Selecione o tamanho");return;}
+
+  const i=carrinho.find(x=>x.id===id && x.tam===tam);
+  i?i.qtd++:carrinho.push({id,nome,preco,tam,qtd:1});
+  salvar();
 }
 
-carregar();
+function salvar(){
+  localStorage.setItem(carrinhoKey,JSON.stringify(carrinho));
+  badgeCarrinho.innerText=carrinho.reduce((s,p)=>s+p.qtd,0);
+  badgeCarrinho.style.display=carrinho.length?"block":"none";
+}
+
+function abrirCarrinho(){
+  renderCarrinho();
+  carrinhoModal.style.display="block";
+}
+function fecharCarrinho(){
+  carrinhoModal.style.display="none";
+}
+
+function renderCarrinho(){
+  itens.innerHTML="";
+  let total=0;
+  carrinho.forEach(p=>{
+    const sub=p.preco*p.qtd;
+    total+=sub;
+    itens.innerHTML+=`
+      <div class="item">
+        ${p.nome} (${p.tam}) x${p.qtd}
+        <span>R$ ${sub.toFixed(2)}</span>
+      </div>`;
+  });
+  itens.innerHTML+=`<b>Total: R$ ${total.toFixed(2)}</b>`;
+}
+
+/* FINALIZAR */
+function finalizar(){
+  let msg="👗 *Pedido Loja de Roupas*\n\n";
+  let total=0;
+  carrinho.forEach(p=>{
+    const sub=p.preco*p.qtd;
+    total+=sub;
+    msg+=`• ${p.nome} (${p.tam}) x${p.qtd} - R$ ${sub.toFixed(2)}\n`;
+  });
+  msg+=`\n💰 Total: R$ ${total.toFixed(2)}`;
+  msg+=`\n👤 ${cliente.value||"Não informado"}`;
+  msg+=`\n📍 ${localizacao.value||"Não informado"}`;
+  msg+=`\n📝 ${observacao.value||""}`;
+
+  window.open(`https://wa.me/55${whatsapp}?text=${encodeURIComponent(msg)}`,"_blank");
+
+  carrinho=[];
+  salvar();
+  fecharCarrinho();
+}
+
+salvar();
+carregarProdutos();
 </script>
 
 </body>
