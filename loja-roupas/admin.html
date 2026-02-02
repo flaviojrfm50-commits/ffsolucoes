@@ -95,8 +95,8 @@ body{
       <p>Visualizar site público</p>
     </div>
 
-    <!-- SUPORTE -->
-    <div class="card" onclick="window.open('../chat-admin.html','_blank')">
+    <!-- SUPORTE (AJUSTADO) -->
+    <div class="card" onclick="abrirSuporte()">
       <h3>💬 Suporte</h3>
       <p>Falar com o suporte</p>
     </div>
@@ -126,6 +126,16 @@ function abrirLoja(){
   );
 }
 
+/* 👉 AQUI ESTÁ A CORREÇÃO DO PROBLEMA */
+function abrirSuporte(){
+  // garante o mesmo contexto dos outros painéis (bar, mercado, hotel)
+  localStorage.setItem("app_id", admin.app_id);
+
+  window.open(
+    "https://anajuliafarias659-cloud.github.io/ffsolucoes/chat-admin.html",
+    "_blank"
+  );
+}
 
 /* ========= LOGOUT ========= */
 function logout(){
