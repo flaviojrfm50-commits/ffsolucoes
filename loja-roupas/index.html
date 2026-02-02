@@ -89,20 +89,27 @@ if(!APP_ID){
   throw new Error("app_id ausente");
 }
 
-/* ========= SITE CONFIG ========= */
+/* ========= BANNER / CONFIG ========= */
 async function carregarConfig(){
   const { data } = await sb
-    .from("site_config")
-    .select("*")
+    .from("config_site")
+    .select("nome_site,descricao_site,banner_url")
     .eq("app_id", APP_ID)
     .maybeSingle();
 
-  if(data){
-    if(data.banner){
-      banner.innerHTML = `<img src="${data.banner}">`;
-    }
-    if(data.nome) nomeLoja.innerText = data.nome;
-    if(data.descricao) descLoja.innerText = data.descricao;
+  if(!data) return;
+
+  if(data.banner_url){
+    const banner = document.getElementById("banner");
+    banner.innerHTML = `<img src="${data.banner_url}">`;
+  }
+
+  if(data.nome_site){
+    document.getElementById("nomeLoja").innerText = data.nome_site;
+  }
+
+  if(data.descricao_site){
+    document.getElementById("descLoja").innerText = data.descricao_site;
   }
 }
 
@@ -114,7 +121,8 @@ async function carregarProdutos(){
     .eq("ativo", true)
     .eq("app_id", APP_ID);
 
-  produtos.innerHTML = (data || []).map(p=>`
+  const produtosEl = document.getElementById("produtos");
+  produtosEl.innerHTML = (data || []).map(p=>`
     <div class="card">
       ${p.imagem ? `<img src="${p.imagem}">` : ""}
       <b>${p.nome}</b>
@@ -127,6 +135,7 @@ async function carregarProdutos(){
 carregarConfig();
 carregarProdutos();
 </script>
+
 
 </body>
 </html>
