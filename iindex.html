@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Login | Negócios</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/auth.js"></script>
+<style>
+/* ... seu CSS existente ... */
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h2>🔐 Login de Negócios</h2>
+
+  <input id="email" type="email" placeholder="Email">
+  <input id="senha" type="password" placeholder="Senha">
+  <button onclick="entrar()">Entrar</button>
+</div>
+
+<script>
+async function entrar(){
+  const email = document.getElementById("email").value.trim();
+  const senha = document.getElementById("senha").value.trim();
+
+  if(!email || !senha){ alert("Preencha todos os campos"); return; }
+
+  const { user, error } = await loginNegocios(email, senha);
+  if(error || !user){ alert("Usuário ou senha inválidos"); return; }
+
+  const data = await validarUsuario();
+  if(!data || !data.app_id){ alert("Usuário sem App ID"); await logout(); return; }
+
+  // Redireciona pelo app_id
+  const prefix = data.app_id.substring(0,3).toUpperCase();
+  switch(prefix){
+    case "LOC": window.location.href = "../locadora/index.html"; break;
+    case "MKT": window.location.href = "../mercado/index.html"; break;
+    case "BAR": window.location.href = "../bares/index.html"; break;
+    default: alert("App ID inválido"); await logout();
+  }
+}
+</script>
+
+</body>
+</html>
