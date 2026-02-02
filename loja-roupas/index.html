@@ -11,7 +11,7 @@
 *{box-sizing:border-box}
 body{
   margin:0;
-  font-family:Arial;
+  font-family:Arial, sans-serif;
   background:#020617;
   color:#fff;
 }
@@ -30,11 +30,11 @@ body{
 
 /* ===== TOPO ===== */
 .topo{
-  padding:20px;
+  padding:24px;
   text-align:center;
 }
 .topo h1{margin:0}
-.topo p{opacity:.8}
+.topo p{opacity:.7}
 
 /* ===== CONTAINER ===== */
 .container{
@@ -46,9 +46,9 @@ body{
 /* ===== FILTROS ===== */
 .filtros{
   display:flex;
-  gap:10px;
+  gap:12px;
   flex-wrap:wrap;
-  margin-bottom:20px;
+  margin-bottom:24px;
 }
 input,select{
   padding:12px;
@@ -140,23 +140,17 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ========= APP_ID ========= */
-// 1️⃣ tenta pela URL
+/* ========= APP_ID (OBRIGATÓRIO) ========= */
 const params = new URLSearchParams(window.location.search);
-let APP_ID = params.get("app");
+const APP_ID = params.get("app");
 
-// 2️⃣ se não tiver, tenta pelo localStorage (quando vem do painel)
 if(!APP_ID){
-  const admin = JSON.parse(localStorage.getItem("admin_logado"));
-  if(admin?.app_id){
-    APP_ID = admin.app_id;
-  }
-}
-
-// 3️⃣ se ainda não tiver, mostra erro
-if(!APP_ID){
-  document.body.innerHTML =
-    "<h2 style='padding:20px'>App não informado</h2>";
+  document.body.innerHTML = `
+    <div style="padding:40px;text-align:center">
+      <h2>Acesso inválido</h2>
+      <p>Esta loja só pode ser acessada por um link válido.</p>
+    </div>
+  `;
   throw new Error("app_id ausente");
 }
 
@@ -243,7 +237,6 @@ function comprar(nome){
 carregarConfig();
 carregarProdutos();
 </script>
-
 
 </body>
 </html>
