@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Admin | Loja de Roupas</title>
+<title>Produtos | Loja de Roupas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -10,7 +10,25 @@
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial;background:#020617;color:#fff}
-.topo{background:#0f172a;padding:18px;text-align:center}
+
+.topo{
+  background:#0f172a;
+  padding:16px 24px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.topo h2{margin:0}
+.voltar{
+  background:#334155;
+  color:#fff;
+  border:none;
+  padding:10px 16px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
 .container{max-width:1100px;margin:30px auto;padding:0 20px}
 
 .box{
@@ -67,7 +85,8 @@ small{opacity:.7}
 <body>
 
 <div class="topo">
-  <h1>👕 Admin – Loja de Roupas</h1>
+  <h2>👕 Produtos da Loja</h2>
+  <button class="voltar" onclick="voltar()">⬅ Painel</button>
 </div>
 
 <div class="container">
@@ -121,20 +140,26 @@ small{opacity:.7}
 </div>
 
 <script>
-// ================== LOGIN SIMPLES ==================
-const admin = JSON.parse(localStorage.getItem("admin_logado")) || {
-  app_id: "loja_roupas_01"
-};
-// Se quiser forçar login depois, descomenta:
-// if(!admin) location.href="login.html";
+/* ========= SESSÃO ========= */
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
-// ================== SUPABASE ==================
+if(!admin || admin.tipo !== "loja"){
+  location.replace("../auth/login.html");
+  throw new Error("Sessão inválida");
+}
+
+/* ========= SUPABASE ========= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-// ================== CADASTRO ==================
+/* ========= NAVEGAÇÃO ========= */
+function voltar(){
+  location.href = "painel.html";
+}
+
+/* ========= CRUD ========= */
 async function cadastrar(){
   if(!nome.value || preco.value <= 0){
     alert("Preencha nome e preço corretamente");
@@ -170,18 +195,16 @@ async function cadastrar(){
   carregar();
 }
 
-// ================== LISTAGEM ==================
 async function carregar(){
-  const { data } = await sb.from("produtos")
+  const { data } = await sb
+    .from("produtos")
     .select("*")
     .eq("app_id", admin.app_id)
     .order("categoria");
 
   lista.innerHTML = (data || []).map(p=>`
     <div class="produto">
-      ${p.imagem 
-        ? `<img src="${p.imagem}">`
-        : `<div class="sem-foto">Sem foto</div>`}
+      ${p.imagem ? `<img src="${p.imagem}">` : `<div class="sem-foto">Sem foto</div>`}
       <b>${p.nome}</b>
       <div class="preco">R$ ${p.preco.toFixed(2)}</div>
       <small>${(p.tamanhos||[]).join(", ")} | ${(p.cores||[]).join(", ")}</small>
@@ -191,7 +214,6 @@ async function carregar(){
   `).join("");
 }
 
-// ================== EXCLUIR ==================
 async function excluir(id){
   if(confirm("Excluir esta peça?")){
     await sb.from("produtos").delete().eq("id", id);
