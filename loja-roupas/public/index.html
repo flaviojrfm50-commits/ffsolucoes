@@ -2,238 +2,204 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Loja de Roupas</title>
+<title>Admin | Loja de Roupas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-:root{
-  --cor-primaria:#ec4899;
-  --cor-fundo:#020617;
-  --cor-card:#0f172a;
-}
-
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:var(--cor-fundo);
-  color:#fff;
-}
+body{margin:0;font-family:Arial;background:#020617;color:#fff}
+.topo{background:#0f172a;padding:18px;text-align:center}
+.container{max-width:1100px;margin:30px auto;padding:0 20px}
 
-/* ===== BANNER ===== */
-.banner{
-  width:100%;
-  height:260px;
-  background-size:cover;
-  background-position:center;
-  position:relative;
-}
-.banner::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:linear-gradient(to top,rgba(2,6,23,.9),rgba(2,6,23,.3));
-}
-.banner-content{
-  position:absolute;
-  bottom:20px;
-  left:20px;
-  z-index:2;
-}
-.banner-content h1{margin:0}
-.banner-content p{opacity:.85}
-
-/* ===== PRODUTOS ===== */
-.container{
-  max-width:1200px;
-  margin:auto;
+.box{
+  background:#0f172a;
   padding:20px;
+  border-radius:16px;
+  margin-bottom:20px;
 }
+
+input,select,button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border-radius:10px;
+  border:none;
+}
+
+input,select{background:#020617;color:#fff}
+button{background:#22c55e;font-weight:bold;cursor:pointer}
+.excluir{background:#e53935}
 
 .grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
-  gap:16px;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:14px;
 }
 
 .produto{
-  background:var(--cor-card);
-  padding:14px;
-  border-radius:16px;
+  background:#020617;
+  padding:12px;
+  border-radius:14px;
   text-align:center;
+  font-size:13px;
 }
-
 .produto img{
   width:100%;
-  height:180px;
+  height:110px;
   object-fit:cover;
-  border-radius:12px;
-}
-
-.produto h3{
-  font-size:15px;
-  margin:8px 0;
-}
-
-.preco{
-  color:var(--cor-primaria);
-  font-weight:bold;
-}
-
-select{
-  width:100%;
-  padding:8px;
-  margin-top:6px;
-  border-radius:8px;
-  border:none;
-}
-
-.produto button{
-  margin-top:8px;
-  width:100%;
-  padding:10px;
-  border:none;
   border-radius:10px;
-  background:var(--cor-primaria);
-  font-weight:bold;
-  cursor:pointer;
 }
-
-/* ===== CARRINHO ===== */
-#carrinho{
-  position:fixed;
-  bottom:0;
-  left:0;
-  right:0;
-  background:#020617;
-  border-top:1px solid #1e293b;
-  padding:14px;
-}
-#carrinho button{
-  width:100%;
-  padding:14px;
-  background:var(--cor-primaria);
-  border:none;
-  border-radius:12px;
-  font-weight:bold;
+.preco{color:#22c55e;font-weight:bold}
+small{opacity:.7}
+.sem-foto{
+  height:110px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:.3;
+  font-size:12px;
 }
 </style>
 </head>
 
 <body>
 
-<!-- BANNER -->
-<div class="banner" id="banner">
-  <div class="banner-content">
-    <h1 id="nomeLoja">Loja</h1>
-    <p id="descricao"></p>
-  </div>
+<div class="topo">
+  <h1>👕 Admin – Loja de Roupas</h1>
 </div>
 
-<!-- PRODUTOS -->
 <div class="container">
-  <div class="grid" id="lista"></div>
+
+<!-- CADASTRO -->
+<div class="box">
+  <h2>➕ Cadastrar Roupa</h2>
+
+  <input id="nome" placeholder="Nome da peça">
+  <input id="preco" type="number" step="0.01" placeholder="Preço">
+  <input id="estoque" type="number" placeholder="Estoque total">
+
+  <select id="categoria">
+    <option>Camisetas</option>
+    <option>Calças</option>
+    <option>Bermudas</option>
+    <option>Vestidos</option>
+    <option>Casacos</option>
+    <option>Outros</option>
+  </select>
+
+  <div style="margin-top:10px">
+    <b>Tamanhos</b><br>
+    <label><input type="checkbox" class="tam" value="PP"> PP</label>
+    <label><input type="checkbox" class="tam" value="P"> P</label>
+    <label><input type="checkbox" class="tam" value="M"> M</label>
+    <label><input type="checkbox" class="tam" value="G"> G</label>
+    <label><input type="checkbox" class="tam" value="GG"> GG</label>
+    <label><input type="checkbox" class="tam" value="XG"> XG</label>
+  </div>
+
+  <div style="margin-top:10px">
+    <b>Cores</b><br>
+    <label><input type="checkbox" class="cor" value="Preto"> Preto</label>
+    <label><input type="checkbox" class="cor" value="Branco"> Branco</label>
+    <label><input type="checkbox" class="cor" value="Azul"> Azul</label>
+    <label><input type="checkbox" class="cor" value="Vermelho"> Vermelho</label>
+  </div>
+
+  <input id="foto" type="file" accept="image/*">
+
+  <button onclick="cadastrar()">Cadastrar peça</button>
 </div>
 
-<!-- CARRINHO -->
-<div id="carrinho" style="display:none">
-  <div id="resumo"></div>
-  <button onclick="finalizar()">📲 Finalizar pedido no WhatsApp</button>
+<!-- LISTA -->
+<div class="box">
+  <h2>📦 Peças cadastradas</h2>
+  <div id="lista" class="grid"></div>
+</div>
+
 </div>
 
 <script>
-const supabaseClient = supabase.createClient(
+// ================== LOGIN SIMPLES ==================
+const admin = JSON.parse(localStorage.getItem("admin_logado")) || {
+  app_id: "loja_roupas_01"
+};
+// Se quiser forçar login depois, descomenta:
+// if(!admin) location.href="login.html";
+
+// ================== SUPABASE ==================
+const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-const app = new URLSearchParams(window.location.search).get("app");
-if(!app){ document.body.innerText="Loja não encontrada"; throw ""; }
+// ================== CADASTRO ==================
+async function cadastrar(){
+  if(!nome.value || preco.value <= 0){
+    alert("Preencha nome e preço corretamente");
+    return;
+  }
 
-let carrinho=[];
-let whatsapp="";
+  const tamanhos = [...document.querySelectorAll(".tam:checked")].map(i=>i.value);
+  const cores = [...document.querySelectorAll(".cor:checked")].map(i=>i.value);
 
-/* ===== CONFIG ===== */
-(async()=>{
-  const { data } = await supabaseClient
-    .from("config_site")
-    .select("nome,descricao,whatsapp,banner")
-    .eq("app_id",app)
-    .single();
+  let imagem = null;
+  if(foto.files[0]){
+    const path = `${admin.app_id}/${Date.now()}_${foto.files[0].name}`;
+    await sb.storage.from("produtos").upload(path, foto.files[0], { upsert:true });
+    imagem = sb.storage.from("produtos").getPublicUrl(path).data.publicUrl;
+  }
 
-  if(!data) return;
+  await sb.from("produtos").insert({
+    app_id: admin.app_id,
+    nome: nome.value,
+    preco: Number(preco.value),
+    estoque: Number(estoque.value || 0),
+    categoria: categoria.value,
+    tamanhos,
+    cores,
+    imagem,
+    ativo: true
+  });
 
-  nomeLoja.innerText=data.nome;
-  descricao.innerText=data.descricao||"";
-  whatsapp=data.whatsapp;
+  nome.value = preco.value = estoque.value = "";
+  document.querySelectorAll("input[type=checkbox]").forEach(i=>i.checked=false);
+  foto.value = "";
 
-  banner.style.backgroundImage=data.banner
-    ? `url(${data.banner})`
-    : "linear-gradient(135deg,#ec4899,#0f172a)";
-})();
+  carregar();
+}
 
-/* ===== PRODUTOS ===== */
+// ================== LISTAGEM ==================
 async function carregar(){
-  const { data } = await supabaseClient
-    .from("produtos")
-    .select("id,nome,preco,imagem,tamanhos")
-    .eq("app_id",app)
-    .eq("ativo",true);
+  const { data } = await sb.from("produtos")
+    .select("*")
+    .eq("app_id", admin.app_id)
+    .order("categoria");
 
-  lista.innerHTML=data.map(p=>`
+  lista.innerHTML = (data || []).map(p=>`
     <div class="produto">
-      ${p.imagem?`<img src="${p.imagem}">`:""}
-      <h3>${p.nome}</h3>
+      ${p.imagem 
+        ? `<img src="${p.imagem}">`
+        : `<div class="sem-foto">Sem foto</div>`}
+      <b>${p.nome}</b>
       <div class="preco">R$ ${p.preco.toFixed(2)}</div>
-
-      <select id="tam-${p.id}">
-        <option value="">Tamanho</option>
-        ${p.tamanhos?.map(t=>`<option>${t}</option>`).join("")}
-      </select>
-
-      <button onclick="add(${p.id},'${p.nome}',${p.preco})">
-        Adicionar
-      </button>
+      <small>${(p.tamanhos||[]).join(", ")} | ${(p.cores||[]).join(", ")}</small>
+      <br><br>
+      <button class="excluir" onclick="excluir('${p.id}')">Excluir</button>
     </div>
   `).join("");
 }
-carregar();
 
-/* ===== CARRINHO ===== */
-function add(id,nome,preco){
-  const tam=document.getElementById(`tam-${id}`).value;
-  if(!tam){ alert("Selecione um tamanho"); return; }
-
-  const i=carrinho.find(x=>x.id===id && x.tam===tam);
-  i?i.qtd++:carrinho.push({id,nome,preco,tam,qtd:1});
-  atualizar();
-}
-
-function atualizar(){
-  if(!carrinho.length){
-    carrinhoDiv.style.display="none";
-    return;
+// ================== EXCLUIR ==================
+async function excluir(id){
+  if(confirm("Excluir esta peça?")){
+    await sb.from("produtos").delete().eq("id", id);
+    carregar();
   }
-  carrinhoDiv.style.display="block";
-  resumo.innerHTML=carrinho.map(i=>
-    `${i.qtd}x ${i.nome} (${i.tam}) - R$ ${(i.preco*i.qtd).toFixed(2)}`
-  ).join("<br>");
 }
-const carrinhoDiv=document.getElementById("carrinho");
 
-/* ===== FINALIZAR ===== */
-function finalizar(){
-  let msg="👗 *Pedido Loja de Roupas*%0A%0A";
-  let total=0;
-  carrinho.forEach(i=>{
-    msg+=`${i.qtd}x ${i.nome} (${i.tam}) - R$ ${(i.preco*i.qtd).toFixed(2)}%0A`;
-    total+=i.preco*i.qtd;
-  });
-  msg+=`%0A*Total:* R$ ${total.toFixed(2)}`;
-  window.open(`https://wa.me/55${whatsapp}?text=${msg}`,"_blank");
-}
+carregar();
 </script>
 
 </body>
