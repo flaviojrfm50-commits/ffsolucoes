@@ -2,291 +2,195 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Catálogo | Loja de Roupas</title>
+<title>Loja de Roupas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-:root{
-  --primaria:#ec4899;
-  --fundo:#020617;
-  --card:#0f172a;
-}
-
-/* TEMAS */
-body.tema-carnaval{--primaria:#ec4899}
-body.tema-saojoao{--primaria:#f97316}
-body.tema-natal{--primaria:#22c55e}
-body.tema-anonovo{--primaria:#eab308}
-
 *{box-sizing:border-box}
 body{
   margin:0;
-  font-family:system-ui,sans-serif;
-  background:var(--fundo);
-  color:#fff;
-}
-
-/* BANNER */
-.banner{
-  height:220px;
-  background-size:cover;
-  background-position:center;
-  position:relative;
-}
-.banner::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:linear-gradient(to top,rgba(2,6,23,.95),rgba(2,6,23,.35));
-}
-.banner-content{
-  position:absolute;
-  bottom:14px;
-  left:14px;
-}
-.banner-content h1{margin:0;font-size:22px}
-.banner-content p{opacity:.85;font-size:14px}
-
-/* PRODUTOS */
-.section{padding:16px}
-.grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:10px;
-}
-.produto{
-  background:var(--card);
-  border-radius:12px;
-  overflow:hidden;
-}
-.produto img{
-  width:100%;
-  height:140px;
-  object-fit:cover;
-}
-.info{padding:8px;text-align:center}
-.info h4{font-size:13px;margin:4px 0}
-.preco{color:var(--primaria);font-weight:700}
-
-select,button{
-  width:100%;
-  margin-top:6px;
-  padding:8px;
-  border:none;
-  border-radius:8px;
-  font-weight:700;
-}
-select{background:#020617;color:#fff}
-button{background:var(--primaria)}
-
-/* BOTÃO CARRINHO */
-.carrinho-btn{
-  position:fixed;
-  bottom:16px;
-  right:16px;
-  background:var(--primaria);
-  padding:14px;
-  border-radius:50%;
-  font-size:18px;
-}
-.badge{
-  position:absolute;
-  top:-4px;
-  right:-4px;
-  background:#ef4444;
-  color:#fff;
-  font-size:12px;
-  padding:2px 6px;
-  border-radius:999px;
-  display:none;
-}
-
-/* MODAL */
-.carrinho{
-  position:fixed;
-  inset:0;
+  font-family:Arial;
   background:#020617;
-  display:none;
-  z-index:20;
+  color:#fff;
 }
-.carrinho .box{padding:16px}
-.item{
+
+.topo{
+  background:#0f172a;
+  padding:20px;
+  text-align:center;
+}
+
+.container{
+  max-width:1200px;
+  margin:30px auto;
+  padding:0 20px;
+}
+
+.filtros{
   display:flex;
-  justify-content:space-between;
-  font-size:14px;
-  margin-bottom:6px;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:20px;
 }
-input,textarea{
-  width:100%;
-  margin-top:8px;
-  padding:10px;
-  border-radius:8px;
+
+select,input{
+  padding:12px;
+  border-radius:10px;
   border:none;
   background:#0f172a;
   color:#fff;
 }
-.finalizar{
-  margin-top:12px;
-  padding:12px;
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:18px;
+}
+
+.card{
+  background:#0f172a;
+  border-radius:16px;
+  padding:14px;
+  text-align:center;
+}
+
+.card img{
   width:100%;
-  border:none;
+  height:180px;
+  object-fit:cover;
+  border-radius:12px;
+}
+
+.sem-foto{
+  height:180px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:.3;
+  font-size:14px;
+}
+
+.nome{
+  margin:10px 0 5px;
+  font-weight:bold;
+}
+
+.preco{
+  color:#22c55e;
+  font-size:18px;
+  font-weight:bold;
+}
+
+small{opacity:.7}
+
+.botao{
+  margin-top:10px;
+  padding:10px;
   border-radius:10px;
-  background:var(--primaria);
-  font-weight:700;
+  border:none;
+  background:#22c55e;
+  color:#000;
+  font-weight:bold;
+  cursor:pointer;
+  width:100%;
 }
 </style>
 </head>
 
 <body>
 
-<div class="banner" id="banner">
-  <div class="banner-content">
-    <h1 id="nome"></h1>
-    <p id="descricao"></p>
-  </div>
+<div class="topo">
+  <h1>👕 Loja de Roupas</h1>
+  <p>Confira nossas peças disponíveis</p>
 </div>
 
-<section class="section">
-  <h2>👗 Catálogo</h2>
-  <div class="grid" id="listaProdutos"></div>
-</section>
+<div class="container">
 
-<div class="carrinho-btn" onclick="abrirCarrinho()">
-  🛍️
-  <span class="badge" id="badgeCarrinho">0</span>
-</div>
+  <!-- FILTROS -->
+  <div class="filtros">
+    <input id="busca" placeholder="Buscar produto..." oninput="filtrar()">
 
-<div class="carrinho" id="carrinhoModal">
-  <div class="box">
-    <h2>Seu pedido</h2>
-    <div id="itens"></div>
-
-    <input id="cliente" placeholder="Seu nome">
-    <input id="localizacao" placeholder="Endereço / referência">
-    <textarea id="observacao" placeholder="Observações"></textarea>
-
-    <button class="finalizar" onclick="finalizar()">Enviar no WhatsApp</button>
-    <button class="finalizar" style="background:#334155" onclick="fecharCarrinho()">Fechar</button>
+    <select id="categoria" onchange="filtrar()">
+      <option value="">Todas categorias</option>
+      <option>Camisetas</option>
+      <option>Calças</option>
+      <option>Bermudas</option>
+      <option>Vestidos</option>
+      <option>Casacos</option>
+      <option>Outros</option>
+    </select>
   </div>
+
+  <!-- PRODUTOS -->
+  <div id="produtos" class="grid"></div>
+
 </div>
 
 <script>
+// ================== CONFIG ==================
+const APP_ID = "loja_roupas_01";
+
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-const app = new URLSearchParams(location.search).get("app");
-if(!app){ document.body.innerText="Loja não encontrada"; throw ""; }
+let lista = [];
 
-const carrinhoKey="carrinho_"+app;
-let carrinho=JSON.parse(localStorage.getItem(carrinhoKey))||[];
-let whatsapp="";
+// ================== CARREGAR ==================
+async function carregar(){
+  const { data } = await sb
+    .from("produtos")
+    .select("*")
+    .eq("ativo", true)
+    .eq("app_id", APP_ID)
+    .order("nome");
 
-/* CONFIG */
-(async()=>{
-  const {data}=await sb.from("config_site").select("*").eq("app_id",app).maybeSingle();
-  if(!data)return;
+  lista = data || [];
+  render(lista);
+}
 
-  nome.innerText=data.nome_site||"Loja";
-  descricao.innerText=data.descricao_site||"Moda & estilo";
-  whatsapp=data.whatsapp||"";
+// ================== RENDER ==================
+function render(dados){
+  produtos.innerHTML = dados.map(p=>`
+    <div class="card">
+      ${p.imagem
+        ? `<img src="${p.imagem}">`
+        : `<div class="sem-foto">Sem imagem</div>`}
 
-  if(data.banner_url)
-    banner.style.backgroundImage=`url(${data.banner_url})`;
+      <div class="nome">${p.nome}</div>
+      <div class="preco">R$ ${p.preco.toFixed(2)}</div>
+      <small>${p.categoria}</small><br>
+      <small>${(p.tamanhos||[]).join(", ")} | ${(p.cores||[]).join(", ")}</small>
 
-  if(data.tema_site)
-    document.body.classList.add("tema-"+data.tema_site);
-})();
-
-/* PRODUTOS */
-async function carregarProdutos(){
-  const {data}=await sb.from("produtos")
-    .select("id,nome,preco,imagem,tamanhos")
-    .eq("app_id",app)
-    .eq("ativo",true);
-
-  listaProdutos.innerHTML=data.map(p=>`
-    <div class="produto">
-      ${p.imagem?`<img src="${p.imagem}">`:""}
-      <div class="info">
-        <h4>${p.nome}</h4>
-        <div class="preco">R$ ${p.preco.toFixed(2)}</div>
-        <select id="t-${p.id}">
-          <option value="">Tamanho</option>
-          ${p.tamanhos?.map(t=>`<option>${t}</option>`).join("")}
-        </select>
-        <button onclick="addCarrinho(${p.id},'${p.nome}',${p.preco})">
-          Adicionar
-        </button>
-      </div>
+      <button class="botao" onclick="comprar('${p.nome}')">
+        Comprar
+      </button>
     </div>
   `).join("");
 }
 
-/* CARRINHO */
-function addCarrinho(id,nome,preco){
-  const tam=document.getElementById("t-"+id).value;
-  if(!tam){alert("Selecione o tamanho");return;}
+// ================== FILTRO ==================
+function filtrar(){
+  const txt = busca.value.toLowerCase();
+  const cat = categoria.value;
 
-  const i=carrinho.find(x=>x.id===id && x.tam===tam);
-  i?i.qtd++:carrinho.push({id,nome,preco,tam,qtd:1});
-  salvar();
+  const filtrado = lista.filter(p =>
+    (!txt || p.nome.toLowerCase().includes(txt)) &&
+    (!cat || p.categoria === cat)
+  );
+
+  render(filtrado);
 }
 
-function salvar(){
-  localStorage.setItem(carrinhoKey,JSON.stringify(carrinho));
-  badgeCarrinho.innerText=carrinho.reduce((s,p)=>s+p.qtd,0);
-  badgeCarrinho.style.display=carrinho.length?"block":"none";
+// ================== AÇÃO ==================
+function comprar(nome){
+  alert(`Produto selecionado: ${nome}\n(Conectar com WhatsApp ou checkout depois)`);
 }
 
-function abrirCarrinho(){
-  renderCarrinho();
-  carrinhoModal.style.display="block";
-}
-function fecharCarrinho(){
-  carrinhoModal.style.display="none";
-}
-
-function renderCarrinho(){
-  itens.innerHTML="";
-  let total=0;
-  carrinho.forEach(p=>{
-    const sub=p.preco*p.qtd;
-    total+=sub;
-    itens.innerHTML+=`
-      <div class="item">
-        ${p.nome} (${p.tam}) x${p.qtd}
-        <span>R$ ${sub.toFixed(2)}</span>
-      </div>`;
-  });
-  itens.innerHTML+=`<b>Total: R$ ${total.toFixed(2)}</b>`;
-}
-
-/* FINALIZAR */
-function finalizar(){
-  let msg="👗 *Pedido Loja de Roupas*\n\n";
-  let total=0;
-  carrinho.forEach(p=>{
-    const sub=p.preco*p.qtd;
-    total+=sub;
-    msg+=`• ${p.nome} (${p.tam}) x${p.qtd} - R$ ${sub.toFixed(2)}\n`;
-  });
-  msg+=`\n💰 Total: R$ ${total.toFixed(2)}`;
-  msg+=`\n👤 ${cliente.value||"Não informado"}`;
-  msg+=`\n📍 ${localizacao.value||"Não informado"}`;
-  msg+=`\n📝 ${observacao.value||""}`;
-
-  window.open(`https://wa.me/55${whatsapp}?text=${encodeURIComponent(msg)}`,"_blank");
-
-  carrinho=[];
-  salvar();
-  fecharCarrinho();
-}
-
-salvar();
-carregarProdutos();
+carregar();
 </script>
 
 </body>
