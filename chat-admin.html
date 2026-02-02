@@ -70,13 +70,14 @@ const supabase = createClient(
 
 /* ================= SESSÃO ADMIN ================= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
-const app_id = localStorage.getItem("app_id");
 
-if(!admin || !app_id){
+if(!admin || !admin.app_id){
   alert("Sessão inválida. Faça login novamente.");
-  location.href = "../auth/login.html";
+  location.href = "/ffsolucoes/auth/login.html";
   throw new Error("Sessão inválida");
 }
+
+const app_id = admin.app_id; // ✅ SEMPRE daqui
 
 const chatBox = document.getElementById("chatBox");
 
@@ -89,7 +90,7 @@ async function carregarMensagens(){
     .order("created_at");
 
   chatBox.innerHTML = "";
-  data.forEach(m=>{
+  (data || []).forEach(m=>{
     chatBox.innerHTML += `
       <div class="msg ${m.remetente}">
         <b>${m.remetente === "admin" ? "Você" : "Suporte"}:</b>
