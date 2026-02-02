@@ -141,12 +141,22 @@ const sb = supabase.createClient(
 );
 
 /* ========= APP_ID ========= */
+// 1️⃣ tenta pela URL
 const params = new URLSearchParams(window.location.search);
-const APP_ID = params.get("app");
+let APP_ID = params.get("app");
 
+// 2️⃣ se não tiver, tenta pelo localStorage (quando vem do painel)
+if(!APP_ID){
+  const admin = JSON.parse(localStorage.getItem("admin_logado"));
+  if(admin?.app_id){
+    APP_ID = admin.app_id;
+  }
+}
+
+// 3️⃣ se ainda não tiver, mostra erro
 if(!APP_ID){
   document.body.innerHTML =
-    "<h2 style='padding:20px'>App não informado na URL</h2>";
+    "<h2 style='padding:20px'>App não informado</h2>";
   throw new Error("app_id ausente");
 }
 
@@ -225,7 +235,7 @@ function filtrar(){
 function comprar(nome){
   alert(
     `Produto selecionado: ${nome}\n` +
-    `Integração com WhatsApp ou checkout depois`
+    `Integração com WhatsApp depois`
   );
 }
 
@@ -233,6 +243,7 @@ function comprar(nome){
 carregarConfig();
 carregarProdutos();
 </script>
+
 
 </body>
 </html>
