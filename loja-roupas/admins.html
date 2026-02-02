@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Admins | Loja de Roupas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#020617;
+  color:#fff;
+}
+.topo{
+  background:#0f172a;
+  padding:16px 24px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.topo h2{margin:0}
+.voltar{
+  background:#334155;
+  color:#fff;
+  border:none;
+  padding:10px 16px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:bold;
+}
+.container{
+  padding:32px;
+  max-width:900px;
+  margin:auto;
+}
+.box{
+  background:#0f172a;
+  padding:20px;
+  border-radius:16px;
+  margin-bottom:20px;
+}
+input,select,button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border-radius:10px;
+  border:none;
+}
+input,select{background:#020617;color:#fff}
+button{
+  background:#22c55e;
+  font-weight:bold;
+  cursor:pointer;
+}
+.desativar{background:#e53935}
+.lista .item{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid #1e293b;
+  padding:10px 0;
+  font-size:14px;
+}
+small{opacity:.7}
+</style>
+</head>
+
+<body>
+
+<div class="topo">
+  <h2>👥 Admins da Loja</h2>
+  <button class="voltar" onclick="voltar()">⬅ Painel</button>
+</div>
+
+<div class="container">
+
+  <!-- CRIAR ADMIN -->
+  <div class="box">
+    <h3>➕ Criar Admin</h3>
+    <input id="usuario" placeholder="Usuário (login)">
+    <input id="senha" placeholder="Senha">
+    <button onclick="criar()">Criar admin</button>
+  </div>
+
+  <!-- LISTA -->
+  <div class="box">
+    <h3>📄 Admins cadastrados</h3>
+    <div id="lista" class="lista"></div>
+  </div>
+
+</div>
+
+<script>
+/* ========= SESSÃO ========= */
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+
+if(!admin || admin.tipo !== "loja"){
+  alert("Sessão inválida");
+  location.href = "../auth/login.html";
+  throw new Error("Sessão inválida");
+}
+
+const app_id = admin.app_id;
+
+/* ========= SUPABASE ========= */
+const sb = supabase.createClient(
+  "https://pdajixsoowcyhnjwhgpc.supabase.co",
+  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
+);
+
+/* ========= NAVEGAÇÃO ========= */
+function voltar(){
+  location.href = "painel.html";
+}
+
+/* ========= CRIAR ========= */
+async function criar(){
+  if(!usuario.value || !senha.value){
+    alert("Preencha usuário e senha");
+    return;
+  }
+
+  const { error } = await sb.from("admins").insert({
+    usuario: usuario.value.trim().toLowerCase(),
+    senha: senha.value.trim(),
+    ativo: true,
+    permissao: "admin",
+    app_id: app_id
+  });
+
+  if(error){
+    alert("Erro ao criar admin");
+    console.error(error);
+    return;
+  }
+
+  usuario.value = senha.value = "";
+  carregar();
+}
+
+/* ========= LISTAR ========= */
+async function carregar(){
+  const { data } = await sb
+    .from("admins")
+    .select("id, usuario, ativo")
+    .eq("app_id", app_id)
+    .order("usuario");
+
+  lista.innerHTML = "";
+
+  (data || []).forEach(a=>{
+    lista.innerHTML += `
+      <div class="item">
+        <div>
+          <b>${a.usuario}</b><br>
+          <small>${a.ativo ? "Ativo" : "Desativado"}</small>
+        </div>
+        <button class="${a.ativo ? "desativar" : ""}"
+          onclick="toggle('${a.id}', ${a.ativo})">
+          ${a.ativo ? "Desativar" : "Ativar"}
+        </button>
+      </div>
+    `;
+  });
+}
+
+/* ========= ATIVAR / DESATIVAR ========= */
+async function toggle(id, ativo){
+  await sb.from("admins")
+    .update({ ativo: !ativo })
+    .eq("id", id);
+
+  carregar();
+}
+
+carregar();
+</script>
+
+</body>
+</html>
