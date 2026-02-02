@@ -103,20 +103,27 @@ async function login(){
   console.log("LOGIN SALVO 👉", adminLogado);
 
   if(adminLogado.tipo === "locadora"){
-    location.href = "../locadora/admin.html";
-  }else if(adminLogado.tipo === "mercado"){
-    location.href = "../mercado/admin.html";
-  }else if(adminLogado.tipo === "bar"){
-    location.href = "../bar/admin.html";
-    }else if(adminLogado.tipo === "hotel"){
-    location.href = "../hotel/painel.html";
-  }else{
-    alert("Tipo inválido");
-  }
+  location.href = "../locadora/admin.html";
+
+}else if(adminLogado.tipo === "mercado"){
+  location.href = "../mercado/admin.html";
+
+}else if(adminLogado.tipo === "bar"){
+  location.href = "../bar/admin.html";
+
+}else if(adminLogado.tipo === "hotel"){
+  location.href = "../hotel/painel.html";
+
+}else if(adminLogado.tipo === "loja"){
+  location.href = "../loja-roupas/admin.html";
+
+}else{
+  alert("Tipo inválido");
+}
+
 }
 </script>
 
 </body>
 </html>
-
 
