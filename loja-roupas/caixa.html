@@ -72,15 +72,19 @@ button{
   background:#0f172a;
   border:1px solid #334155;
   border-radius:10px;
-  max-height:120px;
+  max-height:140px;
   overflow-y:auto;
   position:absolute;
   width:calc(100% - 24px);
   z-index:10;
 }
-.sugestao div{padding:8px;cursor:pointer}
+.sugestao div{
+  padding:8px;
+  cursor:pointer;
+}
 .sugestao div:hover{background:#334155}
 
+/* TROCO */
 #trocoInfo{margin-top:10px;font-weight:bold}
 .troco-ok{color:#22c55e}
 .troco-falta{color:#ef4444}
@@ -160,11 +164,17 @@ let produtoSelecionado = null;
 async function carregarProdutos(){
   const { data } = await sb
     .from("produtos")
-    .select("*")
+    .select("id,nome,preco,estoque")
     .eq("app_id", app_id)
     .eq("ativo", true)
     .order("nome");
-  produtos = data || [];
+
+  produtos = (data || []).map(p => ({
+    id: p.id,
+    nome: p.nome,
+    preco: Number(p.preco),     // 🔥 força número
+    estoque: Number(p.estoque)  // 🔥 força número
+  }));
 }
 carregarProdutos();
 
@@ -181,18 +191,27 @@ input.addEventListener("input", ()=>{
 
   sugestoesEl.innerHTML = f.map(p => `
     <div onclick="selecionarProduto('${p.id}','${p.nome}',${p.preco},${p.estoque})">
-      ${p.nome} - R$ ${p.preco.toFixed(2)} | Est: ${p.estoque}
+      <strong>${p.nome}</strong><br>
+      💰 Preço: R$ ${p.preco.toFixed(2)} |
+      📦 Estoque: ${p.estoque}
     </div>
   `).join("");
+
   sugestoesEl.style.display="block";
 });
 
-function selecionarProduto(id,nome,preco,estoque){
-  produtoSelecionado = { id,nome,preco,estoque };
+function selecionarProduto(id, nome, preco, estoque){
+  produtoSelecionado = {
+    id,
+    nome,
+    preco: Number(preco),     // ✅ preço
+    estoque: Number(estoque)  // ✅ estoque
+  };
+
   input.value = nome;
   sugestoesEl.style.display = "none";
 
-  quantidadeInput.value = 1;   // 🔥 GARANTE QUANTIDADE VÁLIDA
+  quantidadeInput.value = 1;
   valorPago.value = "";
   calcularTroco();
 }
@@ -254,7 +273,7 @@ async function vender(){
 
   const q = Number(quantidadeInput.value);
   if(!Number.isFinite(q) || q <= 0){
-    alert("Informe uma quantidade válida");
+    alert("Quantidade inválida");
     return;
   }
 
