@@ -1,10 +1,11 @@
 {
-  "name": "Carlos Store",
-  "short_name": "CarlosStore",
-  "start_url": "./index.html?app=a724a269-84c1-44cc-9fbd-5532c61414a1",
+  "name": "Loja",
+  "short_name": "Loja",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "background_color": "#020617",
+  "theme_color": "#22c55e",
   "orientation": "portrait",
   "icons": [
     {
