@@ -126,7 +126,8 @@ small{opacity:.7}
     <label><input type="checkbox" class="cor" value="Vermelho"> Vermelho</label>
   </div>
 
-  <input id="foto" type="file" accept="image/*">
+  <!-- INPUT PARA MULTIPLAS FOTOS -->
+  <input id="fotos" type="file" accept="image/*" multiple>
 
   <button onclick="cadastrar()">Cadastrar peça</button>
 </div>
@@ -142,7 +143,6 @@ small{opacity:.7}
 <script>
 /* ========= SESSÃO ========= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
-
 if(!admin || admin.tipo !== "loja"){
   location.replace("../auth/login.html");
   throw new Error("Sessão inválida");
@@ -156,10 +156,10 @@ const sb = supabase.createClient(
 
 /* ========= NAVEGAÇÃO ========= */
 function voltar(){
-  location.href = "painel.html";
+  location.href = "admin.html";
 }
 
-/* ========= CRUD ========= */
+/* ========= CADASTRO ========= */
 async function cadastrar(){
   if(!nome.value || preco.value <= 0){
     alert("Preencha nome e preço corretamente");
@@ -169,11 +169,14 @@ async function cadastrar(){
   const tamanhos = [...document.querySelectorAll(".tam:checked")].map(i=>i.value);
   const cores = [...document.querySelectorAll(".cor:checked")].map(i=>i.value);
 
-  let imagem = null;
-  if(foto.files[0]){
-    const path = `${admin.app_id}/${Date.now()}_${foto.files[0].name}`;
-    await sb.storage.from("produtos").upload(path, foto.files[0], { upsert:true });
-    imagem = sb.storage.from("produtos").getPublicUrl(path).data.publicUrl;
+  const arquivos = fotos.files;
+  let imagens = [];
+
+  for(let i=0; i<arquivos.length; i++){
+    const path = `${admin.app_id}/${Date.now()}_${arquivos[i].name}`;
+    await sb.storage.from("produtos").upload(path, arquivos[i], { upsert:true });
+    const url = sb.storage.from("produtos").getPublicUrl(path).data.publicUrl;
+    imagens.push(url);
   }
 
   await sb.from("produtos").insert({
@@ -184,17 +187,19 @@ async function cadastrar(){
     categoria: categoria.value,
     tamanhos,
     cores,
-    imagem,
+    imagens, // array de URLs
     ativo: true
   });
 
+  // limpar formulário
   nome.value = preco.value = estoque.value = "";
   document.querySelectorAll("input[type=checkbox]").forEach(i=>i.checked=false);
-  foto.value = "";
+  fotos.value = "";
 
   carregar();
 }
 
+/* ========= CARREGAR PRODUTOS ========= */
 async function carregar(){
   const { data } = await sb
     .from("produtos")
@@ -204,7 +209,7 @@ async function carregar(){
 
   lista.innerHTML = (data || []).map(p=>`
     <div class="produto">
-      ${p.imagem ? `<img src="${p.imagem}">` : `<div class="sem-foto">Sem foto</div>`}
+      ${p.imagens && p.imagens.length > 0 ? `<img src="${p.imagens[0]}">` : `<div class="sem-foto">Sem foto</div>`}
       <b>${p.nome}</b>
       <div class="preco">R$ ${p.preco.toFixed(2)}</div>
       <small>${(p.tamanhos||[]).join(", ")} | ${(p.cores||[]).join(", ")}</small>
@@ -214,6 +219,7 @@ async function carregar(){
   `).join("");
 }
 
+/* ========= EXCLUIR ========= */
 async function excluir(id){
   if(confirm("Excluir esta peça?")){
     await sb.from("produtos").delete().eq("id", id);
