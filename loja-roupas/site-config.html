@@ -70,9 +70,9 @@ small{opacity:.7}
   <select id="tema">
     <option value="padrao">Padrão</option>
     <option value="carnaval">🎭 Carnaval</option>
-    <option value="saojoao">🔥 São João</option>
+    <option value="sao_joao">🔥 São João</option>
     <option value="natal">🎄 Natal</option>
-    <option value="anonovo">✨ Ano Novo</option>
+    <option value="ano_novo">✨ Ano Novo</option>
   </select>
 
   <label>Banner da loja</label>
@@ -119,17 +119,27 @@ bannerInput.onchange = ()=>{
   }
 };
 
-/* ===== UPLOAD ===== */
+/* ===== UPLOAD BANNER ===== */
 async function uploadBanner(file){
   if(!file) return null;
+
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
   const path = `${app_id}/${Date.now()}.${ext}`;
-  const { error } = await sb.storage.from(BUCKET_BANNERS).upload(path, file, { upsert:true });
-  if(error){ console.error(error); return null; }
+
+  const { error } = await sb
+    .storage
+    .from(BUCKET_BANNERS)
+    .upload(path, file, { upsert:true });
+
+  if(error){
+    console.error(error);
+    return null;
+  }
+
   return sb.storage.from(BUCKET_BANNERS).getPublicUrl(path).data.publicUrl;
 }
 
-/* ===== SALVAR ===== */
+/* ===== SALVAR CONFIG ===== */
 async function salvar(){
   statusEl.innerText = "Salvando...";
 
@@ -144,11 +154,16 @@ async function salvar(){
     descricao_site: descEl.value || null,
     sobre_site: sobreEl.value || null,
     whatsapp: whatsappEl.value || null,
-    tema_site: temaEl.value || "padrao"
+    tema: temaEl.value || "padrao"
   };
+
   if(banner_url) payload.banner_url = banner_url;
 
-  const { data: existente } = await sb.from("config_site").select("id").eq("app_id", app_id).maybeSingle();
+  const { data: existente } = await sb
+    .from("config_site")
+    .select("id")
+    .eq("app_id", app_id)
+    .maybeSingle();
 
   const res = existente
     ? await sb.from("config_site").update(payload).eq("app_id", app_id)
@@ -164,10 +179,11 @@ async function salvar(){
   statusEl.innerText = "Salvo com sucesso 🔥";
 }
 
-/* ===== LOAD ===== */
+/* ===== LOAD CONFIG ===== */
 (async()=>{
-  const { data } = await sb.from("config_site")
-    .select("nome_site,descricao_site,sobre_site,whatsapp,tema_site,banner_url")
+  const { data } = await sb
+    .from("config_site")
+    .select("nome_site,descricao_site,sobre_site,whatsapp,tema,banner_url")
     .eq("app_id", app_id)
     .maybeSingle();
 
@@ -177,7 +193,7 @@ async function salvar(){
   descEl.value = data.descricao_site || "";
   sobreEl.value = data.sobre_site || "";
   whatsappEl.value = data.whatsapp || "";
-  temaEl.value = data.tema_site || "padrao";
+  temaEl.value = data.tema || "padrao";
 
   if(data.banner_url){
     bannerPreview.src = data.banner_url;
