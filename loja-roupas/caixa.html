@@ -9,7 +9,7 @@
 
 <style>
 body{margin:0;font-family:Arial;background:#020617;color:#fff}
-.topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between}
+.topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
 .voltar{background:#334155;color:#fff;border:none;padding:10px 16px;border-radius:10px;font-weight:bold}
 .container{padding:32px;max-width:900px;margin:auto}
 .box{background:#0f172a;padding:20px;border-radius:16px;margin-bottom:20px}
@@ -17,7 +17,6 @@ input,select,button{width:100%;padding:12px;margin-top:10px;border-radius:10px;b
 input,select{background:#020617;color:#fff}
 button{background:#22c55e;font-weight:bold;cursor:pointer}
 .fechar{background:#2563eb}
-.lista{margin-top:20px}
 .item{display:flex;justify-content:space-between;border-bottom:1px solid #1e293b;padding:8px 0}
 .total{font-size:20px;font-weight:bold;color:#22c55e;text-align:right}
 #trocoInfo{margin-top:10px;font-weight:bold}
@@ -40,18 +39,11 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
   <div class="box">
     <h3>🛒 Registrar Venda</h3>
 
-    <input id="produtoInput" placeholder="Digite o nome do produto">
-    <div id="sugestoes" style="display:none"></div>
-
+    <input id="produtoInput" placeholder="Produto">
+    <input id="precoInput" type="number" step="0.01" placeholder="Preço">
     <input id="quantidadeInput" type="number" min="1" value="1">
-
-    <select id="formaPagamento">
-      <option value="dinheiro">💵 Dinheiro</option>
-      <option value="pix">📱 Pix</option>
-      <option value="cartao">💳 Cartão</option>
-    </select>
-
     <input id="valorPago" type="number" step="0.01" placeholder="Valor pago">
+
     <div id="trocoInfo"></div>
 
     <button onclick="vender()">Registrar Venda</button>
@@ -59,8 +51,8 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
 
   <!-- CAIXA -->
   <div class="box">
-    <h3>📄 Movimentações do Caixa</h3>
-    <div id="lista" class="lista"></div>
+    <h3>📄 Caixa Atual</h3>
+    <div id="lista"></div>
     <div id="total" class="total"></div>
     <button class="fechar" onclick="fecharCaixa()">🧾 Fechar Caixa</button>
   </div>
@@ -68,33 +60,37 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
 </div>
 
 <script>
+/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* ===== SESSÃO ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 if(!admin){ alert("Sessão inválida"); location.href="../auth/login.html"; }
-const app_id = admin.app_id;
+const app_uuid = admin.app_id;
 
+/* ===== ELEMENTOS ===== */
 const lista = document.getElementById("lista");
 const total = document.getElementById("total");
+const produtoInput = document.getElementById("produtoInput");
+const precoInput = document.getElementById("precoInput");
 const quantidadeInput = document.getElementById("quantidadeInput");
 const valorPago = document.getElementById("valorPago");
 const trocoInfo = document.getElementById("trocoInfo");
-const produtoInput = document.getElementById("produtoInput");
-
-let produtoSelecionado = { nome:"Produto", preco:100, estoque:999 };
 
 /* ===== TROCO ===== */
+valorPago.addEventListener("input", calcularTroco);
+quantidadeInput.addEventListener("input", calcularTroco);
+
 function calcularTroco(){
+  const preco = Number(precoInput.value);
   const q = Number(quantidadeInput.value);
   const pago = Number(valorPago.value);
-  if(!q || !pago) return trocoInfo.innerText="";
+  if(!preco || !q || !pago){ trocoInfo.innerText=""; return; }
 
-  const totalVenda = produtoSelecionado.preco * q;
-  const diff = pago - totalVenda;
-
+  const diff = pago - (preco*q);
   if(diff>0){
     trocoInfo.className="troco-ok";
     trocoInfo.innerText=`Troco: R$ ${diff.toFixed(2)}`;
@@ -106,27 +102,33 @@ function calcularTroco(){
     trocoInfo.innerText="Pagamento exato";
   }
 }
-valorPago.addEventListener("input", calcularTroco);
-quantidadeInput.addEventListener("input", calcularTroco);
 
 /* ===== VENDA ===== */
 async function vender(){
+  const nome = produtoInput.value.trim();
+  const preco = Number(precoInput.value);
+  const q = Number(quantidadeInput.value);
   const pago = Number(valorPago.value);
-  if(pago<=0) return alert("Valor inválido");
+
+  if(!nome || preco<=0 || q<=0 || pago<=0){
+    alert("Preencha todos os campos");
+    return;
+  }
 
   await sb.from("caixa").insert({
-    app_id,
-    tipo:"entrada",
-    descricao:`Venda: ${produtoInput.value}`,
-    valor:pago
+    app_id: app_uuid,
+    tipo: "entrada",
+    descricao: `Venda: ${nome} x${q}`,
+    valor: pago
   });
 
   produtoInput.value="";
+  precoInput.value="";
   quantidadeInput.value=1;
   valorPago.value="";
   trocoInfo.innerText="";
 
-  carregarMovimentos();
+  carregarCaixa();
 }
 
 /* ===== ÚLTIMO FECHAMENTO ===== */
@@ -134,7 +136,7 @@ async function getUltimoCaixaId(){
   const { data } = await sb
     .from("caixa_fechamento")
     .select("ultimo_caixa_id")
-    .eq("app_id", app_id)
+    .eq("app_uuid", app_uuid)
     .order("id", { ascending:false })
     .limit(1);
 
@@ -143,11 +145,11 @@ async function getUltimoCaixaId(){
     : 0;
 }
 
-/* ===== LISTAR CAIXA (ZERA DE VERDADE) ===== */
-async function carregarMovimentos(){
+/* ===== CAIXA (ZERA DE VERDADE) ===== */
+async function carregarCaixa(){
   const ultimoId = await getUltimoCaixaId();
 
-  let query = sb.from("caixa").select("*").eq("app_id", app_id);
+  let query = sb.from("caixa").select("*").eq("app_id", app_uuid);
   if(ultimoId>0) query = query.gt("id", ultimoId);
 
   const { data } = await query.order("id");
@@ -165,31 +167,34 @@ async function carregarMovimentos(){
 
   total.innerText=`Saldo: R$ ${saldo.toFixed(2)}`;
 }
-carregarMovimentos();
+carregarCaixa();
 
 /* ===== FECHAR CAIXA ===== */
 async function fecharCaixa(){
   const ultimoId = await getUltimoCaixaId();
 
-  let query = sb.from("caixa").select("*").eq("app_id", app_id);
+  let query = sb.from("caixa").select("*").eq("app_id", app_uuid);
   if(ultimoId>0) query = query.gt("id", ultimoId);
 
-  const { data: mov } = await query.order("id");
-  if(!mov || !mov.length) return alert("Nada para fechar");
+  const { data } = await query.order("id");
+  if(!data || !data.length){
+    alert("Nada para fechar");
+    return;
+  }
 
-  const ultimoCaixaId = mov[mov.length-1].id;
-  let totalRecebido = 0;
-  mov.forEach(m=> totalRecebido+=Number(m.valor));
+  const ultimoCaixaId = data[data.length-1].id;
+  let totalRecebido=0;
+  data.forEach(m=> totalRecebido+=Number(m.valor));
 
   await sb.from("caixa_fechamento").insert({
-    app_id,
-    data:new Date().toISOString().slice(0,10),
+    app_uuid: app_uuid,
+    data: new Date().toISOString().slice(0,10),
     total_recebido: totalRecebido,
-    total_vendas: mov.length,
+    total_vendas: data.length,
     ultimo_caixa_id: ultimoCaixaId
   });
 
-  carregarMovimentos(); // 🔥 zera mesmo
+  carregarCaixa(); // 🔥 zera de verdade
 }
 </script>
 
