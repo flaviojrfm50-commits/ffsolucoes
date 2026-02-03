@@ -2,25 +2,21 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Caixa | Loja de Roupas</title>
+<title>Caixa | Loja</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#020617;color:#fff}
+body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
-.voltar{background:#334155;color:#fff;border:none;padding:10px 16px;border-radius:10px;font-weight:bold;cursor:pointer}
+button{background:#22c55e;color:#fff;border:none;padding:10px 16px;border-radius:10px;font-weight:bold;cursor:pointer}
+.voltar{background:#334155}
 .container{padding:32px;max-width:900px;margin:auto}
 .box{background:#0f172a;padding:20px;border-radius:16px;margin-bottom:20px}
-input,select,button{width:100%;padding:12px;margin-top:10px;border-radius:10px;border:none}
-input,select{background:#020617;color:#fff}
-button{background:#22c55e;font-weight:bold;cursor:pointer}
-.item{display:flex;justify-content:space-between;border-bottom:1px solid #1e293b;padding:8px 0;font-size:14px}
+input,select{width:100%;padding:12px;margin-top:10px;border-radius:10px;border:none;background:#020617;color:#fff}
+.item{display:flex;justify-content:space-between;border-bottom:1px solid #1e293b;padding:8px 0}
 .total{font-size:20px;font-weight:bold;color:#22c55e;text-align:right}
-.sugestao{background:#0f172a;border:1px solid #334155;border-radius:10px;max-height:140px;overflow-y:auto;position:absolute;width:calc(100% - 24px);z-index:10}
-.sugestao div{padding:8px;cursor:pointer}
-.sugestao div:hover{background:#334155}
 #trocoInfo{margin-top:10px;font-weight:bold}
 .troco-ok{color:#22c55e}
 .troco-desc{color:#eab308}
@@ -37,30 +33,18 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
 
 <div class="container">
 
-  <!-- VENDA -->
   <div class="box">
     <h3>🛒 Registrar Venda</h3>
-
-    <input id="produtoInput" placeholder="Digite o nome do produto">
-    <div id="sugestoes" class="sugestao" style="display:none;"></div>
-
-    <input id="quantidadeInput" type="number" min="1" value="1">
-
-    <select id="formaPagamento">
-      <option value="dinheiro">💵 Dinheiro</option>
-      <option value="pix">📱 Pix</option>
-      <option value="cartao">💳 Cartão</option>
-    </select>
-
-    <input id="valorPago" type="number" step="0.01" placeholder="Valor pago">
+    <input id="produto" placeholder="Produto">
+    <input id="preco" type="number" step="0.01" placeholder="Preço">
+    <input id="qtd" type="number" value="1" min="1">
+    <input id="pago" type="number" step="0.01" placeholder="Valor pago">
     <div id="trocoInfo"></div>
-
-    <button onclick="vender()">Registrar Venda</button>
+    <button onclick="registrarVenda()">Registrar Venda</button>
   </div>
 
-  <!-- CAIXA -->
   <div class="box">
-    <h3>📄 Movimentações do Caixa</h3>
+    <h3>📄 Caixa Atual</h3>
     <div id="lista"></div>
     <div id="total" class="total"></div>
     <button onclick="fecharCaixa()">🧾 Fechar Caixa</button>
@@ -77,113 +61,49 @@ const sb = supabase.createClient(
 
 /* ===== SESSÃO ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
-if(!admin || admin.tipo!=="loja"){
-  alert("Sessão inválida");
-  location.href="../auth/login.html";
-}
+if(!admin){ alert("Sessão inválida"); location.href="../auth/login.html"; }
 const app_id = admin.app_id;
 
 /* ===== ELEMENTOS ===== */
-const quantidadeInput=document.getElementById("quantidadeInput");
-const lista=document.getElementById("lista");
-const total=document.getElementById("total");
-const valorPago=document.getElementById("valorPago");
-const trocoInfo=document.getElementById("trocoInfo");
-
-/* ===== PRODUTOS ===== */
-let produtos=[];
-let produtoSelecionado=null;
-
-async function carregarProdutos(){
-  const { data } = await sb
-    .from("produtos")
-    .select("id,nome,preco,estoque")
-    .eq("app_id",app_id)
-    .eq("ativo",true)
-    .order("nome");
-
-  produtos=(data||[]).map(p=>({
-    id:p.id,
-    nome:p.nome,
-    preco:Number(p.preco),
-    estoque:Number(p.estoque)
-  }));
-}
-carregarProdutos();
-
-/* ===== AUTOCOMPLETE ===== */
-const input=document.getElementById("produtoInput");
-const sugestoesEl=document.getElementById("sugestoes");
-
-input.addEventListener("input",()=>{
-  const v=input.value.toLowerCase();
-  if(!v){sugestoesEl.style.display="none";return;}
-  const f=produtos.filter(p=>p.nome.toLowerCase().includes(v));
-  if(!f.length){sugestoesEl.style.display="none";return;}
-  sugestoesEl.innerHTML=f.map(p=>`
-    <div onclick="selecionarProduto('${p.id}','${p.nome}',${p.preco},${p.estoque})">
-      <strong>${p.nome}</strong><br>
-      💰 R$ ${p.preco.toFixed(2)} | 📦 ${p.estoque}
-    </div>`).join("");
-  sugestoesEl.style.display="block";
-});
-
-function selecionarProduto(id,nome,preco,estoque){
-  produtoSelecionado={id,nome,preco:Number(preco),estoque:Number(estoque)};
-  input.value=nome;
-  sugestoesEl.style.display="none";
-  quantidadeInput.value=1;
-  quantidadeInput.max=estoque;
-  valorPago.value="";
-  calcularTroco();
-}
+const produto = document.getElementById("produto");
+const preco = document.getElementById("preco");
+const qtd = document.getElementById("qtd");
+const pago = document.getElementById("pago");
+const lista = document.getElementById("lista");
+const totalEl = document.getElementById("total");
+const trocoInfo = document.getElementById("trocoInfo");
 
 /* ===== TROCO ===== */
-valorPago.addEventListener("input",calcularTroco);
-quantidadeInput.addEventListener("input",calcularTroco);
+pago.addEventListener("input", calcTroco);
+qtd.addEventListener("input", calcTroco);
 
-function calcularTroco(){
-  if(!produtoSelecionado) return trocoInfo.innerText="";
-  const q=Number(quantidadeInput.value);
-  const pago=Number(valorPago.value);
-  if(!pago||q<=0) return trocoInfo.innerText="";
-  const totalVenda=produtoSelecionado.preco*q;
-  const diff=pago-totalVenda;
-  if(diff>0){trocoInfo.className="troco-ok";trocoInfo.innerText=`Troco: R$ ${diff.toFixed(2)}`;}
-  else if(diff<0){trocoInfo.className="troco-desc";trocoInfo.innerText=`Desconto: R$ ${Math.abs(diff).toFixed(2)}`;}
-  else{trocoInfo.className="troco-exato";trocoInfo.innerText="Pagamento exato";}
+function calcTroco(){
+  const t = preco.value * qtd.value;
+  const p = Number(pago.value);
+  if(!p || !t){ trocoInfo.innerText=""; return; }
+  const d = p - t;
+  if(d>0){ trocoInfo.className="troco-ok"; trocoInfo.innerText=`Troco: R$ ${d.toFixed(2)}`; }
+  else if(d<0){ trocoInfo.className="troco-desc"; trocoInfo.innerText=`Desconto: R$ ${Math.abs(d).toFixed(2)}`; }
+  else{ trocoInfo.className="troco-exato"; trocoInfo.innerText="Pagamento exato"; }
 }
 
-/* ===== VENDER ===== */
-async function vender(){
-  if(!produtoSelecionado) return alert("Selecione um produto");
-  const q=Number(quantidadeInput.value);
-  const pago=Number(valorPago.value);
-  if(q<=0||q>produtoSelecionado.estoque||!pago) return alert("Dados inválidos");
-
-  const totalVenda=produtoSelecionado.preco*q;
-  const desconto=Math.max(0,totalVenda-pago);
+/* ===== VENDA ===== */
+async function registrarVenda(){
+  if(!produto.value || preco.value<=0 || pago.value<=0){
+    alert("Preencha todos os campos");
+    return;
+  }
 
   await sb.from("caixa").insert({
     app_id,
     tipo:"entrada",
-    descricao:`Venda: ${produtoSelecionado.nome} x${q}`,
-    valor:pago,
-    desconto
+    descricao:`Venda: ${produto.value} x${qtd.value}`,
+    valor:Number(pago.value),
+    desconto: Math.max(0,(preco.value*qtd.value)-pago.value)
   });
 
-  await sb.from("produtos")
-    .update({estoque:produtoSelecionado.estoque-q})
-    .eq("id",produtoSelecionado.id);
-
-  produtoSelecionado=null;
-  input.value="";
-  quantidadeInput.value=1;
-  valorPago.value="";
-  trocoInfo.innerText="";
-
-  carregarProdutos();
-  carregarMovimentos();
+  produto.value=""; preco.value=""; qtd.value=1; pago.value=""; trocoInfo.innerText="";
+  carregarCaixa();
 }
 
 /* ===== ÚLTIMO FECHAMENTO ===== */
@@ -199,10 +119,10 @@ async function ultimaDataFechamento(){
 }
 
 /* ===== CAIXA ===== */
-async function carregarMovimentos(){
-  const ultimaData=await ultimaDataFechamento();
-  let q=sb.from("caixa").select("*").eq("app_id",app_id);
-  if(ultimaData) q=q.gt("created_at",ultimaData);
+async function carregarCaixa(){
+  const ultima = await ultimaDataFechamento();
+  let q = sb.from("caixa").select("*").eq("app_id",app_id);
+  if(ultima) q = q.gt("created_at",ultima);
 
   const { data } = await q.order("id");
   let saldo=0;
@@ -215,42 +135,44 @@ async function carregarMovimentos(){
         <span>R$ ${Number(m.valor).toFixed(2)}</span>
       </div>`;
   });
-  total.innerText=`Saldo: R$ ${saldo.toFixed(2)}`;
+  totalEl.innerText=`Saldo: R$ ${saldo.toFixed(2)}`;
 }
 
 /* ===== FECHAR CAIXA ===== */
 async function fecharCaixa(){
-  const ultimaData=await ultimaDataFechamento();
-  let q=sb.from("caixa").select("*").eq("app_id",app_id);
-  if(ultimaData) q=q.gt("created_at",ultimaData);
+  try{
+    const ultima = await ultimaDataFechamento();
+    let q = sb.from("caixa").select("*").eq("app_id",app_id);
+    if(ultima) q = q.gt("created_at",ultima);
 
-  const { data } = await q.order("id");
-  if(!data||!data.length) return alert("Nada para fechar");
+    const { data } = await q.order("id");
+    if(!data || !data.length){ alert("Nada para fechar"); return; }
 
-  let totalRecebido=0,totalDescontos=0;
-  data.forEach(m=>{
-    totalRecebido+=Number(m.valor);
-    totalDescontos+=Number(m.desconto||0);
-  });
+    let totalRecebido=0, totalDescontos=0;
+    data.forEach(m=>{
+      totalRecebido+=Number(m.valor);
+      totalDescontos+=Number(m.desconto||0);
+    });
 
-  const { error } = await sb.from("caixa_fechamento").insert({
-    app_id,
-    data:new Date(),
-    total_recebido:totalRecebido,
-    total_descontos:totalDescontos
-  });
+    const { error } = await sb.from("caixa_fechamento").insert({
+      app_id,
+      data:new Date(),
+      total_recebido:totalRecebido,
+      total_descontos:totalDescontos
+    });
 
-  if(error){
-    console.error(error);
-    alert("Erro ao fechar caixa");
-    return;
+    if(error) throw error;
+
+    alert("Caixa fechado com sucesso");
+    carregarCaixa();
+
+  }catch(e){
+    console.error("ERRO REAL:",e);
+    alert("Erro ao fechar caixa. Veja o console.");
   }
-
-  alert("Caixa fechado com sucesso");
-  carregarMovimentos();
 }
 
-carregarMovimentos();
+carregarCaixa();
 </script>
 
 </body>
