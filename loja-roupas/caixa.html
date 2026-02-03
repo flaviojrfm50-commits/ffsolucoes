@@ -78,13 +78,9 @@ button{
   width:calc(100% - 24px);
   z-index:10;
 }
-.sugestao div{
-  padding:8px;
-  cursor:pointer;
-}
+.sugestao div{padding:8px;cursor:pointer}
 .sugestao div:hover{background:#334155}
 
-/* TROCO */
 #trocoInfo{margin-top:10px;font-weight:bold}
 .troco-ok{color:#22c55e}
 .troco-falta{color:#ef4444}
@@ -101,7 +97,6 @@ button{
 
 <div class="container">
 
-  <!-- VENDA -->
   <div class="box">
     <h3>🛒 Registrar Venda</h3>
 
@@ -122,7 +117,6 @@ button{
     <button onclick="vender()">Registrar Venda</button>
   </div>
 
-  <!-- MOVIMENTOS -->
   <div class="box">
     <h3>📄 Movimentações do Caixa</h3>
     <div id="lista"></div>
@@ -132,7 +126,6 @@ button{
 </div>
 
 <script>
-/* ===== ELEMENTOS ===== */
 const quantidadeInput = document.getElementById("quantidadeInput");
 const lista = document.getElementById("lista");
 const total = document.getElementById("total");
@@ -140,24 +133,20 @@ const formaPagamento = document.getElementById("formaPagamento");
 const valorPago = document.getElementById("valorPago");
 const trocoInfo = document.getElementById("trocoInfo");
 
-/* ===== SESSÃO ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 if(!admin || admin.tipo !== "loja"){
   alert("Sessão inválida");
-  location.href = "../auth/login.html";
+  location.href="../auth/login.html";
 }
 const app_id = admin.app_id;
 
-/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===== NAV ===== */
 function voltar(){ location.href="admin.html"; }
 
-/* ===== PRODUTOS ===== */
 let produtos = [];
 let produtoSelecionado = null;
 
@@ -169,176 +158,144 @@ async function carregarProdutos(){
     .eq("ativo", true)
     .order("nome");
 
-  produtos = (data || []).map(p => ({
-    id: p.id,
-    nome: p.nome,
-    preco: Number(p.preco),     // 🔥 força número
-    estoque: Number(p.estoque)  // 🔥 força número
+  produtos = (data||[]).map(p => ({
+    id:p.id,
+    nome:p.nome,
+    preco:Number(p.preco),
+    estoque:Number(p.estoque)
   }));
 }
 carregarProdutos();
 
-/* ===== AUTOCOMPLETE ===== */
 const input = document.getElementById("produtoInput");
 const sugestoesEl = document.getElementById("sugestoes");
 
-input.addEventListener("input", ()=>{
-  const v = input.value.toLowerCase();
-  if(!v){ sugestoesEl.style.display="none"; return; }
+input.addEventListener("input",()=>{
+  const v=input.value.toLowerCase();
+  if(!v){sugestoesEl.style.display="none";return;}
 
-  const f = produtos.filter(p => p.nome.toLowerCase().includes(v));
-  if(!f.length){ sugestoesEl.style.display="none"; return; }
+  const f=produtos.filter(p=>p.nome.toLowerCase().includes(v));
+  if(!f.length){sugestoesEl.style.display="none";return;}
 
-  sugestoesEl.innerHTML = f.map(p => `
+  sugestoesEl.innerHTML=f.map(p=>`
     <div onclick="selecionarProduto('${p.id}','${p.nome}',${p.preco},${p.estoque})">
       <strong>${p.nome}</strong><br>
-      💰 Preço: R$ ${p.preco.toFixed(2)} |
-      📦 Estoque: ${p.estoque}
-    </div>
-  `).join("");
-
+      💰 R$ ${p.preco.toFixed(2)} | 📦 ${p.estoque}
+    </div>`).join("");
   sugestoesEl.style.display="block";
 });
 
-function selecionarProduto(id, nome, preco, estoque){
-  produtoSelecionado = {
-    id,
-    nome,
-    preco: Number(preco),     // ✅ preço
-    estoque: Number(estoque)  // ✅ estoque
-  };
-
-  input.value = nome;
-  sugestoesEl.style.display = "none";
-
-  quantidadeInput.value = 1;
-  valorPago.value = "";
+function selecionarProduto(id,nome,preco,estoque){
+  produtoSelecionado={id,nome,preco:Number(preco),estoque:Number(estoque)};
+  input.value=nome;
+  sugestoesEl.style.display="none";
+  quantidadeInput.value=1;
+  valorPago.value="";
   calcularTroco();
 }
 
-/* ===== FORMA PAGAMENTO ===== */
-formaPagamento.addEventListener("change", ()=>{
-  if(formaPagamento.value === "dinheiro"){
-    valorPago.style.display = "block";
+formaPagamento.addEventListener("change",()=>{
+  if(formaPagamento.value==="dinheiro"){
+    valorPago.style.display="block";
   }else{
-    valorPago.style.display = "none";
-    valorPago.value = "";
-    trocoInfo.innerText = "";
+    valorPago.style.display="none";
+    valorPago.value="";
+    trocoInfo.innerText="";
   }
 });
 
-/* ===== TROCO EM TEMPO REAL ===== */
-valorPago.addEventListener("input", calcularTroco);
-quantidadeInput.addEventListener("input", calcularTroco);
+valorPago.addEventListener("input",calcularTroco);
+quantidadeInput.addEventListener("input",calcularTroco);
 
 function calcularTroco(){
-  if(!produtoSelecionado || formaPagamento.value !== "dinheiro"){
-    trocoInfo.innerText = "";
+  if(!produtoSelecionado || formaPagamento.value!=="dinheiro"){
+    trocoInfo.innerText="";
     return;
   }
 
-  const q = Number(quantidadeInput.value);
-  if(!Number.isFinite(q) || q <= 0){
-    trocoInfo.innerText = "";
+  const q=Number(quantidadeInput.value);
+  if(q<=0) return;
+
+  if(valorPago.value===""){
+    trocoInfo.innerText="";
     return;
   }
 
-  const totalVenda = produtoSelecionado.preco * q;
-  const pago = Number(valorPago.value);
-  if(!Number.isFinite(pago) || pago <= 0){
-    trocoInfo.innerText = "";
-    return;
-  }
+  const totalVenda=produtoSelecionado.preco*q;
+  const pago=Number(valorPago.value);
+  if(!Number.isFinite(pago)) return;
 
-  const diff = pago - totalVenda;
+  const diff=pago-totalVenda;
 
-  if(diff > 0){
-    trocoInfo.className = "troco-ok";
-    trocoInfo.innerText = `🟢 Troco: R$ ${diff.toFixed(2)}`;
-  }else if(diff < 0){
-    trocoInfo.className = "troco-falta";
-    trocoInfo.innerText = `🔴 Faltam R$ ${Math.abs(diff).toFixed(2)}`;
+  if(diff>0){
+    trocoInfo.className="troco-ok";
+    trocoInfo.innerText=`🟢 Troco: R$ ${diff.toFixed(2)}`;
+  }else if(diff<0){
+    trocoInfo.className="troco-falta";
+    trocoInfo.innerText=`🔴 Faltam R$ ${Math.abs(diff).toFixed(2)}`;
   }else{
-    trocoInfo.className = "troco-exato";
-    trocoInfo.innerText = "🟡 Pagamento exato";
+    trocoInfo.className="troco-exato";
+    trocoInfo.innerText="🟡 Pagamento exato";
   }
 }
 
-/* ===== VENDER ===== */
 async function vender(){
-  if(!produtoSelecionado){
-    alert("Selecione um produto");
-    return;
-  }
+  if(!produtoSelecionado) return alert("Selecione um produto");
 
-  const q = Number(quantidadeInput.value);
-  if(!Number.isFinite(q) || q <= 0){
-    alert("Quantidade inválida");
-    return;
-  }
+  const q=Number(quantidadeInput.value);
+  if(q<=0) return alert("Quantidade inválida");
+  if(q>produtoSelecionado.estoque) return alert("Estoque insuficiente");
 
-  if(q > produtoSelecionado.estoque){
-    alert("Estoque insuficiente");
-    return;
-  }
+  const totalVenda=produtoSelecionado.preco*q;
+  let extra="";
 
-  const totalVenda = produtoSelecionado.preco * q;
-  let extra = "";
-
-  if(formaPagamento.value === "dinheiro"){
-    const pago = Number(valorPago.value);
-    const diff = pago - totalVenda;
-
-    if(!Number.isFinite(pago) || diff < 0){
-      alert(`Faltam R$ ${Math.abs(diff).toFixed(2)}`);
-      return;
-    }
-
-    extra = ` | Pago: R$ ${pago.toFixed(2)} | Troco: R$ ${diff.toFixed(2)}`;
+  if(formaPagamento.value==="dinheiro"){
+    if(valorPago.value==="") return alert("Informe o valor pago");
+    const pago=Number(valorPago.value);
+    const diff=pago-totalVenda;
+    if(diff<0) return alert(`Faltam R$ ${Math.abs(diff).toFixed(2)}`);
+    extra=` | Pago: R$ ${pago.toFixed(2)} | Troco: R$ ${diff.toFixed(2)}`;
   }
 
   await sb.from("caixa").insert({
     app_id,
-    tipo: "entrada",
-    descricao: `Venda: ${produtoSelecionado.nome} x${q}${extra}`,
-    valor: totalVenda
+    tipo:"entrada",
+    descricao:`Venda: ${produtoSelecionado.nome} x${q}${extra}`,
+    valor:totalVenda
   });
 
   await sb.from("produtos")
-    .update({ estoque: produtoSelecionado.estoque - q })
-    .eq("id", produtoSelecionado.id);
+    .update({estoque:produtoSelecionado.estoque-q})
+    .eq("id",produtoSelecionado.id);
 
-  produtoSelecionado = null;
-  input.value = "";
-  quantidadeInput.value = 1;
-  valorPago.value = "";
-  trocoInfo.innerText = "";
+  produtoSelecionado=null;
+  input.value="";
+  quantidadeInput.value=1;
+  valorPago.value="";
+  trocoInfo.innerText="";
 
   carregarProdutos();
   carregarMovimentos();
 }
 
-/* ===== LISTAR CAIXA ===== */
 async function carregarMovimentos(){
   const { data } = await sb
     .from("caixa")
     .select("*")
-    .eq("app_id", app_id)
+    .eq("app_id",app_id)
     .order("id");
 
-  let saldo = 0;
-  lista.innerHTML = "";
-
-  (data || []).forEach(m => {
-    saldo += m.tipo === "entrada" ? Number(m.valor) : -Number(m.valor);
-    lista.innerHTML += `
+  let saldo=0;
+  lista.innerHTML="";
+  (data||[]).forEach(m=>{
+    saldo+=m.tipo==="entrada"?Number(m.valor):-Number(m.valor);
+    lista.innerHTML+=`
       <div class="item">
         <span>${m.descricao}</span>
         <span>${m.tipo==="entrada"?"+":"-"} R$ ${Number(m.valor).toFixed(2)}</span>
       </div>`;
   });
-
-  total.innerText = `Saldo: R$ ${saldo.toFixed(2)}`;
+  total.innerText=`Saldo: R$ ${saldo.toFixed(2)}`;
 }
 carregarMovimentos();
 </script>
