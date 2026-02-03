@@ -110,7 +110,8 @@ button{
     <input id="descEntrada" placeholder="Digite o produto ou descrição">
     <div id="sugestoes" class="sugestoes" style="display:none"></div>
     <input id="valorEntrada" type="number" step="0.01" placeholder="Valor">
-    <button onclick="entrada()">Registrar entrada</button>
+    <input id="quantidadeEntrada" type="number" placeholder="Quantidade" value="1" min="1">
+    <button onclick="entrada()">Registrar venda</button>
   </div>
 
   <!-- SAÍDA -->
@@ -147,7 +148,7 @@ const sb = supabase.createClient(
 );
 
 /* ========= NAVEGAÇÃO ========= */
-function voltar(){ location.href="painel.html"; }
+function voltar(){ location.href="admin.html"; }
 
 /* ========= PRODUTOS ========= */
 let produtos = [];
@@ -168,6 +169,7 @@ carregarProdutos();
 /* ========= ENTRADA ========= */
 const descEntrada = document.getElementById("descEntrada");
 const valorEntrada = document.getElementById("valorEntrada");
+const quantidadeEntrada = document.getElementById("quantidadeEntrada");
 const sugestoesEl = document.getElementById("sugestoes");
 
 descEntrada.addEventListener("input", ()=>{
@@ -178,31 +180,56 @@ descEntrada.addEventListener("input", ()=>{
   if(filtrado.length===0){ sugestoesEl.style.display="none"; return; }
 
   sugestoesEl.innerHTML = filtrado.map(p=>`
-    <div onclick="selecionarProduto('${p.nome}', ${p.preco.toFixed(2)})">
+    <div onclick="selecionarProduto('${p.nome}', ${p.preco.toFixed(2)}, ${p.estoque}, '${p.id}')">
       ${p.nome} | R$ ${p.preco.toFixed(2)} | Estoque: ${p.estoque}
     </div>
   `).join("");
   sugestoesEl.style.display="block";
 });
 
-function selecionarProduto(nome, preco){
+let produtoSelecionadoId = null;
+function selecionarProduto(nome, preco, estoque, id){
   descEntrada.value = nome;
   valorEntrada.value = preco;
+  quantidadeEntrada.value = 1;
+  produtoSelecionadoId = id;
   sugestoesEl.style.display="none";
 }
 
+/* ========= REGISTRAR VENDA ========= */
 async function entrada(){
-  if(!descEntrada.value || valorEntrada.value <= 0) return;
+  const q = Number(quantidadeEntrada.value);
+  if(!descEntrada.value || valorEntrada.value <= 0 || q <=0) return;
 
+  // Se produto selecionado, atualizar estoque
+  if(produtoSelecionadoId){
+    const produto = produtos.find(p=>p.id===produtoSelecionadoId);
+    if(produto.estoque < q){
+      alert("Estoque insuficiente!");
+      return;
+    }
+
+    // Atualiza estoque no banco
+    await sb.from("produtos").update({
+      estoque: produto.estoque - q
+    }).eq("id", produtoSelecionadoId);
+
+    // Atualiza lista local
+    produto.estoque -= q;
+  }
+
+  // Registra entrada no caixa
   await sb.from("caixa").insert({
     app_id,
     tipo: "entrada",
     descricao: descEntrada.value,
-    valor: Number(valorEntrada.value)
+    valor: Number(valorEntrada.value) * q
   });
 
-  descEntrada.value = valorEntrada.value = "";
+  descEntrada.value = valorEntrada.value = quantidadeEntrada.value = "";
+  produtoSelecionadoId = null;
   carregar();
+  carregarProdutos(); // atualizar autocomplete
 }
 
 /* ========= SAÍDA ========= */
