@@ -72,6 +72,26 @@ button{
   color:#22c55e;
   text-align:right;
 }
+
+/* Autocomplete */
+.sugestoes{
+  background:#0f172a;
+  border:1px solid #334155;
+  max-height:200px;
+  overflow-y:auto;
+  position:absolute;
+  width:calc(100% - 24px);
+  z-index:10;
+  border-radius:8px;
+}
+.sugestoes div{
+  padding:8px;
+  cursor:pointer;
+}
+.sugestoes div:hover{
+  background:#334155;
+}
+.relative{position:relative;}
 </style>
 </head>
 
@@ -85,9 +105,10 @@ button{
 <div class="container">
 
   <!-- ENTRADA -->
-  <div class="box">
-    <h3>➕ Entrada</h3>
-    <input id="descEntrada" placeholder="Descrição">
+  <div class="box relative">
+    <h3>➕ Entrada (PDV)</h3>
+    <input id="descEntrada" placeholder="Digite o produto ou descrição">
+    <div id="sugestoes" class="sugestoes" style="display:none"></div>
     <input id="valorEntrada" type="number" step="0.01" placeholder="Valor">
     <button onclick="entrada()">Registrar entrada</button>
   </div>
@@ -110,15 +131,13 @@ button{
 </div>
 
 <script>
-/* ========= SESSÃO (IGUAL AO BAR) ========= */
+/* ========= SESSÃO ========= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
-
 if(!admin || admin.tipo !== "loja"){
   alert("Sessão inválida");
   location.href = "../auth/login.html";
   throw new Error("Sessão inválida");
 }
-
 const app_id = admin.app_id;
 
 /* ========= SUPABASE ========= */
@@ -128,11 +147,50 @@ const sb = supabase.createClient(
 );
 
 /* ========= NAVEGAÇÃO ========= */
-function voltar(){
-  location.href = "painel.html";
+function voltar(){ location.href="painel.html"; }
+
+/* ========= PRODUTOS ========= */
+let produtos = [];
+
+async function carregarProdutos(){
+  const { data } = await sb
+    .from("produtos")
+    .select("*")
+    .eq("app_id", app_id)
+    .eq("ativo", true)
+    .gt("estoque", 0)
+    .order("nome");
+
+  produtos = data || [];
+}
+carregarProdutos();
+
+/* ========= ENTRADA ========= */
+const descEntrada = document.getElementById("descEntrada");
+const valorEntrada = document.getElementById("valorEntrada");
+const sugestoesEl = document.getElementById("sugestoes");
+
+descEntrada.addEventListener("input", ()=>{
+  const txt = descEntrada.value.toLowerCase();
+  if(!txt){ sugestoesEl.style.display="none"; return; }
+
+  const filtrado = produtos.filter(p => p.nome.toLowerCase().includes(txt));
+  if(filtrado.length===0){ sugestoesEl.style.display="none"; return; }
+
+  sugestoesEl.innerHTML = filtrado.map(p=>`
+    <div onclick="selecionarProduto('${p.nome}', ${p.preco.toFixed(2)})">
+      ${p.nome} | R$ ${p.preco.toFixed(2)} | Estoque: ${p.estoque}
+    </div>
+  `).join("");
+  sugestoesEl.style.display="block";
+});
+
+function selecionarProduto(nome, preco){
+  descEntrada.value = nome;
+  valorEntrada.value = preco;
+  sugestoesEl.style.display="none";
 }
 
-/* ========= AÇÕES ========= */
 async function entrada(){
   if(!descEntrada.value || valorEntrada.value <= 0) return;
 
@@ -147,6 +205,7 @@ async function entrada(){
   carregar();
 }
 
+/* ========= SAÍDA ========= */
 async function saida(){
   if(!descSaida.value || valorSaida.value <= 0) return;
 
@@ -174,7 +233,6 @@ async function carregar(){
 
   (data || []).forEach(m=>{
     saldo += m.tipo === "entrada" ? m.valor : -m.valor;
-
     lista.innerHTML += `
       <div class="item">
         <span>${m.descricao}</span>
@@ -185,10 +243,8 @@ async function carregar(){
 
   total.innerText = `Saldo: R$ ${saldo.toFixed(2)}`;
 }
-
 carregar();
 </script>
 
 </body>
 </html>
-
