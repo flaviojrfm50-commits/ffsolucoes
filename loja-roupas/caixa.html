@@ -2,9 +2,8 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Caixa | Loja</title>
+<title>Caixa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -12,46 +11,15 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .topo{background:#0f172a;padding:16px;display:flex;justify-content:space-between}
 .container{padding:24px;max-width:900px;margin:auto}
 .box{background:#0f172a;padding:20px;border-radius:14px;margin-bottom:20px}
-
-input,button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border-radius:10px;
-  border:none
-}
+input,button{width:100%;padding:12px;margin-top:10px;border-radius:10px;border:none}
 input{background:#020617;color:#fff}
-
 button{background:#22c55e;font-weight:bold}
 .fechar{background:#2563eb}
-
-.item{
-  display:flex;
-  justify-content:space-between;
-  border-bottom:1px solid #1e293b;
-  padding:6px 0
-}
-.total{
-  font-size:20px;
-  font-weight:bold;
-  text-align:right;
-  color:#22c55e
-}
-
-.sugestoes{
-  background:#020617;
-  border:1px solid #334155;
-  border-radius:8px;
-  max-height:150px;
-  overflow-y:auto
-}
-.sugestoes div{
-  padding:8px;
-  cursor:pointer
-}
-.sugestoes div:hover{
-  background:#334155
-}
+.item{display:flex;justify-content:space-between;border-bottom:1px solid #1e293b;padding:6px 0}
+.total{font-size:20px;font-weight:bold;text-align:right;color:#22c55e}
+.sugestoes{background:#020617;border:1px solid #334155;border-radius:8px;max-height:150px;overflow-y:auto}
+.sugestoes div{padding:8px;cursor:pointer}
+.sugestoes div:hover{background:#334155}
 </style>
 </head>
 
@@ -64,21 +32,16 @@ button{background:#22c55e;font-weight:bold}
 
 <div class="container">
 
-  <!-- VENDA -->
   <div class="box">
-    <h3>🛒 Registrar Venda</h3>
-
-    <input id="produtoInput" placeholder="Digite o produto">
+    <h3>🛒 Venda</h3>
+    <input id="produtoInput" placeholder="Produto">
     <div id="listaProdutos" class="sugestoes"></div>
-
     <input id="preco" type="number" step="0.01" placeholder="Preço">
     <input id="quantidade" type="number" min="1" value="1">
     <input id="pago" type="number" step="0.01" placeholder="Valor pago">
-
     <button onclick="vender()">Registrar Venda</button>
   </div>
 
-  <!-- CAIXA -->
   <div class="box">
     <h3>📄 Caixa Atual</h3>
     <div id="lista"></div>
@@ -112,10 +75,10 @@ const pagoInput = document.getElementById("pago");
 const lista = document.getElementById("lista");
 const total = document.getElementById("total");
 
-/* ===== PRODUTOS ===== */
 let produtos = [];
 let produtoSelecionado = null;
 
+/* ===== PRODUTOS (FILTRADO POR LOJA) ===== */
 async function carregarProdutos(){
   const { data, error } = await sb
     .from("produtos")
@@ -126,9 +89,9 @@ async function carregarProdutos(){
 
   if(error){
     console.error(error);
+    alert(error.message);
     return;
   }
-
   produtos = data || [];
 }
 carregarProdutos();
@@ -137,33 +100,35 @@ carregarProdutos();
 produtoInput.addEventListener("input", ()=>{
   const termo = produtoInput.value.toLowerCase();
   listaProdutos.innerHTML = "";
-
   if(!termo) return;
 
   produtos
     .filter(p => p.nome.toLowerCase().includes(termo))
     .forEach(p=>{
-      const div = document.createElement("div");
-      div.textContent = `${p.nome} — R$ ${Number(p.preco).toFixed(2)}`;
-      div.onclick = ()=>{
+      const d = document.createElement("div");
+      d.textContent = `${p.nome} — R$ ${Number(p.preco).toFixed(2)}`;
+      d.onclick = ()=>{
         produtoSelecionado = p;
         produtoInput.value = p.nome;
         precoInput.value = p.preco;
         listaProdutos.innerHTML = "";
       };
-      listaProdutos.appendChild(div);
+      listaProdutos.appendChild(d);
     });
 });
 
-/* ===== FECHAMENTO ===== */
+/* ===== ÚLTIMO FECHAMENTO (SEM app_id) ===== */
 async function getUltimoFechamento(){
-  const { data } = await sb
+  const { data, error } = await sb
     .from("caixa_fechamento")
     .select("fechado_em")
-    .eq("app_id", app_id)
     .order("id", { ascending:false })
     .limit(1);
 
+  if(error){
+    console.error(error);
+    return null;
+  }
   return data && data.length ? data[0].fechado_em : null;
 }
 
@@ -182,12 +147,18 @@ async function vender(){
     return;
   }
 
-  await sb.from("caixa").insert({
+  const { error } = await sb.from("caixa").insert({
     app_id,
     tipo: "entrada",
     descricao: `Venda: ${produtoSelecionado.nome} x${q}`,
     valor: pago
   });
+
+  if(error){
+    console.error(error);
+    alert(error.message);
+    return;
+  }
 
   produtoSelecionado = null;
   produtoInput.value = "";
@@ -198,16 +169,21 @@ async function vender(){
   carregarCaixa();
 }
 
-/* ===== CAIXA ===== */
+/* ===== CARREGAR CAIXA ===== */
 async function carregarCaixa(){
   const fechadoEm = await getUltimoFechamento();
-  let query = sb.from("caixa").select("*").eq("app_id", app_id);
 
+  let query = sb.from("caixa").select("*").eq("app_id", app_id);
   if(fechadoEm){
     query = query.gt("created_at", fechadoEm);
   }
 
-  const { data } = await query.order("created_at");
+  const { data, error } = await query.order("created_at");
+  if(error){
+    console.error(error);
+    alert(error.message);
+    return;
+  }
 
   lista.innerHTML = "";
   let soma = 0;
@@ -234,13 +210,19 @@ async function carregarCaixa(){
 /* ===== FECHAR CAIXA ===== */
 async function fecharCaixa(){
   const fechadoEm = await getUltimoFechamento();
-  let query = sb.from("caixa").select("*").eq("app_id", app_id);
 
+  let query = sb.from("caixa").select("*").eq("app_id", app_id);
   if(fechadoEm){
     query = query.gt("created_at", fechadoEm);
   }
 
-  const { data } = await query.order("created_at");
+  const { data, error } = await query.order("created_at");
+  if(error){
+    console.error(error);
+    alert(error.message);
+    return;
+  }
+
   if(!data || !data.length){
     alert("Nada para fechar");
     return;
@@ -248,15 +230,19 @@ async function fecharCaixa(){
 
   let totalRecebido = 0;
   data.forEach(m => totalRecebido += Number(m.valor));
-
   const ultimo = data[data.length - 1].created_at;
 
-  await sb.from("caixa_fechamento").insert({
-    app_id,
+  const { error: e2 } = await sb.from("caixa_fechamento").insert({
     total_recebido: totalRecebido,
     total_vendas: data.length,
     fechado_em: ultimo
   });
+
+  if(e2){
+    console.error(e2);
+    alert(e2.message);
+    return;
+  }
 
   carregarCaixa();
 }
