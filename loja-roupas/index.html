@@ -18,33 +18,25 @@ body{
   background:#020617;
   color:#fff;
 }
-
-/* ===== VARIÁVEIS PADRÃO ===== */
 :root{
   --cor-primaria:#22c55e;
   --cor-banner:#0f172a;
   --cor-card:#0f172a;
 }
-
-/* ===== TEMAS ===== */
 body.ano_novo{--cor-primaria:#22c55e;--cor-banner:#064e3b;--cor-card:#052e16}
 body.sao_joao{--cor-primaria:#f59e0b;--cor-banner:#78350f;--cor-card:#451a03}
 body.carnaval{--cor-primaria:#a855f7;--cor-banner:#3b0764;--cor-card:#2e1065}
 body.natal{--cor-primaria:#ef4444;--cor-banner:#7f1d1d;--cor-card:#450a0a}
 
-/* ===== BANNER ===== */
 .banner{width:100%;height:260px;background:var(--cor-banner)}
 .banner img{width:100%;height:100%;object-fit:cover}
 
-/* ===== TOPO ===== */
 .topo{padding:24px;text-align:center;background:var(--cor-banner)}
 .topo h1{margin:0}
 .topo p{opacity:.8}
 
-/* ===== CONTAINER ===== */
 .container{max-width:1200px;margin:30px auto;padding:0 20px}
 
-/* ===== FILTROS ===== */
 .filtros{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
 input,select{
   padding:12px;
@@ -54,7 +46,6 @@ input,select{
   color:#fff
 }
 
-/* ===== GRID ===== */
 .grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 @media (min-width:768px){
   .grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
@@ -63,7 +54,6 @@ input,select{
   .grid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 }
 
-/* ===== CARD ===== */
 .card{
   background:var(--cor-card);
   border-radius:16px;
@@ -92,7 +82,6 @@ small{opacity:.8}
   width:100%
 }
 
-/* ===== MODAL ===== */
 .modal{
   position:fixed;
   inset:0;
@@ -143,7 +132,6 @@ small{opacity:.8}
 </div>
 
 <div class="container">
-
   <div class="filtros">
     <input id="busca" placeholder="Buscar produto..." oninput="filtrar()">
     <select id="categoria" onchange="filtrar()">
@@ -156,7 +144,6 @@ small{opacity:.8}
       <option>Outros</option>
     </select>
   </div>
-
   <div id="produtos" class="grid"></div>
 </div>
 
@@ -170,21 +157,39 @@ small{opacity:.8}
 </div>
 
 <script>
+/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* ===== APP_ID (AJUSTADO PARA PWA) ===== */
 const params = new URLSearchParams(window.location.search);
-const APP_ID = params.get("app");
+let APP_ID = params.get("app");
 
-if(!APP_ID){
-  document.body.innerHTML = "<h2 style='padding:40px;text-align:center'>Link inválido</h2>";
+// salva quando vem pela URL
+if (APP_ID) {
+  localStorage.setItem("APP_ID", APP_ID);
+}
+
+// recupera quando abrir pelo PWA
+if (!APP_ID) {
+  APP_ID = localStorage.getItem("APP_ID");
+}
+
+// se ainda não existir, bloqueia
+if (!APP_ID) {
+  document.body.innerHTML = `
+    <h2 style="padding:40px;text-align:center">
+      Link inválido<br>
+      <small>Abra o app pelo link correto da loja</small>
+    </h2>`;
   throw new Error("app_id ausente");
 }
 
 let lista = [];
 
+/* ===== CONFIG SITE ===== */
 async function carregarConfig(){
   const { data } = await sb
     .from("config_site")
@@ -196,7 +201,6 @@ async function carregarConfig(){
 
   nomeLoja.innerText = data.nome_site || "Loja";
   descLoja.innerText = data.descricao_site || "";
-
   document.body.className = data.tema || "";
 
   banner.innerHTML = data.banner_url
@@ -204,6 +208,7 @@ async function carregarConfig(){
     : `<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold">${data.nome_site}</div>`;
 }
 
+/* ===== PRODUTOS ===== */
 async function carregarProdutos(){
   const { data } = await sb
     .from("produtos")
@@ -250,9 +255,11 @@ function fecharModal(e){
   modal.style.display = "none";
 }
 
+/* ===== INIT ===== */
 carregarConfig();
 carregarProdutos();
 
+/* ===== PWA ===== */
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./service-worker.js");
 }
