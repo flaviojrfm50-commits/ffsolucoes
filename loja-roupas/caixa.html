@@ -11,8 +11,8 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .topo{background:#0f172a;padding:16px;display:flex;justify-content:space-between}
 .container{padding:24px;max-width:900px;margin:auto}
 .box{background:#0f172a;padding:20px;border-radius:14px;margin-bottom:20px}
-input,button{width:100%;padding:12px;margin-top:10px;border-radius:10px;border:none}
-input{background:#020617;color:#fff}
+input,select,button{width:100%;padding:12px;margin-top:10px;border-radius:10px;border:none}
+input,select{background:#020617;color:#fff}
 button{background:#22c55e;font-weight:bold}
 .fechar{background:#2563eb}
 .item{display:flex;justify-content:space-between;border-bottom:1px solid #1e293b;padding:6px 0}
@@ -34,11 +34,25 @@ button{background:#22c55e;font-weight:bold}
 
   <div class="box">
     <h3>🛒 Venda</h3>
+
     <input id="produtoInput" placeholder="Produto">
     <div id="listaProdutos" class="sugestoes"></div>
-    <input id="preco" type="number" step="0.01" placeholder="Preço">
+
+    <input id="preco" disabled placeholder="Preço unitário">
+    <input id="estoque" disabled placeholder="Estoque disponível">
     <input id="quantidade" type="number" min="1" value="1">
-    <input id="pago" type="number" step="0.01" placeholder="Valor pago">
+
+    <select id="formaPagamento">
+      <option value="">Forma de pagamento</option>
+      <option value="dinheiro">💵 Dinheiro</option>
+      <option value="cartao">💳 Cartão</option>
+      <option value="pix">📱 Pix</option>
+    </select>
+
+    <input id="totalVenda" disabled placeholder="Total da venda">
+    <input id="pago" type="number" step="0.01" placeholder="Valor pago (somente dinheiro)">
+    <input id="troco" disabled placeholder="Troco">
+
     <button onclick="vender()">Registrar Venda</button>
   </div>
 
@@ -70,25 +84,28 @@ const sb = supabase.createClient(
 const produtoInput = document.getElementById("produtoInput");
 const listaProdutos = document.getElementById("listaProdutos");
 const precoInput = document.getElementById("preco");
+const estoqueInput = document.getElementById("estoque");
 const quantidadeInput = document.getElementById("quantidade");
+const formaPagamentoInput = document.getElementById("formaPagamento");
+const totalVendaInput = document.getElementById("totalVenda");
 const pagoInput = document.getElementById("pago");
+const trocoInput = document.getElementById("troco");
 const lista = document.getElementById("lista");
 const total = document.getElementById("total");
 
 let produtos = [];
 let produtoSelecionado = null;
 
-/* ===== PRODUTOS (FILTRADO POR LOJA) ===== */
+/* ===== PRODUTOS ===== */
 async function carregarProdutos(){
   const { data, error } = await sb
     .from("produtos")
-    .select("id,nome,preco")
+    .select("id,nome,preco,estoque")
     .eq("app_id", app_id)
     .eq("ativo", true)
     .order("nome");
 
   if(error){
-    console.error(error);
     alert(error.message);
     return;
   }
@@ -106,30 +123,43 @@ produtoInput.addEventListener("input", ()=>{
     .filter(p => p.nome.toLowerCase().includes(termo))
     .forEach(p=>{
       const d = document.createElement("div");
-      d.textContent = `${p.nome} — R$ ${Number(p.preco).toFixed(2)}`;
+      d.textContent = `${p.nome} (Estoque: ${p.estoque})`;
       d.onclick = ()=>{
         produtoSelecionado = p;
         produtoInput.value = p.nome;
         precoInput.value = p.preco;
+        estoqueInput.value = p.estoque;
         listaProdutos.innerHTML = "";
+        calcularTotal();
       };
       listaProdutos.appendChild(d);
     });
 });
 
-/* ===== ÚLTIMO FECHAMENTO (SEM app_id) ===== */
-async function getUltimoFechamento(){
-  const { data, error } = await sb
-    .from("caixa_fechamento")
-    .select("fechado_em")
-    .order("id", { ascending:false })
-    .limit(1);
+/* ===== TOTAL E TROCO ===== */
+function calcularTotal(){
+  if(!produtoSelecionado) return;
+  const q = Number(quantidadeInput.value);
+  const totalVenda = produtoSelecionado.preco * q;
+  totalVendaInput.value = totalVenda.toFixed(2);
+  calcularTroco();
+}
 
-  if(error){
-    console.error(error);
-    return null;
+quantidadeInput.addEventListener("input", calcularTotal);
+pagoInput.addEventListener("input", calcularTroco);
+formaPagamentoInput.addEventListener("change", calcularTroco);
+
+function calcularTroco(){
+  const forma = formaPagamentoInput.value;
+  const totalVenda = Number(totalVendaInput.value);
+  const pago = Number(pagoInput.value);
+
+  if(forma === "dinheiro" && pago){
+    const troco = pago - totalVenda;
+    trocoInput.value = troco >= 0 ? troco.toFixed(2) : "Valor insuficiente";
+  } else {
+    trocoInput.value = "";
   }
-  return data && data.length ? data[0].fechado_em : null;
 }
 
 /* ===== VENDA ===== */
@@ -140,55 +170,80 @@ async function vender(){
   }
 
   const q = Number(quantidadeInput.value);
-  const pago = Number(pagoInput.value);
+  const forma = formaPagamentoInput.value;
+  const totalVenda = Number(totalVendaInput.value);
+  const pago = Number(pagoInput.value || 0);
 
-  if(q <= 0 || pago <= 0){
-    alert("Dados inválidos");
+  if(!forma){
+    alert("Escolha a forma de pagamento");
     return;
   }
+
+  if(q > produtoSelecionado.estoque){
+    alert("Estoque insuficiente");
+    return;
+  }
+
+  if(forma === "dinheiro" && pago < totalVenda){
+    alert("Valor pago insuficiente");
+    return;
+  }
+
+  const descricao = `Venda: ${produtoSelecionado.nome} x${q} (${forma})`;
 
   const { error } = await sb.from("caixa").insert({
     app_id,
     tipo: "entrada",
-    descricao: `Venda: ${produtoSelecionado.nome} x${q}`,
-    valor: pago
+    descricao,
+    valor: totalVenda
   });
 
   if(error){
-    console.error(error);
     alert(error.message);
     return;
   }
+
+  const novoEstoque = produtoSelecionado.estoque - q;
+
+  await sb
+    .from("produtos")
+    .update({ estoque: novoEstoque })
+    .eq("id", produtoSelecionado.id);
 
   produtoSelecionado = null;
   produtoInput.value = "";
   precoInput.value = "";
+  estoqueInput.value = "";
   quantidadeInput.value = 1;
+  formaPagamentoInput.value = "";
+  totalVendaInput.value = "";
   pagoInput.value = "";
+  trocoInput.value = "";
 
+  carregarProdutos();
   carregarCaixa();
 }
 
-/* ===== CARREGAR CAIXA ===== */
+/* ===== CAIXA ===== */
+async function getUltimoFechamento(){
+  const { data } = await sb
+    .from("caixa_fechamento")
+    .select("fechado_em")
+    .order("id",{ascending:false})
+    .limit(1);
+  return data?.[0]?.fechado_em || null;
+}
+
 async function carregarCaixa(){
   const fechadoEm = await getUltimoFechamento();
+  let query = sb.from("caixa").select("*").eq("app_id",app_id);
+  if(fechadoEm) query = query.gt("created_at",fechadoEm);
 
-  let query = sb.from("caixa").select("*").eq("app_id", app_id);
-  if(fechadoEm){
-    query = query.gt("created_at", fechadoEm);
-  }
-
-  const { data, error } = await query.order("created_at");
-  if(error){
-    console.error(error);
-    alert(error.message);
-    return;
-  }
-
+  const { data } = await query.order("created_at");
   lista.innerHTML = "";
   let soma = 0;
 
-  if(!data || !data.length){
+  if(!data?.length){
     lista.innerHTML = `<div class="item"><span>📭 Caixa vazio</span><span>-</span></div>`;
     total.innerText = "Saldo: R$ 0.00";
     return;
@@ -210,39 +265,20 @@ async function carregarCaixa(){
 /* ===== FECHAR CAIXA ===== */
 async function fecharCaixa(){
   const fechadoEm = await getUltimoFechamento();
+  let query = sb.from("caixa").select("*").eq("app_id",app_id);
+  if(fechadoEm) query = query.gt("created_at",fechadoEm);
 
-  let query = sb.from("caixa").select("*").eq("app_id", app_id);
-  if(fechadoEm){
-    query = query.gt("created_at", fechadoEm);
-  }
-
-  const { data, error } = await query.order("created_at");
-  if(error){
-    console.error(error);
-    alert(error.message);
-    return;
-  }
-
-  if(!data || !data.length){
-    alert("Nada para fechar");
-    return;
-  }
+  const { data } = await query.order("created_at");
+  if(!data?.length){ alert("Nada para fechar"); return; }
 
   let totalRecebido = 0;
-  data.forEach(m => totalRecebido += Number(m.valor));
-  const ultimo = data[data.length - 1].created_at;
+  data.forEach(m=> totalRecebido += Number(m.valor));
 
-  const { error: e2 } = await sb.from("caixa_fechamento").insert({
+  await sb.from("caixa_fechamento").insert({
     total_recebido: totalRecebido,
     total_vendas: data.length,
-    fechado_em: ultimo
+    fechado_em: data[data.length-1].created_at
   });
-
-  if(e2){
-    console.error(e2);
-    alert(e2.message);
-    return;
-  }
 
   carregarCaixa();
 }
