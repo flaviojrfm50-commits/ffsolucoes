@@ -63,7 +63,7 @@ const sb = supabase.createClient(
 
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 if(!admin){ alert("Sessão inválida"); location.href="../auth/login.html"; }
-const app_uuid = admin.app_id;
+const app_id = admin.app_id;
 
 const produto = document.getElementById("produto");
 const preco = document.getElementById("preco");
@@ -98,13 +98,17 @@ async function registrarVenda(){
   }
 
   const { error } = await sb.from("caixa").insert({
-    app_id: app_uuid,
+    app_id,
     tipo: "entrada",
     descricao: `Venda: ${produto.value} x${qtd.value}`,
     valor: pago.value
   });
 
-  if(error){ alert("Erro ao registrar venda"); return; }
+  if(error){
+    console.error(error);
+    alert("Erro ao registrar venda");
+    return;
+  }
 
   produto.value=""; preco.value=""; qtd.value=1; pago.value=""; trocoInfo.innerText="";
   carregarCaixa();
@@ -113,17 +117,17 @@ async function registrarVenda(){
 async function ultimoFechamento(){
   const { data } = await sb
     .from("caixa_fechamento")
-    .select("ultimo_caixa_id")
-    .eq("app_uuid", app_uuid)
+    .select("ultimo_id")
+    .eq("app_id", app_id)
     .order("id",{ascending:false})
     .limit(1);
 
-  return data?.[0]?.ultimo_caixa_id || 0;
+  return data?.[0]?.ultimo_id || 0;
 }
 
 async function carregarCaixa(){
   const ult = await ultimoFechamento();
-  let q = sb.from("caixa").select("*").eq("app_id", app_uuid);
+  let q = sb.from("caixa").select("*").eq("app_id", app_id);
   if(ult>0) q = q.gt("id", ult);
 
   const { data } = await q.order("id");
@@ -144,26 +148,34 @@ async function carregarCaixa(){
 
 async function fecharCaixa(){
   const ult = await ultimoFechamento();
-  let q = sb.from("caixa").select("*").eq("app_id", app_uuid);
+  let q = sb.from("caixa").select("*").eq("app_id", app_id);
   if(ult>0) q = q.gt("id", ult);
 
   const { data } = await q.order("id");
-  if(!data.length){ alert("Nada para fechar"); return; }
+  if(!data || !data.length){
+    alert("Nada para fechar");
+    return;
+  }
 
   let totalRecebido = 0;
-  data.forEach(m=> totalRecebido+=Number(m.valor));
+  data.forEach(m => totalRecebido += Number(m.valor));
 
   gerarPDF(data, totalRecebido);
 
-  const { error } = await sb.from("caixa_fechamento").insert({
-    app_uuid,
-    data: new Date(),
-    total_recebido: totalRecebido,
-    total_vendas: data.length,
-    ultimo_caixa_id: data[data.length-1].id
-  });
+  const { error } = await sb
+    .from("caixa_fechamento")
+    .insert({
+      app_id,
+      total: totalRecebido,
+      qtd_vendas: data.length,
+      ultimo_id: data[data.length - 1].id
+    });
 
-  if(error){ alert("Erro ao fechar caixa"); return; }
+  if(error){
+    console.error(error);
+    alert("Erro ao fechar caixa");
+    return;
+  }
 
   alert("Caixa fechado com sucesso");
   carregarCaixa();
@@ -172,6 +184,7 @@ async function fecharCaixa(){
 function gerarPDF(itens, total){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
+
   doc.setFontSize(14);
   doc.text("Fechamento de Caixa", 20, 20);
 
@@ -184,6 +197,7 @@ function gerarPDF(itens, total){
 
   doc.setFontSize(12);
   doc.text(`Total: R$ ${total.toFixed(2)}`,20,y+10);
+
   doc.save("fechamento_caixa.pdf");
 }
 
