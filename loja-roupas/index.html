@@ -153,13 +153,19 @@ function render(dados){
 
   produtosEl.innerHTML = dados.map(p=>{
     let primeiraImg = "";
+
+    // Se houver array imagens, usa ele
+    let imgs = [];
     if(p.imagens){
-      let imgs = typeof p.imagens === "string" ? JSON.parse(p.imagens) : p.imagens;
-      primeiraImg = imgs[0] ? `<img src="${imgs[0]}">` : "";
+      imgs = typeof p.imagens === "string" ? JSON.parse(p.imagens) : p.imagens;
+    } else if(p.imagem){
+      imgs = [p.imagem]; // fallback para produtos antigos
     }
 
+    primeiraImg = imgs[0] ? `<img src="${imgs[0]}">` : "";
+
     return `
-    <div class="card" onclick='abrirGaleria(${JSON.stringify(p.imagens || [])})'>
+    <div class="card" onclick='abrirGaleria(${JSON.stringify(imgs)})'>
       ${primeiraImg}
       <div class="nome">${p.nome}</div>
       <div class="preco">R$ ${p.preco.toFixed(2)}</div>
