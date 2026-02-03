@@ -103,11 +103,23 @@ button{
 
   <!-- VENDA -->
   <div class="box">
-    <h3>🛒 Venda</h3>
+    <h3>🛒 Registrar Venda</h3>
     <input id="produtoInput" placeholder="Digite o nome do produto">
     <div id="sugestoes" class="sugestao" style="display:none;"></div>
     <input id="quantidadeInput" type="number" placeholder="Quantidade" value="1">
     <button onclick="vender()">Registrar Venda</button>
+  </div>
+
+  <!-- ENTRADA/SAÍDA -->
+  <div class="box">
+    <h3>📥 Entrada / 📤 Saída Manual</h3>
+    <input id="descMov" placeholder="Descrição">
+    <input id="valorMov" type="number" step="0.01" placeholder="Valor">
+    <select id="tipoMov">
+      <option value="entrada">Entrada</option>
+      <option value="saida">Saída</option>
+    </select>
+    <button onclick="registrarMov()">Registrar Movimentação</button>
   </div>
 
   <!-- MOVIMENTOS -->
@@ -137,9 +149,9 @@ function voltar(){
   location.href = "admin.html";
 }
 
+/* PRODUTOS */
 let produtos = [];
 
-/* CARREGA PRODUTOS */
 async function carregarProdutos(){
   const { data } = await sb
     .from("produtos")
@@ -147,7 +159,6 @@ async function carregarProdutos(){
     .eq("app_id", app_id)
     .eq("ativo", true)
     .order("nome");
-
   produtos = data || [];
 }
 carregarProdutos();
@@ -158,86 +169,99 @@ const sugestoesEl = document.getElementById("sugestoes");
 
 input.addEventListener("input", ()=>{
   const valor = input.value.toLowerCase();
-  if(!valor){ sugestoesEl.style.display = "none"; return; }
+  if(!valor){ sugestoesEl.style.display="none"; return; }
 
   const filtrados = produtos.filter(p=>p.nome.toLowerCase().includes(valor));
-  if(filtrados.length === 0){ sugestoesEl.style.display = "none"; return; }
+  if(filtrados.length===0){ sugestoesEl.style.display="none"; return; }
 
   sugestoesEl.innerHTML = filtrados.map(p=>
     `<div onclick="selecionarProduto('${p.id}','${p.nome}',${p.preco},${p.estoque})">
-       ${p.nome} - R$ ${p.preco.toFixed(2)} | Estoque: ${p.estoque}
-     </div>`
+      ${p.nome} - R$ ${p.preco.toFixed(2)} | Estoque: ${p.estoque}
+    </div>`
   ).join("");
-  sugestoesEl.style.display = "block";
+  sugestoesEl.style.display="block";
 });
 
 let produtoSelecionado = null;
 
 function selecionarProduto(id,nome,preco,estoque){
   input.value = nome;
-  produtoSelecionado = { id, nome, preco, estoque };
-  sugestoesEl.style.display = "none";
-  quantidadeInput.value = 1;
+  produtoSelecionado = { id,nome,preco,estoque };
+  sugestoesEl.style.display="none";
+  quantidadeInput.value=1;
 }
 
-/* REGISTRAR VENDA */
+/* VENDER */
 async function vender(){
   if(!produtoSelecionado){
     alert("Selecione um produto válido");
     return;
   }
   const q = Number(quantidadeInput.value);
-  if(q <= 0 || q > produtoSelecionado.estoque){
+  if(q<=0 || q>produtoSelecionado.estoque){
     alert("Quantidade inválida ou estoque insuficiente");
     return;
   }
 
-  const valorTotal = produtoSelecionado.preco * q;
+  const valorTotal = produtoSelecionado.preco*q;
 
-  // Registrar no caixa
+  // registrar no caixa
   await sb.from("caixa").insert({
     app_id,
-    tipo: "entrada",
-    descricao: `Venda: ${produtoSelecionado.nome} x${q}`,
-    valor: valorTotal
+    tipo:"entrada",
+    descricao:`Venda: ${produtoSelecionado.nome} x${q}`,
+    valor:valorTotal
   });
 
-  // Baixar estoque
+  // baixar estoque
   await sb.from("produtos")
     .update({ estoque: produtoSelecionado.estoque - q })
     .eq("id", produtoSelecionado.id);
 
-  // Reset
-  input.value = "";
-  quantidadeInput.value = 1;
-  produtoSelecionado = null;
-
+  // reset
+  input.value=""; quantidadeInput.value=1; produtoSelecionado=null;
   carregarMovimentos();
   carregarProdutos();
 }
 
-/* LISTAR MOVIMENTOS */
+/* REGISTRAR ENTRADA/SAÍDA */
+async function registrarMov(){
+  const desc = descMov.value.trim();
+  const valor = Number(valorMov.value);
+  const tipo = tipoMov.value;
+
+  if(!desc || valor<=0){ alert("Preencha descrição e valor"); return; }
+
+  await sb.from("caixa").insert({
+    app_id,
+    tipo,
+    descricao: desc,
+    valor
+  });
+
+  descMov.value=""; valorMov.value="";
+  carregarMovimentos();
+}
+
+/* CARREGAR MOVIMENTOS */
 async function carregarMovimentos(){
-  const { data } = await sb
-    .from("caixa")
+  const { data } = await sb.from("caixa")
     .select("*")
     .eq("app_id", app_id)
-    .order("created_at", { ascending:true });
+    .order("created_at",{ascending:true});
 
   let saldo = 0;
-  lista.innerHTML = "";
-
-  (data || []).forEach(m=>{
-    saldo += m.tipo === "entrada" ? m.valor : -m.valor;
-    lista.innerHTML += `
+  lista.innerHTML="";
+  (data||[]).forEach(m=>{
+    saldo += m.tipo==="entrada"?m.valor:-m.valor;
+    lista.innerHTML+=`
       <div class="item">
         <span>${m.descricao}</span>
-        <span>${m.tipo === "entrada" ? "+" : "-"} R$ ${m.valor.toFixed(2)}</span>
+        <span>${m.tipo==="entrada"?"+":"-"} R$ ${m.valor.toFixed(2)}</span>
       </div>
     `;
   });
-
-  total.innerText = `Saldo: R$ ${saldo.toFixed(2)}`;
+  total.innerText=`Saldo: R$ ${saldo.toFixed(2)}`;
 }
 carregarMovimentos();
 </script>
