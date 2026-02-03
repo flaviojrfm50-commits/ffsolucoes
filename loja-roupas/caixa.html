@@ -107,7 +107,6 @@ async function vender(){
   carregarCaixa();
 }
 
-/* ===== CARREGAR CAIXA ===== */
 async function carregarCaixa(){
   const ultimoFechadoEm = await getUltimoFechamento();
 
@@ -125,10 +124,21 @@ async function carregarCaixa(){
     return;
   }
 
-  let soma = 0;
   lista.innerHTML = "";
 
-  (data||[]).forEach(m=>{
+  if(!data || data.length === 0){
+    lista.innerHTML = `
+      <div class="item" style="opacity:.7">
+        <span>📭 Caixa zerado / sem movimentos</span>
+        <span>—</span>
+      </div>
+    `;
+    total.innerText = `Saldo: R$ 0.00`;
+    return;
+  }
+
+  let soma = 0;
+  data.forEach(m=>{
     soma += Number(m.valor);
     lista.innerHTML += `
       <div class="item">
@@ -140,6 +150,7 @@ async function carregarCaixa(){
 
   total.innerText = `Saldo: R$ ${soma.toFixed(2)}`;
 }
+
 
 /* ===== FECHAR CAIXA ===== */
 async function fecharCaixa(){
