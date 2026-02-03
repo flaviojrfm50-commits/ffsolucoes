@@ -8,79 +8,19 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#020617;
-  color:#fff;
-}
-.topo{
-  background:#0f172a;
-  padding:16px 24px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-.voltar{
-  background:#334155;
-  color:#fff;
-  border:none;
-  padding:10px 16px;
-  border-radius:10px;
-  cursor:pointer;
-  font-weight:bold;
-}
-.container{
-  padding:32px;
-  max-width:900px;
-  margin:auto;
-}
-.box{
-  background:#0f172a;
-  padding:20px;
-  border-radius:16px;
-  margin-bottom:20px;
-}
-input,select,button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border-radius:10px;
-  border:none;
-}
+body{margin:0;font-family:Arial,sans-serif;background:#020617;color:#fff}
+.topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+.voltar{background:#334155;color:#fff;border:none;padding:10px 16px;border-radius:10px;font-weight:bold;cursor:pointer}
+.container{padding:32px;max-width:900px;margin:auto}
+.box{background:#0f172a;padding:20px;border-radius:16px;margin-bottom:20px}
+input,select,button{width:100%;padding:12px;margin-top:10px;border-radius:10px;border:none}
 input,select{background:#020617;color:#fff}
-button{
-  background:#22c55e;
-  font-weight:bold;
-  cursor:pointer;
-}
-.lista{margin-top:20px}
-.item{
-  display:flex;
-  justify-content:space-between;
-  border-bottom:1px solid #1e293b;
-  padding:8px 0;
-  font-size:14px;
-}
-.total{
-  font-size:20px;
-  font-weight:bold;
-  color:#22c55e;
-  text-align:right;
-}
-.sugestao{
-  background:#0f172a;
-  border:1px solid #334155;
-  border-radius:10px;
-  max-height:140px;
-  overflow-y:auto;
-  position:absolute;
-  width:calc(100% - 24px);
-  z-index:10;
-}
+button{background:#22c55e;font-weight:bold;cursor:pointer}
+.item{display:flex;justify-content:space-between;border-bottom:1px solid #1e293b;padding:8px 0;font-size:14px}
+.total{font-size:20px;font-weight:bold;color:#22c55e;text-align:right}
+.sugestao{background:#0f172a;border:1px solid #334155;border-radius:10px;max-height:140px;overflow-y:auto;position:absolute;width:calc(100% - 24px);z-index:10}
 .sugestao div{padding:8px;cursor:pointer}
 .sugestao div:hover{background:#334155}
-
 #trocoInfo{margin-top:10px;font-weight:bold}
 .troco-ok{color:#22c55e}
 .troco-desc{color:#eab308}
@@ -92,7 +32,7 @@ button{
 
 <div class="topo">
   <h2>💰 Caixa da Loja</h2>
-  <button class="voltar" onclick="voltar()">⬅ Painel</button>
+  <button class="voltar" onclick="location.href='admin.html'">⬅ Painel</button>
 </div>
 
 <div class="container">
@@ -123,34 +63,32 @@ button{
     <h3>📄 Movimentações do Caixa</h3>
     <div id="lista"></div>
     <div id="total" class="total"></div>
+    <button onclick="fecharCaixa()">🧾 Fechar Caixa</button>
   </div>
 
 </div>
 
 <script>
-/* ===== ELEMENTOS ===== */
-const quantidadeInput = document.getElementById("quantidadeInput");
-const lista = document.getElementById("lista");
-const total = document.getElementById("total");
-const formaPagamento = document.getElementById("formaPagamento");
-const valorPago = document.getElementById("valorPago");
-const trocoInfo = document.getElementById("trocoInfo");
-
-/* ===== SESSÃO ===== */
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-if(!admin || admin.tipo !== "loja"){
-  alert("Sessão inválida");
-  location.href="../auth/login.html";
-}
-const app_id = admin.app_id;
-
 /* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-function voltar(){ location.href="admin.html"; }
+/* ===== SESSÃO ===== */
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
+if(!admin || admin.tipo!=="loja"){
+  alert("Sessão inválida");
+  location.href="../auth/login.html";
+}
+const app_id = admin.app_id;
+
+/* ===== ELEMENTOS ===== */
+const quantidadeInput=document.getElementById("quantidadeInput");
+const lista=document.getElementById("lista");
+const total=document.getElementById("total");
+const valorPago=document.getElementById("valorPago");
+const trocoInfo=document.getElementById("trocoInfo");
 
 /* ===== PRODUTOS ===== */
 let produtos=[];
@@ -180,10 +118,8 @@ const sugestoesEl=document.getElementById("sugestoes");
 input.addEventListener("input",()=>{
   const v=input.value.toLowerCase();
   if(!v){sugestoesEl.style.display="none";return;}
-
   const f=produtos.filter(p=>p.nome.toLowerCase().includes(v));
   if(!f.length){sugestoesEl.style.display="none";return;}
-
   sugestoesEl.innerHTML=f.map(p=>`
     <div onclick="selecionarProduto('${p.id}','${p.nome}',${p.preco},${p.estoque})">
       <strong>${p.nome}</strong><br>
@@ -197,67 +133,43 @@ function selecionarProduto(id,nome,preco,estoque){
   input.value=nome;
   sugestoesEl.style.display="none";
   quantidadeInput.value=1;
-  quantidadeInput.max=produtoSelecionado.estoque;
+  quantidadeInput.max=estoque;
   valorPago.value="";
   calcularTroco();
 }
 
-/* ===== TROCO / DESCONTO ===== */
+/* ===== TROCO ===== */
 valorPago.addEventListener("input",calcularTroco);
 quantidadeInput.addEventListener("input",calcularTroco);
 
 function calcularTroco(){
   if(!produtoSelecionado) return trocoInfo.innerText="";
-
   const q=Number(quantidadeInput.value);
-  if(q<=0 || valorPago.value==="") return trocoInfo.innerText="";
-
-  const totalVenda=produtoSelecionado.preco*q;
   const pago=Number(valorPago.value);
-  if(!Number.isFinite(pago)) return;
-
+  if(!pago||q<=0) return trocoInfo.innerText="";
+  const totalVenda=produtoSelecionado.preco*q;
   const diff=pago-totalVenda;
-
-  if(diff>0){
-    trocoInfo.className="troco-ok";
-    trocoInfo.innerText=`🟢 Troco: R$ ${diff.toFixed(2)}`;
-  }else if(diff<0){
-    trocoInfo.className="troco-desc";
-    trocoInfo.innerText=`🟡 Desconto: R$ ${Math.abs(diff).toFixed(2)}`;
-  }else{
-    trocoInfo.className="troco-exato";
-    trocoInfo.innerText="🔵 Pagamento exato";
-  }
+  if(diff>0){trocoInfo.className="troco-ok";trocoInfo.innerText=`Troco: R$ ${diff.toFixed(2)}`;}
+  else if(diff<0){trocoInfo.className="troco-desc";trocoInfo.innerText=`Desconto: R$ ${Math.abs(diff).toFixed(2)}`;}
+  else{trocoInfo.className="troco-exato";trocoInfo.innerText="Pagamento exato";}
 }
 
 /* ===== VENDER ===== */
 async function vender(){
   if(!produtoSelecionado) return alert("Selecione um produto");
-
   const q=Number(quantidadeInput.value);
-  if(q<=0) return alert("Quantidade inválida");
-  if(q>produtoSelecionado.estoque) return alert("Estoque insuficiente");
-
-  if(valorPago.value==="") return alert("Informe o valor pago");
+  const pago=Number(valorPago.value);
+  if(q<=0||q>produtoSelecionado.estoque||!pago) return alert("Dados inválidos");
 
   const totalVenda=produtoSelecionado.preco*q;
-  const pago=Number(valorPago.value);
-  const diff=pago-totalVenda;
-
-  let extra="";
-  if(diff<0){
-    extra=` | Pago: R$ ${pago.toFixed(2)} | Desconto: R$ ${Math.abs(diff).toFixed(2)}`;
-  }else if(diff>0){
-    extra=` | Pago: R$ ${pago.toFixed(2)} | Troco: R$ ${diff.toFixed(2)}`;
-  }else{
-    extra=` | Pago: R$ ${pago.toFixed(2)}`;
-  }
+  const desconto=Math.max(0,totalVenda-pago);
 
   await sb.from("caixa").insert({
     app_id,
     tipo:"entrada",
-    descricao:`Venda: ${produtoSelecionado.nome} x${q}${extra}`,
-    valor:pago   // 🔥 entra no caixa só o que foi pago
+    descricao:`Venda: ${produtoSelecionado.nome} x${q}`,
+    valor:pago,
+    desconto
   });
 
   await sb.from("produtos")
@@ -274,14 +186,25 @@ async function vender(){
   carregarMovimentos();
 }
 
+/* ===== ÚLTIMO FECHAMENTO ===== */
+async function ultimaDataFechamento(){
+  const { data } = await sb
+    .from("caixa_fechamento")
+    .select("data")
+    .eq("app_id",app_id)
+    .order("id",{ascending:false})
+    .limit(1);
+
+  return data?.[0]?.data || null;
+}
+
 /* ===== CAIXA ===== */
 async function carregarMovimentos(){
-  const { data } = await sb
-    .from("caixa")
-    .select("*")
-    .eq("app_id",app_id)
-    .order("id");
+  const ultimaData=await ultimaDataFechamento();
+  let q=sb.from("caixa").select("*").eq("app_id",app_id);
+  if(ultimaData) q=q.gt("created_at",ultimaData);
 
+  const { data } = await q.order("id");
   let saldo=0;
   lista.innerHTML="";
   (data||[]).forEach(m=>{
@@ -289,11 +212,44 @@ async function carregarMovimentos(){
     lista.innerHTML+=`
       <div class="item">
         <span>${m.descricao}</span>
-        <span>+ R$ ${Number(m.valor).toFixed(2)}</span>
+        <span>R$ ${Number(m.valor).toFixed(2)}</span>
       </div>`;
   });
   total.innerText=`Saldo: R$ ${saldo.toFixed(2)}`;
 }
+
+/* ===== FECHAR CAIXA ===== */
+async function fecharCaixa(){
+  const ultimaData=await ultimaDataFechamento();
+  let q=sb.from("caixa").select("*").eq("app_id",app_id);
+  if(ultimaData) q=q.gt("created_at",ultimaData);
+
+  const { data } = await q.order("id");
+  if(!data||!data.length) return alert("Nada para fechar");
+
+  let totalRecebido=0,totalDescontos=0;
+  data.forEach(m=>{
+    totalRecebido+=Number(m.valor);
+    totalDescontos+=Number(m.desconto||0);
+  });
+
+  const { error } = await sb.from("caixa_fechamento").insert({
+    app_id,
+    data:new Date(),
+    total_recebido:totalRecebido,
+    total_descontos:totalDescontos
+  });
+
+  if(error){
+    console.error(error);
+    alert("Erro ao fechar caixa");
+    return;
+  }
+
+  alert("Caixa fechado com sucesso");
+  carregarMovimentos();
+}
+
 carregarMovimentos();
 </script>
 
