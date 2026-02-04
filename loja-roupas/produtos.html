@@ -86,11 +86,12 @@ small{opacity:.7}
 
 <div class="topo">
   <h2>👕 Produtos da Loja</h2>
-  <button class="voltar" onclick="voltar()">⬅ Painel</button>
+  <button class="voltar" onclick="voltar()">⬅ Voltar</button>
 </div>
 
 <div class="container">
 
+<!-- CADASTRO / EDIÇÃO -->
 <div class="box">
   <h2>➕ Cadastrar / Editar Roupa</h2>
 
@@ -127,9 +128,10 @@ small{opacity:.7}
 
   <input id="fotos" type="file" accept="image/*" multiple>
 
-  <button onclick="cadastrar()">Cadastrar peça</button>
+  <button id="btnSalvar" onclick="cadastrar()">Cadastrar peça</button>
 </div>
 
+<!-- LISTA -->
 <div class="box">
   <h2>📦 Peças cadastradas</h2>
   <div id="lista" class="grid"></div>
@@ -138,12 +140,14 @@ small{opacity:.7}
 </div>
 
 <script>
+/* ========= SESSÃO ========= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 if(!admin || admin.tipo !== "loja"){
   location.replace("../auth/login.html");
   throw new Error("Sessão inválida");
 }
 
+/* ========= SUPABASE ========= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
@@ -151,13 +155,15 @@ const sb = supabase.createClient(
 
 let produtoEditando = null;
 
+/* ========= NAVEGAÇÃO ========= */
 function voltar(){
   location.href = "admin.html";
 }
 
+/* ========= CADASTRAR / SALVAR ========= */
 async function cadastrar(){
   if(!nome.value || preco.value <= 0){
-    alert("Preencha nome e preço");
+    alert("Preencha nome e preço corretamente");
     return;
   }
 
@@ -167,10 +173,12 @@ async function cadastrar(){
   let imagens = produtoEditando?.imagens || [];
 
   if(!produtoEditando){
-    for(let f of fotos.files){
+    for(const f of fotos.files){
       const path = `${admin.app_id}/${Date.now()}_${f.name}`;
       await sb.storage.from("produtos").upload(path, f, { upsert:true });
-      imagens.push(sb.storage.from("produtos").getPublicUrl(path).data.publicUrl);
+      imagens.push(
+        sb.storage.from("produtos").getPublicUrl(path).data.publicUrl
+      );
     }
 
     await sb.from("produtos").insert({
@@ -195,7 +203,7 @@ async function cadastrar(){
     }).eq("id", produtoEditando.id);
 
     produtoEditando = null;
-    document.querySelector("button").innerText = "Cadastrar peça";
+    document.getElementById("btnSalvar").innerText = "Cadastrar peça";
   }
 
   nome.value = preco.value = estoque.value = "";
@@ -205,6 +213,7 @@ async function cadastrar(){
   carregar();
 }
 
+/* ========= EDITAR ========= */
 function editar(p){
   produtoEditando = p;
 
@@ -213,42 +222,55 @@ function editar(p){
   estoque.value = p.estoque;
   categoria.value = p.categoria;
 
-  document.querySelectorAll(".tam").forEach(t=>t.checked=p.tamanhos?.includes(t.value));
-  document.querySelectorAll(".cor").forEach(c=>c.checked=p.cores?.includes(c.value));
+  document.querySelectorAll(".tam").forEach(t =>
+    t.checked = p.tamanhos?.includes(t.value)
+  );
+  document.querySelectorAll(".cor").forEach(c =>
+    c.checked = p.cores?.includes(c.value)
+  );
 
-  document.querySelector("button").innerText = "💾 Salvar alterações";
+  document.getElementById("btnSalvar").innerText = "💾 Salvar alterações";
 }
 
+/* ========= REPOR ========= */
 async function reporEstoque(id, atual){
   const qtd = Number(prompt("Quantidade para repor:",0));
   if(isNaN(qtd)) return;
 
-  await sb.from("produtos").update({estoque: atual + qtd}).eq("id", id);
+  await sb.from("produtos")
+    .update({estoque: atual + qtd})
+    .eq("id", id);
+
   carregar();
 }
 
+/* ========= EXCLUIR ========= */
 async function excluir(id){
-  if(confirm("Excluir produto?")){
+  if(confirm("Excluir esta peça?")){
     await sb.from("produtos").delete().eq("id", id);
     carregar();
   }
 }
 
+/* ========= LISTAR ========= */
 async function carregar(){
-  const {data} = await sb.from("produtos")
+  const {data} = await sb
+    .from("produtos")
     .select("*")
     .eq("app_id", admin.app_id)
     .order("categoria");
 
-  lista.innerHTML = (data||[]).map(p=>`
+  lista.innerHTML = (data || []).map(p=>`
     <div class="produto">
-      ${p.imagens?.length ? `<img src="${p.imagens[0]}">` : `<div class="sem-foto">Sem foto</div>`}
+      ${p.imagens?.length
+        ? `<img src="${p.imagens[0]}">`
+        : `<div class="sem-foto">Sem foto</div>`}
       <b>${p.nome}</b>
       <div class="preco">R$ ${p.preco.toFixed(2)}</div>
       <small>${(p.tamanhos||[]).join(", ")} | ${(p.cores||[]).join(", ")}</small>
       <br><small>Estoque: ${p.estoque}</small><br><br>
       <button onclick='editar(${JSON.stringify(p)})'>✏️ Editar</button>
-      <button onclick="reporEstoque('${p.id}',${p.estoque})">➕ Repor</button>
+      <button onclick="reporEstoque('${p.id}', ${p.estoque})">➕ Repor</button>
       <button class="excluir" onclick="excluir('${p.id}')">Excluir</button>
     </div>
   `).join("");
