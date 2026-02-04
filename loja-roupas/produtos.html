@@ -18,6 +18,7 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
   justify-content:space-between;
   align-items:center;
 }
+
 .voltar{
   background:#334155;
   color:#fff;
@@ -60,15 +61,19 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
   padding:12px;
   border-radius:14px;
   text-align:center;
+  font-size:13px;
 }
+
 .produto img{
   width:100%;
   height:110px;
   object-fit:cover;
   border-radius:10px;
 }
+
 .preco{color:#22c55e;font-weight:bold}
 small{opacity:.7}
+
 .sem-foto{
   height:110px;
   display:flex;
@@ -91,7 +96,7 @@ small{opacity:.7}
 <div class="box">
   <h2>➕ Cadastrar / Editar Roupa</h2>
 
-  <!-- ID oculto para edição -->
+  <!-- CONTROLE DE EDIÇÃO -->
   <input type="hidden" id="produto_id">
 
   <input id="nome" placeholder="Nome da peça">
@@ -127,7 +132,10 @@ small{opacity:.7}
 
   <input id="fotos" type="file" accept="image/*" multiple>
 
-  <button id="btnSalvar" onclick="salvar()">Cadastrar peça</button>
+  <!-- BOTÃO ÚNICO -->
+  <button id="btnSalvar" type="button" onclick="salvar()">
+    Cadastrar peça
+  </button>
 </div>
 
 <div class="box">
@@ -138,34 +146,39 @@ small{opacity:.7}
 </div>
 
 <script>
+/* ========= SESSÃO ========= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 if(!admin || admin.tipo !== "loja"){
   location.replace("../auth/login.html");
   throw new Error("Sessão inválida");
 }
 
+/* ========= SUPABASE ========= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* ========= ELEMENTOS ========= */
+const btnSalvar = document.getElementById("btnSalvar");
+
+/* ========= NAVEGAÇÃO ========= */
 function voltar(){
   location.href = "admin.html";
 }
 
+/* ========= SALVAR / CADASTRAR ========= */
 async function salvar(){
   if(!nome.value || preco.value <= 0){
-    alert("Preencha nome e preço");
+    alert("Preencha nome e preço corretamente");
     return;
   }
 
   const tamanhos = [...document.querySelectorAll(".tam:checked")].map(i=>i.value);
   const cores = [...document.querySelectorAll(".cor:checked")].map(i=>i.value);
 
-  const id = produto_id.value;
-
-  // 👉 EDIÇÃO
-  if(id){
+  // 👉 MODO EDIÇÃO
+  if(produto_id.value){
     const { error } = await sb.from("produtos").update({
       nome: nome.value,
       preco: Number(preco.value),
@@ -173,7 +186,7 @@ async function salvar(){
       categoria: categoria.value,
       tamanhos,
       cores
-    }).eq("id", id);
+    }).eq("id", produto_id.value);
 
     if(error){
       alert("Erro ao salvar edição");
@@ -181,13 +194,16 @@ async function salvar(){
       return;
     }
   }
-  // 👉 CADASTRO
+  // 👉 MODO CADASTRO
   else {
     let imagens = [];
+
     for(const f of fotos.files){
       const path = `${admin.app_id}/${Date.now()}_${f.name}`;
       await sb.storage.from("produtos").upload(path, f, { upsert:true });
-      imagens.push(sb.storage.from("produtos").getPublicUrl(path).data.publicUrl);
+      imagens.push(
+        sb.storage.from("produtos").getPublicUrl(path).data.publicUrl
+      );
     }
 
     await sb.from("produtos").insert({
@@ -207,6 +223,7 @@ async function salvar(){
   carregar();
 }
 
+/* ========= EDITAR ========= */
 function editar(p){
   produto_id.value = p.id;
 
@@ -215,20 +232,30 @@ function editar(p){
   estoque.value = p.estoque;
   categoria.value = p.categoria;
 
-  document.querySelectorAll(".tam").forEach(t=>t.checked=p.tamanhos?.includes(t.value));
-  document.querySelectorAll(".cor").forEach(c=>c.checked=p.cores?.includes(c.value));
+  document.querySelectorAll(".tam").forEach(t =>
+    t.checked = p.tamanhos?.includes(t.value)
+  );
+  document.querySelectorAll(".cor").forEach(c =>
+    c.checked = p.cores?.includes(c.value)
+  );
 
+  btnSalvar.style.display = "block";
   btnSalvar.innerText = "💾 Salvar alterações";
 }
 
+/* ========= REPOR ========= */
 async function reporEstoque(id, atual){
   const qtd = Number(prompt("Quantidade para repor:",0));
   if(isNaN(qtd)) return;
 
-  await sb.from("produtos").update({estoque: atual + qtd}).eq("id", id);
+  await sb.from("produtos")
+    .update({ estoque: atual + qtd })
+    .eq("id", id);
+
   carregar();
 }
 
+/* ========= EXCLUIR ========= */
 async function excluir(id){
   if(confirm("Excluir produto?")){
     await sb.from("produtos").delete().eq("id", id);
@@ -236,29 +263,36 @@ async function excluir(id){
   }
 }
 
+/* ========= LIMPAR ========= */
 function limpar(){
   produto_id.value = "";
   nome.value = preco.value = estoque.value = "";
   fotos.value = "";
+
   document.querySelectorAll("input[type=checkbox]").forEach(i=>i.checked=false);
+
+  btnSalvar.style.display = "block";
   btnSalvar.innerText = "Cadastrar peça";
 }
 
+/* ========= LISTAR ========= */
 async function carregar(){
-  const {data} = await sb.from("produtos")
+  const { data } = await sb.from("produtos")
     .select("*")
     .eq("app_id", admin.app_id)
     .order("categoria");
 
-  lista.innerHTML = (data||[]).map(p=>`
+  lista.innerHTML = (data || []).map(p=>`
     <div class="produto">
-      ${p.imagens?.length ? `<img src="${p.imagens[0]}">` : `<div class="sem-foto">Sem foto</div>`}
+      ${p.imagens?.length
+        ? `<img src="${p.imagens[0]}">`
+        : `<div class="sem-foto">Sem foto</div>`}
       <b>${p.nome}</b>
       <div class="preco">R$ ${p.preco.toFixed(2)}</div>
       <small>${(p.tamanhos||[]).join(", ")} | ${(p.cores||[]).join(", ")}</small>
       <br><small>Estoque: ${p.estoque}</small><br><br>
       <button onclick='editar(${JSON.stringify(p)})'>✏️ Editar</button>
-      <button onclick="reporEstoque('${p.id}',${p.estoque})">➕ Repor</button>
+      <button onclick="reporEstoque('${p.id}', ${p.estoque})">➕ Repor</button>
       <button class="excluir" onclick="excluir('${p.id}')">Excluir</button>
     </div>
   `).join("");
