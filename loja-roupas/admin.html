@@ -50,7 +50,6 @@ body{
 .card h3{ margin:0 0 10px }
 .card p{ opacity:.8; font-size:14px }
 
-/* bloco do seletor */
 .modo{
   margin:20px 0 30px;
   padding:18px;
@@ -79,95 +78,89 @@ body{
     </small>
   </p>
 
-  <!-- 🔽 SELETOR DE MODO (LOJA) -->
   <div class="modo">
     <b>Modo do site:</b><br><br>
-
     <label>
       <input type="radio" name="modo" value="vitrine" checked>
-      🛍️ Vitrine (somente exposição)
+      🛍️ Vitrine
     </label>
-
     <label>
       <input type="radio" name="modo" value="vendas">
-      💳 Site de Vendas (comprar online)
+      💳 Vendas
     </label>
   </div>
 
   <div class="grid">
-
     <div class="card" onclick="location.href='produtos.html'">
       <h3>📦 Produtos</h3>
-      <p>Cadastro e controle dos produtos</p>
     </div>
-
     <div class="card" onclick="location.href='caixa.html'">
       <h3>💰 Caixa</h3>
-      <p>Entradas, saídas e saldo</p>
     </div>
-
     <div class="card" onclick="location.href='admins.html'">
       <h3>👥 Admins</h3>
-      <p>Usuários da loja</p>
     </div>
-
     <div class="card" onclick="location.href='site-config.html'">
       <h3>🌐 Configurar Site</h3>
-      <p>Configurações da página pública</p>
     </div>
-
     <div class="card" onclick="abrirLoja()">
       <h3>👁️ Visualizar Site</h3>
-      <p>Abrir conforme o modo selecionado</p>
     </div>
-
-    <div class="card" onclick="abrirSuporte()">
-      <h3>💬 Suporte</h3>
-      <p>Falar com o suporte</p>
-    </div>
-
   </div>
 </div>
 
 <script>
-/* ===== VALIDA SESSÃO ===== */
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
+/* ===== RECUPERA SESSÃO (FALLBACK) ===== */
+function getSessao(){
+  const chaves = [
+    "admin_logado",
+    "usuario_logado",
+    "user_logado",
+    "usuario",
+    "admin"
+  ];
 
+  for(const k of chaves){
+    const v = localStorage.getItem(k);
+    if(v){
+      try{
+        return JSON.parse(v);
+      }catch(e){}
+    }
+  }
+  return null;
+}
+
+const admin = getSessao();
+
+/* ===== VALIDA ===== */
 if(
   !admin ||
-  !admin.usuario ||
   !admin.app_id ||
-  !["loja","admin"].includes(admin.tipo)
+  !(admin.usuario || admin.email)
 ){
-  alert("Sessão inválida");
+  alert("Sessão inválida (nenhum usuário encontrado)");
   localStorage.clear();
   location.href = "../auth/login.html";
   throw new Error("Sessão inválida");
 }
 
+/* ===== NORMALIZA ===== */
+admin.usuario = admin.usuario || admin.email;
+admin.tipo = admin.tipo || "admin";
+
 /* ===== DADOS ===== */
 document.getElementById("nome").innerText = admin.usuario;
 document.getElementById("appId").innerText = admin.app_id;
 
-/* ===== ABRIR SITE CONFORME MODO ===== */
+/* ===== ABRIR LOJA ===== */
 function abrirLoja(){
   const modo = document.querySelector('input[name="modo"]:checked').value;
-
-  const pagina = (modo === "vendas")
-    ? "vendas.html"
-    : "index.html";
+  const pagina = modo === "vendas" ? "vendas.html" : "index.html";
 
   window.open(
     "https://anajuliafarias659-cloud.github.io/ffsolucoes/loja-roupas/"
     + pagina + "?app=" + admin.app_id,
-    "_blank"
-  );
-}
-
-/* ===== SUPORTE ===== */
-function abrirSuporte(){
-  window.open(
-    "https://anajuliafarias659-cloud.github.io/ffsolucoes/chat-admin.html",
     "_blank"
   );
 }
