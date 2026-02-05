@@ -50,15 +50,15 @@ body{
 .card h3{ margin:0 0 10px }
 .card p{ opacity:.8; font-size:14px }
 
-/* seletor */
+/* bloco do seletor */
 .modo{
-  margin:20px 0;
-  padding:16px;
+  margin:20px 0 30px;
+  padding:18px;
   background:#0f172a;
   border-radius:16px;
 }
 .modo label{
-  margin-right:20px;
+  margin-right:24px;
   cursor:pointer;
 }
 </style>
@@ -79,18 +79,18 @@ body{
     </small>
   </p>
 
-  <!-- 🔽 SELETOR DE QUAL SITE ABRIR -->
+  <!-- 🔽 SELETOR DE MODO (LOJA) -->
   <div class="modo">
-    <b>Como abrir o site:</b><br><br>
+    <b>Modo do site:</b><br><br>
 
     <label>
-      <input type="radio" name="modo" value="index" checked>
-      🛍️ Vitrine / Loja
+      <input type="radio" name="modo" value="vitrine" checked>
+      🛍️ Vitrine (somente exposição)
     </label>
 
     <label>
-      <input type="radio" name="modo" value="cardapio">
-      🍔 Cardápio / Delivery
+      <input type="radio" name="modo" value="vendas">
+      💳 Site de Vendas (comprar online)
     </label>
   </div>
 
@@ -118,7 +118,7 @@ body{
 
     <div class="card" onclick="abrirLoja()">
       <h3>👁️ Visualizar Site</h3>
-      <p>Abrir conforme seleção acima</p>
+      <p>Abrir conforme o modo selecionado</p>
     </div>
 
     <div class="card" onclick="abrirSuporte()">
@@ -133,22 +133,23 @@ body{
 /* ===== VALIDA SESSÃO ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
-if(!admin){
+if(!admin || admin.tipo !== "loja"){
   alert("Sessão inválida");
   location.href = "../auth/login.html";
   throw new Error("Sessão inválida");
 }
 
-nome.innerText = admin.usuario;
-appId.innerText = admin.app_id;
+document.getElementById("nome").innerText = admin.usuario;
+document.getElementById("appId").innerText = admin.app_id;
 
-/* ===== ABRIR SITE CONFORME ESCOLHA ===== */
+/* ===== ABRIR SITE CONFORME MODO ===== */
 function abrirLoja(){
   const modo = document.querySelector('input[name="modo"]:checked').value;
 
-  const pagina = modo === "cardapio"
-    ? "cardapio.html"
-    : "index.html";
+  // páginas da loja
+  const pagina = (modo === "vendas")
+    ? "vendas.html"   // site de vendas
+    : "index.html";   // vitrine
 
   window.open(
     "https://anajuliafarias659-cloud.github.io/ffsolucoes/loja-roupas/"
