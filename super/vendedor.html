@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Painel do Vendedor</title>
+<title>Sistema FF Soluções</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -13,7 +13,7 @@ body{
   background:#020617;
   color:#fff
 }
-.login,.container{
+.box{
   max-width:1100px;
   margin:40px auto;
   padding:30px;
@@ -32,16 +32,16 @@ button{
   font-weight:bold;
   cursor:pointer
 }
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px
+}
 .card{
   background:#020617;
   padding:16px;
   margin-top:12px;
   border-radius:14px
-}
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px
 }
 .badge{
   background:#334155;
@@ -49,105 +49,80 @@ button{
   border-radius:6px;
   font-size:12px
 }
-small{opacity:.8}
-hr{
-  margin:30px 0;
-  border:none;
-  height:1px;
-  background:rgba(255,255,255,.2)
-}
-a{
-  color:#22c55e;
-  text-decoration:none
-}
+.hidden{display:none}
 </style>
 </head>
 
 <body>
 
 <!-- LOGIN -->
-<div class="login" id="loginBox">
-  <h2>🔐 Login do Vendedor</h2>
-  <input id="loginVendedor" placeholder="E-mail">
-  <input id="senhaVendedor" type="password" placeholder="Senha">
+<div class="box" id="loginBox">
+  <h2>🔐 Login</h2>
+  <input id="loginEmail" placeholder="E-mail ou usuário">
+  <input id="loginSenha" type="password" placeholder="Senha">
   <button onclick="login()">Entrar</button>
 </div>
 
-<!-- PAINEL -->
-<div class="container" id="painel" style="display:none">
+<!-- PAINEL VENDEDOR -->
+<div class="box hidden" id="painelVendedor">
+  <h2>🏪 Painel do Vendedor</h2>
 
-<h2>🏪 Criar Novo Negócio</h2>
+  <div class="grid">
+    <input id="nomeNegocio" placeholder="Nome do negócio">
 
-<div class="grid">
-  <input id="nomeNegocio" placeholder="Nome do negócio">
+    <select id="tipoNegocio">
+      <option value="bar">Bar</option>
+      <option value="restaurante">Restaurante</option>
+      <option value="mercado">Mercado</option>
+      <option value="hotel">Hotel</option>
+      <option value="locadora">Locadora</option>
+      <option value="roupas">Loja de Roupas</option>
+    </select>
 
-  <select id="tipoNegocio">
-    <option value="bar">Bar</option>
-    <option value="restaurante">Restaurante</option>
-    <option value="mercado">Mercado</option>
-    <option value="hotel">Hotel</option>
-    <option value="locadora">Locadora</option>
-    <option value="roupas">Loja de Roupas</option>
-  </select>
+    <input id="enderecoNegocio" placeholder="Endereço">
+    <input id="telefoneNegocio" placeholder="Telefone">
 
-  <input id="enderecoNegocio" placeholder="Endereço">
-  <input id="telefoneNegocio" placeholder="Telefone">
+    <input id="usuarioDono" placeholder="Usuário do admin">
+    <input id="senhaDono" type="password" placeholder="Senha do admin">
 
-  <input id="usuarioDono" placeholder="Usuário do dono">
-  <input id="senhaDono" type="password" placeholder="Senha do dono">
+    <select id="permissaoDono">
+      <option value="admin">Administrador</option>
+      <option value="editar">Editor</option>
+      <option value="visualizar">Visualizador</option>
+    </select>
+  </div>
 
-  <!-- 🔐 NOVO: PERMISSÃO -->
-  <select id="permissaoDono">
-    <option value="admin">Administrador</option>
-    <option value="editar">Editor</option>
-    <option value="visualizar">Visualizador</option>
-  </select>
+  <button onclick="criarNegocio()">Criar Negócio</button>
+
+  <hr>
+
+  <h3>📊 Meus Negócios</h3>
+  <div id="listaNegocios"></div>
 </div>
 
-<button onclick="criarNegocio()">Cadastrar Negócio</button>
-
-<hr>
-
-<h2>📊 Meus Negócios</h2>
-<div id="listaNegocios"></div>
-
+<!-- PAINEL ADMIN -->
+<div class="box hidden" id="painelAdmin">
+  <h2>🛡 Painel Admin</h2>
+  <p id="infoAdmin"></p>
 </div>
 
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-/* ===== SUPABASE ===== */
 const supabase = createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-let vendedorLogado = null;
-
-/* ===== LINKS PÚBLICOS ===== */
-const LINKS_PUBLICOS = {
-  bar: "https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/public/cardapio/index.html?app=",
-  restaurante: "https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/public/cardapio/index.html?app=",
-  hotel: "https://anajuliafarias659-cloud.github.io/ffsolucoes/hotel/public/site/index.html?id=",
-  mercado: "https://anajuliafarias659-cloud.github.io/ffsolucoes/mercado/public/catalogo.html?app=",
-  locadora: "https://anajuliafarias659-cloud.github.io/ffsolucoes/locadora/public/index.html?app_id=",
-  roupas: "https://anajuliafarias659-cloud.github.io/ffsolucoes/loja-roupas/index.html?app="
-};
-
-function gerarLinkPublico(tipo, appId){
-  return LINKS_PUBLICOS[tipo]
-    ? LINKS_PUBLICOS[tipo] + appId
-    : "";
-}
+let usuarioLogado = null;
 
 /* ===== LOGIN ===== */
 window.login = async ()=>{
   const { data } = await supabase
     .from("usuarios")
     .select("*")
-    .eq("email", loginVendedor.value)
-    .eq("senha", senhaVendedor.value)
-    .eq("tipo","vendedor")
+    .eq("email", loginEmail.value)
+    .eq("senha", loginSenha.value)
     .eq("ativo", true)
     .maybeSingle();
 
@@ -156,77 +131,60 @@ window.login = async ()=>{
     return;
   }
 
-  vendedorLogado = data;
-  loginBox.style.display = "none";
-  painel.style.display = "block";
-  carregarNegocios();
+  usuarioLogado = data;
+  loginBox.classList.add("hidden");
+
+  if(data.tipo === "vendedor"){
+    painelVendedor.classList.remove("hidden");
+    carregarNegocios();
+  }else{
+    painelAdmin.classList.remove("hidden");
+    infoAdmin.innerHTML = `
+      👤 Usuário: <b>${data.email}</b><br>
+      🛡 Permissão: <b>${data.tipo}</b>
+    `;
+  }
 };
 
 /* ===== CRIAR NEGÓCIO ===== */
 window.criarNegocio = async ()=>{
 
   if(!usuarioDono.value || !senhaDono.value){
-    alert("Usuário e senha do dono são obrigatórios");
+    alert("Usuário e senha obrigatórios");
     return;
   }
 
-  /* 1️⃣ CRIA NEGÓCIO */
-  const { data: negocio, error } = await supabase
+  const { data: negocio } = await supabase
     .from("apps")
     .insert({
       nome: nomeNegocio.value,
       tipo: tipoNegocio.value,
       endereco: enderecoNegocio.value,
       telefone: telefoneNegocio.value,
-      vendedor_id: vendedorLogado.id,
+      vendedor_id: usuarioLogado.id,
       ativo: true
     })
     .select()
     .single();
 
-  if(error){
-    console.error(error);
-    alert("Erro ao criar negócio");
-    return;
-  }
+  await supabase.from("admins").insert({
+    usuario: usuarioDono.value,
+    senha: senhaDono.value,
+    permissao: permissaoDono.value,
+    app_id: negocio.id,
+    ativo: true
+  });
 
-  /* 2️⃣ CRIA ADMIN COM PERMISSÃO */
-  const { error: erroAdmin } = await supabase
-    .from("admins")
-    .insert({
-      usuario: usuarioDono.value.trim(),
-      senha: senhaDono.value.trim(),
-      permissao: permissaoDono.value, // admin | editar | visualizar
-      app_id: negocio.id,
-      ativo: true
-    });
+  await supabase.from("usuarios").insert({
+    nome: usuarioDono.value,
+    email: usuarioDono.value,
+    senha: senhaDono.value,
+    tipo: permissaoDono.value,
+    app_id: negocio.id,
+    ativo: true
+  });
 
-  if(erroAdmin){
-    console.error(erroAdmin);
-    alert("Erro ao criar usuário do negócio");
-    return;
-  }
-
-  const linkPublico = gerarLinkPublico(negocio.tipo, negocio.id);
-  const linkPainel = "https://anajuliafarias659-cloud.github.io/ffsolucoes/";
-
-  alert(
-`✅ NEGÓCIO CRIADO COM SUCESSO!
-
-🏪 ${negocio.nome}
-📦 Tipo: ${negocio.tipo}
-
-👤 Usuário: ${usuarioDono.value}
-🔑 Senha: ${senhaDono.value}
-🛡 Permissão: ${permissaoDono.value}
-
-🔐 Painel:
-${linkPainel}
-
-🌍 Link público:
-${linkPublico}`
-  );
-
+  alert("Negócio criado com sucesso!");
   carregarNegocios();
 };
 
@@ -235,24 +193,15 @@ async function carregarNegocios(){
   const { data } = await supabase
     .from("apps")
     .select("*")
-    .eq("vendedor_id", vendedorLogado.id);
+    .eq("vendedor_id", usuarioLogado.id);
 
   listaNegocios.innerHTML = "";
 
-  (data || []).forEach(n=>{
-    const linkPublico = gerarLinkPublico(n.tipo, n.id);
-
+  (data||[]).forEach(n=>{
     listaNegocios.innerHTML += `
       <div class="card">
         <b>${n.nome}</b>
-        <span class="badge">${n.tipo}</span><br><br>
-
-        <small>📍 Endereço:</small> ${n.endereco}<br>
-        <small>📞 Telefone:</small> ${n.telefone}<br><br>
-
-        <a href="${linkPublico}" target="_blank">
-          🌍 Abrir link público
-        </a>
+        <span class="badge">${n.tipo}</span>
       </div>
     `;
   });
