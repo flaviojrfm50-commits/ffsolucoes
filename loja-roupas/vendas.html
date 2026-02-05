@@ -189,7 +189,7 @@ body.natal{--cor-primaria:#ef4444;--cor-banner:#7f1d1d;--cor-card:#450a0a}
 
       <div id="trocoDiv" style="display:none">
         <label>Troco para quanto?</label>
-        <input id="trocoValor">
+        <input id="trocoValor" placeholder="Ex: 100,00">
       </div>
 
       <button class="botao" onclick="finalizar()">Finalizar no WhatsApp</button>
@@ -210,14 +210,15 @@ const sb = supabase.createClient(
 const params = new URLSearchParams(location.search);
 let APP_ID = params.get("app") || localStorage.getItem("APP_ID");
 if(!APP_ID){
-  document.body.innerHTML="Link inválido";
+  document.body.innerHTML = "Link inválido";
   throw new Error("app_id ausente");
 }
 localStorage.setItem("APP_ID", APP_ID);
 
 /* ===== VARIÁVEIS ===== */
 let carrinho = JSON.parse(localStorage.getItem("carrinho_"+APP_ID)) || [];
-let WHATS="", NOME_LOJA="";
+let WHATS = "";
+let NOME_LOJA = "";
 
 /* ===== INIT ===== */
 async function init(){
@@ -258,57 +259,95 @@ async function init(){
 
 /* ===== CARRINHO ===== */
 function add(p){
-  const item = carrinho.find(i=>i.id===p.id);
-  if(item) item.qtd++;
-  else carrinho.push({...p,qtd:1});
+  const id = String(p.id);
+  const item = carrinho.find(i => String(i.id) === id);
+
+  if(item){
+    item.qtd++;
+  }else{
+    carrinho.push({...p, id, qtd:1});
+  }
+
   salvar();
   atualizarBadge();
 }
+
 function remover(id){
-  const item = carrinho.find(i=>i.id===id);
+  id = String(id);
+  const item = carrinho.find(i => String(i.id) === id);
+  if(!item) return;
+
   item.qtd--;
-  if(item.qtd<=0) carrinho=carrinho.filter(i=>i.id!==id);
-  salvar(); renderCarrinho(); atualizarBadge();
+
+  if(item.qtd <= 0){
+    carrinho = carrinho.filter(i => String(i.id) !== id);
+  }
+
+  salvar();
+  renderCarrinho();
+  atualizarBadge();
 }
+
 function salvar(){
   localStorage.setItem("carrinho_"+APP_ID, JSON.stringify(carrinho));
 }
+
 function atualizarBadge(){
-  const t = carrinho.reduce((s,i)=>s+i.qtd,0);
-  badge.innerText=t;
-  badge.style.display=t>0?"block":"none";
+  const totalItens = carrinho.reduce((s,i)=>s+i.qtd,0);
+  badge.innerText = totalItens;
+  badge.style.display = totalItens > 0 ? "block" : "none";
 }
 
 /* ===== MODAL ===== */
-function abrirCarrinho(){ modal.style.display="flex"; renderCarrinho(); }
-function fecharCarrinho(){ modal.style.display="none"; }
+function abrirCarrinho(){
+  modal.style.display = "flex";
+  renderCarrinho();
+}
+function fecharCarrinho(){
+  modal.style.display = "none";
+}
+
 function renderCarrinho(){
-  let soma=0;
+  let soma = 0;
   listaCarrinho.innerHTML = carrinho.map(i=>{
-    soma+=i.preco*i.qtd;
-    return `<div class="item">${i.nome} x${i.qtd}
-      <button onclick="remover(${i.id})">-</button></div>`;
+    soma += i.preco * i.qtd;
+    return `
+      <div class="item">
+        ${i.nome} x${i.qtd}
+        <button onclick="remover('${i.id}')">-</button>
+      </div>
+    `;
   }).join("");
-  total.innerText=soma.toFixed(2);
+  total.innerText = soma.toFixed(2);
 }
 
 /* ===== PAGAMENTO ===== */
 function troco(){
-  trocoDiv.style.display = pagamento.value==="Dinheiro"?"block":"none";
+  trocoDiv.style.display =
+    pagamento.value === "Dinheiro" ? "block" : "none";
 }
 
 /* ===== FINALIZAR ===== */
 function finalizar(){
-  let msg=`🛍️ Pedido - ${NOME_LOJA}%0A%0A`;
-  carrinho.forEach(i=>msg+=`• ${i.nome} x${i.qtd}%0A`);
-  msg+=`%0ATotal: R$ ${total.innerText}%0A`;
-  msg+=`Pagamento: ${pagamento.value}`;
-  if(pagamento.value==="Dinheiro")
-    msg+=`%0ATroco para: ${trocoValor.value||"não informado"}`;
+  let msg = `🛍️ Pedido - ${NOME_LOJA}%0A%0A`;
+
+  carrinho.forEach(i=>{
+    msg += `• ${i.nome} x${i.qtd}%0A`;
+  });
+
+  msg += `%0ATotal: R$ ${total.innerText}%0A`;
+  msg += `Pagamento: ${pagamento.value}`;
+
+  if(pagamento.value === "Dinheiro"){
+    msg += `%0ATroco para: ${trocoValor.value || "não informado"}`;
+  }
 
   window.open(`https://wa.me/${WHATS}?text=${msg}`);
+
   localStorage.removeItem("carrinho_"+APP_ID);
-  carrinho=[]; atualizarBadge(); fecharCarrinho();
+  carrinho = [];
+  atualizarBadge();
+  fecharCarrinho();
 }
 
 init();
