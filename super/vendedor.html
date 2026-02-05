@@ -87,6 +87,7 @@ a{
     <option value="mercado">Mercado</option>
     <option value="hotel">Hotel</option>
     <option value="locadora">Locadora</option>
+    <option value="roupas">Loja de Roupas</option>
   </select>
 
   <input id="enderecoNegocio" placeholder="Endereço">
@@ -116,16 +117,14 @@ const supabase = createClient(
 
 let vendedorLogado = null;
 
-/* ===== MAPA DE LINKS PÚBLICOS ===== */
+/* ===== LINKS PÚBLICOS ===== */
 const LINKS_PUBLICOS = {
   bar: "https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/public/cardapio/index.html?app=",
   restaurante: "https://anajuliafarias659-cloud.github.io/ffsolucoes/bar/public/cardapio/index.html?app=",
-
   hotel: "https://anajuliafarias659-cloud.github.io/ffsolucoes/hotel/public/site/index.html?id=",
-
   mercado: "https://anajuliafarias659-cloud.github.io/ffsolucoes/mercado/public/catalogo.html?app=",
-
-  locadora: "https://anajuliafarias659-cloud.github.io/ffsolucoes/locadora/public/index.html?app_id="
+  locadora: "https://anajuliafarias659-cloud.github.io/ffsolucoes/locadora/public/index.html?app_id=",
+  roupas: "https://anajuliafarias659-cloud.github.io/ffsolucoes/loja-roupas/index.html?app="
 };
 
 function gerarLinkPublico(tipo, appId){
