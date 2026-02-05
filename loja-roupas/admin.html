@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Painel da Loja de Roupas</title>
+<title>Painel da Loja</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -49,6 +49,18 @@ body{
 .card:hover{ transform:scale(1.03) }
 .card h3{ margin:0 0 10px }
 .card p{ opacity:.8; font-size:14px }
+
+/* seletor */
+.modo{
+  margin:20px 0;
+  padding:16px;
+  background:#0f172a;
+  border-radius:16px;
+}
+.modo label{
+  margin-right:20px;
+  cursor:pointer;
+}
 </style>
 </head>
 
@@ -66,6 +78,21 @@ body{
       ID da Loja: <span id="appId"></span>
     </small>
   </p>
+
+  <!-- 🔽 SELETOR DE QUAL SITE ABRIR -->
+  <div class="modo">
+    <b>Como abrir o site:</b><br><br>
+
+    <label>
+      <input type="radio" name="modo" value="index" checked>
+      🛍️ Vitrine / Loja
+    </label>
+
+    <label>
+      <input type="radio" name="modo" value="cardapio">
+      🍔 Cardápio / Delivery
+    </label>
+  </div>
 
   <div class="grid">
 
@@ -89,10 +116,9 @@ body{
       <p>Configurações da página pública</p>
     </div>
 
-    <!-- SUBSTITUI O BANNERS.HTML -->
     <div class="card" onclick="abrirLoja()">
       <h3>👁️ Visualizar Site</h3>
-      <p>Abrir loja pública (vitrine ou cardápio)</p>
+      <p>Abrir conforme seleção acima</p>
     </div>
 
     <div class="card" onclick="abrirSuporte()">
@@ -107,27 +133,32 @@ body{
 /* ===== VALIDA SESSÃO ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
-if(!admin || admin.tipo !== "loja"){
+if(!admin){
   alert("Sessão inválida");
   location.href = "../auth/login.html";
   throw new Error("Sessão inválida");
 }
 
-document.getElementById("nome").innerText = admin.usuario;
-document.getElementById("appId").innerText = admin.app_id;
+nome.innerText = admin.usuario;
+appId.innerText = admin.app_id;
 
-/* ===== ABRIR LOJA (CHAVE) ===== */
+/* ===== ABRIR SITE CONFORME ESCOLHA ===== */
 function abrirLoja(){
+  const modo = document.querySelector('input[name="modo"]:checked').value;
+
+  const pagina = modo === "cardapio"
+    ? "cardapio.html"
+    : "index.html";
+
   window.open(
-    "https://anajuliafarias659-cloud.github.io/ffsolucoes/loja-roupas/abrir.html?app=" 
-    + admin.app_id,
+    "https://anajuliafarias659-cloud.github.io/ffsolucoes/loja-roupas/"
+    + pagina + "?app=" + admin.app_id,
     "_blank"
   );
 }
 
 /* ===== SUPORTE ===== */
 function abrirSuporte(){
-  localStorage.setItem("APP_ID", admin.app_id);
   window.open(
     "https://anajuliafarias659-cloud.github.io/ffsolucoes/chat-admin.html",
     "_blank"
