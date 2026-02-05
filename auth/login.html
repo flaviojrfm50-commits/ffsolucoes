@@ -14,7 +14,7 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  font-family:Arial,Helvetica,sans-serif;
+  font-family:Arial;
   background:#020617;
   color:#fff;
 }
@@ -31,7 +31,7 @@ input,button{
   border-radius:10px;
   border:none;
 }
-input{ background:#e5f0ff }
+input{background:#e5f0ff}
 button{
   background:#22c55e;
   font-weight:bold;
@@ -50,13 +50,11 @@ button{
 </div>
 
 <script>
-/* ===== SUPABASE ===== */
 const sb = window.supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===== LOGIN ===== */
 async function login(){
   const usuario = document.getElementById("usuario").value.trim().toLowerCase();
   const senha   = document.getElementById("senha").value.trim();
@@ -66,7 +64,6 @@ async function login(){
     return;
   }
 
-  /* 1️⃣ AUTENTICA NO admins (LEGADO) */
   const { data: admin } = await sb
     .from("admins")
     .select("id, senha, ativo, app_id")
@@ -83,7 +80,6 @@ async function login(){
     return;
   }
 
-  /* 2️⃣ BUSCA TIPO DO NEGÓCIO */
   const { data: app } = await sb
     .from("apps")
     .select("tipo")
@@ -95,51 +91,39 @@ async function login(){
     return;
   }
 
-  /* 3️⃣ MONTA SESSÃO (SEM CONFUNDIR TIPO) */
-  const sessao = {
+  // 🔐 SALVA PADRÃO ÚNICO
+  const adminLogado = {
     id: admin.id,
     usuario: usuario,
     app_id: admin.app_id,
-
-    // 🔐 TIPO DO USUÁRIO (O PAINEL ESPERA ISSO)
-    tipo: "admin",
-
-    // 🏪 TIPO DO NEGÓCIO (SÓ PRA REDIRECIONAR)
-    tipoNegocio: String(app.tipo).trim().toLowerCase()
+    tipo: String(app.tipo).trim().toLowerCase()
   };
 
-  /* 4️⃣ SALVA EM TODOS OS NOMES NECESSÁRIOS (COMPATIBILIDADE TOTAL) */
-  localStorage.setItem("admin_logado", JSON.stringify(sessao));
-  localStorage.setItem("usuario_logado", JSON.stringify({
-    id: sessao.id,
-    email: sessao.usuario,
-    tipo: sessao.tipo
-  }));
-  localStorage.setItem("loja_ativa", sessao.app_id);
+  localStorage.setItem("admin_logado", JSON.stringify(adminLogado));
+  console.log("LOGIN SALVO 👉", adminLogado);
 
-  console.log("LOGIN SALVO 👉", sessao);
+  if(adminLogado.tipo === "locadora"){
+  location.href = "../locadora/admin.html";
 
-  /* 5️⃣ REDIRECIONA PELO TIPO DO NEGÓCIO */
-  if(sessao.tipoNegocio === "locadora"){
-    location.href = "../locadora/admin.html";
+}else if(adminLogado.tipo === "mercado"){
+  location.href = "../mercado/admin.html";
 
-  }else if(sessao.tipoNegocio === "mercado"){
-    location.href = "../mercado/admin.html";
+}else if(adminLogado.tipo === "bar"){
+  location.href = "../bar/admin.html";
 
-  }else if(sessao.tipoNegocio === "bar"){
-    location.href = "../bar/admin.html";
+}else if(adminLogado.tipo === "hotel"){
+  location.href = "../hotel/painel.html";
 
-  }else if(sessao.tipoNegocio === "hotel"){
-    location.href = "../hotel/painel.html";
+}else if(adminLogado.tipo === "loja"){
+  location.href = "../loja-roupas/admin.html";
 
-  }else if(sessao.tipoNegocio === "roupas"){
-    location.href = "../loja-roupas/admin.html";
+}else{
+  alert("Tipo inválido");
+}
 
-  }else{
-    alert("Tipo de negócio inválido");
-  }
 }
 </script>
 
 </body>
 </html>
+
