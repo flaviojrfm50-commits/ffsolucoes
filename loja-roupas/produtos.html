@@ -5,8 +5,8 @@
 <title>Produtos | Loja de Roupas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- SUPABASE COM DEFER (obrigatório no mobile) -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<!-- ✅ SUPABASE SEM DEFER (CORREÇÃO DO ERRO REAL) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 *{box-sizing:border-box}
@@ -142,12 +142,12 @@ small{opacity:.7}
 
 </div>
 
-<!-- SCRIPT PRINCIPAL COM DEFER -->
+<!-- ✅ SCRIPT PRINCIPAL COM DEFER -->
 <script defer>
 
 console.log("JS carregado");
 
-/* ===== SESSÃO (CORRIGIDA, NÃO QUEBRA NO MOBILE) ===== */
+/* ===== SESSÃO (NÃO QUEBRA MAIS) ===== */
 let admin = null;
 try {
   admin = JSON.parse(localStorage.getItem("admin_logado"));
@@ -160,15 +160,13 @@ if(!admin || admin.tipo !== "loja"){
   location.replace("../auth/login.html");
 }
 
-/* ===== SUPABASE ===== */
+/* ===== SUPABASE (AGORA EXISTE) ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-const btnSalvar = document.getElementById("btnSalvar");
-
-/* ===== FOTO DO CELULAR (IGUAL AO SEU) ===== */
+/* ===== FOTO DO CELULAR (SEU CÓDIGO) ===== */
 async function normalizarFotoCelular(file){
   return new Promise(resolve=>{
     const reader = new FileReader();
