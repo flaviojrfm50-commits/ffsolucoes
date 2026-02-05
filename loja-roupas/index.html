@@ -169,25 +169,19 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===== APP_ID (MULTI NEGÓCIO) ===== */
+/* ===== APP_ID ===== */
 const params = new URLSearchParams(window.location.search);
 let APP_ID = params.get("app");
-
 if (APP_ID) localStorage.setItem("APP_ID", APP_ID);
 if (!APP_ID) APP_ID = localStorage.getItem("APP_ID");
-
 if (!APP_ID) {
-  document.body.innerHTML = `
-    <h2 style="padding:40px;text-align:center">
-      Link inválido<br>
-      <small>Abra pelo link correto da loja</small>
-    </h2>`;
+  document.body.innerHTML = "<h2 style='padding:40px;text-align:center'>Link inválido</h2>";
   throw new Error("app_id ausente");
 }
 
 let lista = [];
 
-/* ===== CONFIG SITE ===== */
+/* ===== CONFIG ===== */
 async function carregarConfig(){
   const { data } = await sb
     .from("config_site")
@@ -206,7 +200,7 @@ async function carregarConfig(){
     : `<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold">${data.nome_site}</div>`;
 }
 
-/* ===== PRODUTOS (VITRINE) ===== */
+/* ===== PRODUTOS ===== */
 async function carregarProdutos(){
   const { data } = await sb
     .from("produtos")
@@ -219,12 +213,26 @@ async function carregarProdutos(){
   render(lista);
 }
 
+/* ===== RENDER (AJUSTADO) ===== */
 function render(dados){
   produtos.innerHTML = dados.map(p=>{
-    const imgs = p.imagens ? JSON.parse(p.imagens) : (p.imagem ? [p.imagem] : []);
+    let imgs = [];
+
+    try{
+      if(Array.isArray(p.imagens)){
+        imgs = p.imagens;
+      }else if(typeof p.imagens === "string"){
+        imgs = JSON.parse(p.imagens);
+      }else if(p.imagem){
+        imgs = [p.imagem];
+      }
+    }catch(e){
+      imgs = [];
+    }
+
     return `
       <div class="card" onclick='abrirGaleria(${JSON.stringify(imgs)})'>
-        ${imgs[0] ? `<img src="${imgs[0]}">` : ""}
+        ${imgs[0] ? `<img src="${imgs[0]}" loading="lazy">` : ""}
         <div class="nome">${p.nome}</div>
 
         ${p.preco
