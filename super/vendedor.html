@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Sistema FF Soluções</title>
+<title>Painel do Vendedor</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -13,7 +13,7 @@ body{
   background:#020617;
   color:#fff
 }
-.box{
+.login,.container{
   max-width:1100px;
   margin:40px auto;
   padding:30px;
@@ -56,7 +56,7 @@ button{
 <body>
 
 <!-- LOGIN -->
-<div class="box" id="loginBox">
+<div class="login" id="loginBox">
   <h2>🔐 Login</h2>
   <input id="loginEmail" placeholder="E-mail ou usuário">
   <input id="loginSenha" type="password" placeholder="Senha">
@@ -64,127 +64,136 @@ button{
 </div>
 
 <!-- PAINEL VENDEDOR -->
-<div class="box hidden" id="painelVendedor">
-  <h2>🏪 Painel do Vendedor</h2>
+<div class="container hidden" id="painelVendedor">
 
-  <div class="grid">
-    <input id="nomeNegocio" placeholder="Nome do negócio">
+<h2>🏪 Criar Novo Negócio</h2>
 
-    <select id="tipoNegocio">
-      <option value="bar">Bar</option>
-      <option value="restaurante">Restaurante</option>
-      <option value="mercado">Mercado</option>
-      <option value="hotel">Hotel</option>
-      <option value="locadora">Locadora</option>
-      <option value="roupas">Loja de Roupas</option>
-    </select>
+<div class="grid">
+  <input id="nomeNegocio" placeholder="Nome do negócio">
 
-    <input id="enderecoNegocio" placeholder="Endereço">
-    <input id="telefoneNegocio" placeholder="Telefone">
+  <select id="tipoNegocio">
+    <option value="bar">Bar</option>
+    <option value="restaurante">Restaurante</option>
+    <option value="mercado">Mercado</option>
+    <option value="hotel">Hotel</option>
+    <option value="locadora">Locadora</option>
+    <option value="roupas">Loja de Roupas</option>
+  </select>
 
-    <input id="usuarioDono" placeholder="Usuário do admin">
-    <input id="senhaDono" type="password" placeholder="Senha do admin">
+  <input id="enderecoNegocio" placeholder="Endereço">
+  <input id="telefoneNegocio" placeholder="Telefone">
 
-    <select id="permissaoDono">
-      <option value="admin">Administrador</option>
-      <option value="editar">Editor</option>
-      <option value="visualizar">Visualizador</option>
-    </select>
-  </div>
+  <input id="usuarioDono" placeholder="Usuário do admin">
+  <input id="senhaDono" type="password" placeholder="Senha do admin">
 
-  <button onclick="criarNegocio()">Criar Negócio</button>
-
-  <hr>
-
-  <h3>📊 Meus Negócios</h3>
-  <div id="listaNegocios"></div>
+  <select id="permissaoDono">
+    <option value="admin">Administrador</option>
+    <option value="editar">Editor</option>
+    <option value="visualizar">Visualizador</option>
+  </select>
 </div>
 
-<!-- PAINEL ADMIN -->
-<div class="box hidden" id="painelAdmin">
-  <h2>🛡 Painel Admin</h2>
-  <p id="infoAdmin"></p>
+<button onclick="criarNegocio()">Cadastrar Negócio</button>
+
+<hr>
+
+<h2>📊 Meus Negócios</h2>
+<div id="listaNegocios"></div>
+
 </div>
 
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
+/* ===== SUPABASE ===== */
 const supabase = createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-let usuarioLogado = null;
+let vendedorLogado = null;
 
-/* ===== LOGIN ===== */
+/* ===== LOGIN ÚNICO ===== */
 window.login = async ()=>{
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("usuarios")
     .select("*")
-    .eq("email", loginEmail.value)
-    .eq("senha", loginSenha.value)
+    .eq("email", loginEmail.value.trim())
+    .eq("senha", loginSenha.value.trim())
     .eq("ativo", true)
     .maybeSingle();
 
-  if(!data){
+  if(error || !data){
     alert("Login inválido");
     return;
   }
 
-  usuarioLogado = data;
   loginBox.classList.add("hidden");
 
   if(data.tipo === "vendedor"){
+    vendedorLogado = data;
     painelVendedor.classList.remove("hidden");
     carregarNegocios();
-  }else{
-    painelAdmin.classList.remove("hidden");
-    infoAdmin.innerHTML = `
-      👤 Usuário: <b>${data.email}</b><br>
-      🛡 Permissão: <b>${data.tipo}</b>
-    `;
-  }
-};
-
-/* ===== CRIAR NEGÓCIO ===== */
-window.criarNegocio = async ()=>{
-
-  if(!usuarioDono.value || !senhaDono.value){
-    alert("Usuário e senha obrigatórios");
     return;
   }
 
-  const { data: negocio } = await supabase
+  if(data.tipo === "admin"){
+    window.location.href =
+      "https://anajuliafarias659-cloud.github.io/ffsolucoes/admin/index.html?app=" +
+      data.app_id;
+    return;
+  }
+
+  alert("Tipo de usuário inválido no banco");
+};
+
+/* ===== CRIAR NEGÓCIO + ADMIN ===== */
+window.criarNegocio = async ()=>{
+
+  if(!usuarioDono.value || !senhaDono.value){
+    alert("Usuário e senha do admin são obrigatórios");
+    return;
+  }
+
+  /* 1️⃣ NEGÓCIO */
+  const { data: negocio, error } = await supabase
     .from("apps")
     .insert({
       nome: nomeNegocio.value,
       tipo: tipoNegocio.value,
       endereco: enderecoNegocio.value,
       telefone: telefoneNegocio.value,
-      vendedor_id: usuarioLogado.id,
+      vendedor_id: vendedorLogado.id,
       ativo: true
     })
     .select()
     .single();
 
+  if(error){
+    alert("Erro ao criar negócio");
+    return;
+  }
+
+  /* 2️⃣ ADMIN (PERMISSÃO) */
   await supabase.from("admins").insert({
-    usuario: usuarioDono.value,
-    senha: senhaDono.value,
+    usuario: usuarioDono.value.trim(),
+    senha: senhaDono.value.trim(),
     permissao: permissaoDono.value,
     app_id: negocio.id,
     ativo: true
   });
 
+  /* 3️⃣ USUÁRIO (LOGIN) */
   await supabase.from("usuarios").insert({
-    nome: usuarioDono.value,
-    email: usuarioDono.value,
-    senha: senhaDono.value,
-    tipo: permissaoDono.value,
-    app_id: negocio.id,
+    nome: usuarioDono.value.trim(),
+    email: usuarioDono.value.trim(),
+    senha: senhaDono.value.trim(),
+    tipo: "admin",          // 🔥 FIXO
+    app_id: negocio.id,     // 🔥 SEMPRE O MESMO
     ativo: true
   });
 
-  alert("Negócio criado com sucesso!");
+  alert("Negócio e admin criados com sucesso!");
   carregarNegocios();
 };
 
@@ -193,7 +202,7 @@ async function carregarNegocios(){
   const { data } = await supabase
     .from("apps")
     .select("*")
-    .eq("vendedor_id", usuarioLogado.id);
+    .eq("vendedor_id", vendedorLogado.id);
 
   listaNegocios.innerHTML = "";
 
