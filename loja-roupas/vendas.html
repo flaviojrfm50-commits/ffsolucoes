@@ -128,29 +128,56 @@ body.natal{--cor-primaria:#ef4444;--cor-banner:#7f1d1d;--cor-card:#450a0a}
   cursor:pointer;
 }
 
-/* formulário verde */
+/* formulário verde chique */
 .form-finalizacao{
-  background:#dcfce7;
+  background:linear-gradient(180deg,#dcfce7,#bbf7d0);
   color:#064e3b;
-  padding:16px;
-  border-radius:14px;
-  margin-top:12px;
+  padding:18px;
+  border-radius:18px;
+  margin-top:14px;
+  box-shadow:0 10px 30px rgba(34,197,94,.35);
 }
-.form-finalizacao label{font-weight:bold}
+.form-finalizacao h4{
+  margin:0 0 10px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:16px;
+}
+.form-finalizacao label{
+  font-weight:600;
+  font-size:14px;
+}
 .form-finalizacao select,
 .form-finalizacao input{
   width:100%;
   margin-top:6px;
-  margin-bottom:10px;
-  padding:10px;
-  border-radius:10px;
+  margin-bottom:12px;
+  padding:12px;
+  border-radius:12px;
   border:1px solid #86efac;
-  background:#fff;
+  background:#ffffff;
   color:#064e3b;
+  font-size:14px;
+}
+.form-finalizacao select:focus,
+.form-finalizacao input:focus{
+  outline:none;
+  border-color:#22c55e;
+  box-shadow:0 0 0 3px rgba(34,197,94,.25);
 }
 .form-finalizacao .botao{
+  margin-top:10px;
   background:#22c55e;
   color:#022c22;
+  font-size:15px;
+  padding:12px;
+  border-radius:14px;
+  transition:.2s;
+}
+.form-finalizacao .botao:hover{
+  box-shadow:0 0 18px rgba(34,197,94,.9);
+  transform:translateY(-1px);
 }
 </style>
 </head>
@@ -180,6 +207,25 @@ body.natal{--cor-primaria:#ef4444;--cor-banner:#7f1d1d;--cor-card:#450a0a}
     <p><b>Total:</b> R$ <span id="total">0.00</span></p>
 
     <div class="form-finalizacao">
+      <h4>🧾 Dados do cliente</h4>
+
+      <label>Nome completo</label>
+      <input id="cliNome" placeholder="Seu nome completo">
+
+      <label>CPF</label>
+      <input id="cliCpf" placeholder="000.000.000-00">
+
+      <label>Endereço</label>
+      <input id="cliEndereco" placeholder="Rua, número, bairro">
+
+      <button class="botao" type="button" onclick="enviarLocalizacao()">
+        📍 Enviar localização em tempo real
+      </button>
+
+      <hr style="margin:14px 0;border:none;border-top:1px solid #86efac">
+
+      <h4>💳 Pagamento</h4>
+
       <label>Forma de pagamento</label>
       <select id="pagamento" onchange="troco()">
         <option>PIX</option>
@@ -192,10 +238,14 @@ body.natal{--cor-primaria:#ef4444;--cor-banner:#7f1d1d;--cor-card:#450a0a}
         <input id="trocoValor" placeholder="Ex: 100,00">
       </div>
 
-      <button class="botao" onclick="finalizar()">Finalizar no WhatsApp</button>
+      <button class="botao" onclick="finalizar()">
+        💬 Enviar pedido no WhatsApp
+      </button>
     </div>
 
-    <button class="botao" style="background:#ef4444" onclick="fecharCarrinho()">Fechar</button>
+    <button class="botao" style="background:#ef4444" onclick="fecharCarrinho()">
+      Fechar
+    </button>
   </div>
 </div>
 
@@ -215,8 +265,11 @@ if(!APP_ID){
 }
 localStorage.setItem("APP_ID", APP_ID);
 
-/* ===== VARIÁVEIS ===== */
+/* ===== ESTADO ===== */
 let carrinho = JSON.parse(localStorage.getItem("carrinho_"+APP_ID)) || [];
+let CLIENTE = JSON.parse(localStorage.getItem("cliente_"+APP_ID)) || {
+  nome:"", cpf:"", endereco:""
+};
 let WHATS = "";
 let NOME_LOJA = "";
 
@@ -234,9 +287,7 @@ async function init(){
   descLoja.innerText = cfg.descricao_site || "";
   document.body.className = cfg.tema || "";
 
-  banner.innerHTML = cfg.banner_url
-    ? `<img src="${cfg.banner_url}">`
-    : "";
+  banner.innerHTML = cfg.banner_url ? `<img src="${cfg.banner_url}">` : "";
 
   const { data } = await sb
     .from("produtos")
@@ -254,6 +305,11 @@ async function init(){
     </div>
   `).join("");
 
+  // preenche cliente se já existir
+  cliNome.value = CLIENTE.nome || "";
+  cliCpf.value = CLIENTE.cpf || "";
+  cliEndereco.value = CLIENTE.endereco || "";
+
   atualizarBadge();
 }
 
@@ -261,14 +317,9 @@ async function init(){
 function add(p){
   const id = String(p.id);
   const item = carrinho.find(i => String(i.id) === id);
-
-  if(item){
-    item.qtd++;
-  }else{
-    carrinho.push({...p, id, qtd:1});
-  }
-
-  salvar();
+  if(item) item.qtd++;
+  else carrinho.push({...p, id, qtd:1});
+  salvarCarrinho();
   atualizarBadge();
 }
 
@@ -276,19 +327,16 @@ function remover(id){
   id = String(id);
   const item = carrinho.find(i => String(i.id) === id);
   if(!item) return;
-
   item.qtd--;
-
   if(item.qtd <= 0){
     carrinho = carrinho.filter(i => String(i.id) !== id);
   }
-
-  salvar();
+  salvarCarrinho();
   renderCarrinho();
   atualizarBadge();
 }
 
-function salvar(){
+function salvarCarrinho(){
   localStorage.setItem("carrinho_"+APP_ID, JSON.stringify(carrinho));
 }
 
@@ -299,13 +347,8 @@ function atualizarBadge(){
 }
 
 /* ===== MODAL ===== */
-function abrirCarrinho(){
-  modal.style.display = "flex";
-  renderCarrinho();
-}
-function fecharCarrinho(){
-  modal.style.display = "none";
-}
+function abrirCarrinho(){ modal.style.display="flex"; renderCarrinho(); }
+function fecharCarrinho(){ modal.style.display="none"; }
 
 function renderCarrinho(){
   let soma = 0;
@@ -323,13 +366,32 @@ function renderCarrinho(){
 
 /* ===== PAGAMENTO ===== */
 function troco(){
-  trocoDiv.style.display =
-    pagamento.value === "Dinheiro" ? "block" : "none";
+  trocoDiv.style.display = pagamento.value === "Dinheiro" ? "block" : "none";
+}
+
+/* ===== LOCALIZAÇÃO ===== */
+function enviarLocalizacao(){
+  window.open("https://www.google.com/maps");
 }
 
 /* ===== FINALIZAR ===== */
 function finalizar(){
+  const nome = cliNome.value.trim();
+  const cpf = cliCpf.value.trim();
+  const endereco = cliEndereco.value.trim();
+  if(!nome || !cpf || !endereco){
+    alert("Preencha nome, CPF e endereço");
+    return;
+  }
+
+  CLIENTE = { nome, cpf, endereco };
+  localStorage.setItem("cliente_"+APP_ID, JSON.stringify(CLIENTE));
+
   let msg = `🛍️ Pedido - ${NOME_LOJA}%0A%0A`;
+  msg += `👤 Cliente: ${nome}%0A`;
+  msg += `📄 CPF: ${cpf}%0A`;
+  msg += `🏠 Endereço: ${endereco}%0A`;
+  msg += `📍 Localização: cliente irá enviar em tempo real%0A%0A`;
 
   carrinho.forEach(i=>{
     msg += `• ${i.nome} x${i.qtd}%0A`;
@@ -337,7 +399,6 @@ function finalizar(){
 
   msg += `%0ATotal: R$ ${total.innerText}%0A`;
   msg += `Pagamento: ${pagamento.value}`;
-
   if(pagamento.value === "Dinheiro"){
     msg += `%0ATroco para: ${trocoValor.value || "não informado"}`;
   }
