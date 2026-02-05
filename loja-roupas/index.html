@@ -127,8 +127,8 @@ small{opacity:.8}
 <div id="banner" class="banner"></div>
 
 <div class="topo">
-  <h1 id="nomeLoja">👕 Loja de Roupas</h1>
-  <p id="descLoja">Confira nossas peças disponíveis</p>
+  <h1 id="nomeLoja">👕 Loja</h1>
+  <p id="descLoja"></p>
 </div>
 
 <div class="container">
@@ -163,28 +163,28 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===== APP_ID (AJUSTADO PARA PWA) ===== */
-const params = new URLSearchParams(window.location.search);
-let APP_ID = params.get("app");
+/* ===== APP_ID VIA URL LIMPA (/loja/APP_ID) ===== */
+const partes = window.location.pathname.split("/").filter(Boolean);
+let APP_ID = partes[partes.length - 1];
 
-// salva quando vem pela URL
-if (APP_ID) {
+// se não for "loja", salva
+if (APP_ID && APP_ID !== "loja") {
   localStorage.setItem("APP_ID", APP_ID);
 }
 
-// recupera quando abrir pelo PWA
-if (!APP_ID) {
+// fallback PWA
+if (!APP_ID || APP_ID === "loja") {
   APP_ID = localStorage.getItem("APP_ID");
 }
 
-// se ainda não existir, bloqueia
+// valida
 if (!APP_ID) {
   document.body.innerHTML = `
     <h2 style="padding:40px;text-align:center">
-      Link inválido<br>
-      <small>Abra o app pelo link correto da loja</small>
+      Loja não encontrada<br>
+      <small>Link inválido</small>
     </h2>`;
-  throw new Error("app_id ausente");
+  throw new Error("APP_ID ausente");
 }
 
 let lista = [];
@@ -205,7 +205,9 @@ async function carregarConfig(){
 
   banner.innerHTML = data.banner_url
     ? `<img src="${data.banner_url}">`
-    : `<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold">${data.nome_site}</div>`;
+    : `<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold">
+        ${data.nome_site}
+       </div>`;
 }
 
 /* ===== PRODUTOS ===== */
@@ -223,7 +225,7 @@ async function carregarProdutos(){
 
 function render(dados){
   produtos.innerHTML = dados.map(p=>{
-    const imgs = p.imagens ? JSON.parse(p.imagens) : (p.imagem ? [p.imagem] : []);
+    const imgs = p.imagens || [];
     return `
       <div class="card" onclick='abrirGaleria(${JSON.stringify(imgs)})'>
         ${imgs[0] ? `<img src="${imgs[0]}">` : ""}
