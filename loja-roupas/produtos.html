@@ -5,7 +5,6 @@
 <title>Produtos | Loja de Roupas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- ✅ SUPABASE SEM DEFER (CORREÇÃO DO ERRO REAL) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -89,7 +88,7 @@ small{opacity:.7}
 
 <div class="topo">
   <h2>👕 Produtos da Loja</h2>
-  <button class="voltar" type="button" onclick="voltar()">⬅ Voltar</button>
+  <button class="voltar" onclick="voltar()">⬅ Voltar</button>
 </div>
 
 <div class="container">
@@ -142,31 +141,23 @@ small{opacity:.7}
 
 </div>
 
-<!-- ✅ SCRIPT PRINCIPAL COM DEFER -->
-<script defer>
-
-console.log("JS carregado");
-
-/* ===== SESSÃO (NÃO QUEBRA MAIS) ===== */
-let admin = null;
-try {
-  admin = JSON.parse(localStorage.getItem("admin_logado"));
-} catch(e) {
-  admin = null;
-}
-
+<script>
+/* ===== SESSÃO ===== */
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
 if(!admin || admin.tipo !== "loja"){
-  alert("Sessão expirada. Faça login novamente.");
   location.replace("../auth/login.html");
+  throw new Error("Sessão inválida");
 }
 
-/* ===== SUPABASE (AGORA EXISTE) ===== */
+/* ===== SUPABASE ===== */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ===== FOTO DO CELULAR (SEU CÓDIGO) ===== */
+const btnSalvar = document.getElementById("btnSalvar");
+
+/* ===== CORREÇÃO DA FOTO DO CELULAR (ÚNICA MUDANÇA REAL) ===== */
 async function normalizarFotoCelular(file){
   return new Promise(resolve=>{
     const reader = new FileReader();
@@ -202,12 +193,11 @@ async function normalizarFotoCelular(file){
 
 /* ===== NAVEGAÇÃO ===== */
 function voltar(){
-  history.back();
+  location.href = "admin.html";
 }
 
 /* ===== SALVAR / EDITAR ===== */
 async function salvar(){
-
   if(!nome.value || preco.value <= 0){
     alert("Preencha nome e preço corretamente");
     return;
