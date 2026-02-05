@@ -133,7 +133,7 @@ body{
 /* ===== VALIDA SESSÃO ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
-if(!admin){
+if(!admin || admin.tipo !== "loja"){
   alert("Sessão inválida");
   location.href = "../auth/login.html";
   throw new Error("Sessão inválida");
@@ -146,9 +146,10 @@ document.getElementById("appId").innerText = admin.app_id;
 function abrirLoja(){
   const modo = document.querySelector('input[name="modo"]:checked').value;
 
+  // páginas da loja
   const pagina = (modo === "vendas")
-    ? "vendas.html"
-    : "index.html";
+    ? "vendas.html"   // site de vendas
+    : "index.html";   // vitrine
 
   window.open(
     "https://anajuliafarias659-cloud.github.io/ffsolucoes/loja-roupas/"
