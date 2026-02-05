@@ -5,7 +5,8 @@
 <title>Produtos | Loja de Roupas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- 🔧 AJUSTE: defer no Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 
 <style>
 *{box-sizing:border-box}
@@ -88,7 +89,7 @@ small{opacity:.7}
 
 <div class="topo">
   <h2>👕 Produtos da Loja</h2>
-  <button class="voltar" onclick="voltar()">⬅ Voltar</button>
+  <button class="voltar" type="button" onclick="voltar()">⬅ Voltar</button>
 </div>
 
 <div class="container">
@@ -141,7 +142,9 @@ small{opacity:.7}
 
 </div>
 
-<script>
+<!-- 🔧 AJUSTE: defer no script principal -->
+<script defer>
+
 /* ===== SESSÃO ===== */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 if(!admin || admin.tipo !== "loja"){
@@ -157,7 +160,7 @@ const sb = supabase.createClient(
 
 const btnSalvar = document.getElementById("btnSalvar");
 
-/* ===== CORREÇÃO DA FOTO DO CELULAR (ÚNICA MUDANÇA REAL) ===== */
+/* ===== FOTO DO CELULAR (igual ao seu) ===== */
 async function normalizarFotoCelular(file){
   return new Promise(resolve=>{
     const reader = new FileReader();
@@ -198,6 +201,13 @@ function voltar(){
 
 /* ===== SALVAR / EDITAR ===== */
 async function salvar(){
+
+  // 🔧 AJUSTE: evita travamento silencioso no celular
+  if (!fotos || !fotos.files) {
+    alert("Erro ao acessar fotos no celular");
+    return;
+  }
+
   if(!nome.value || preco.value <= 0){
     alert("Preencha nome e preço corretamente");
     return;
