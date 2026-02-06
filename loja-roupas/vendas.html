@@ -114,12 +114,12 @@ localStorage.setItem("APP_ID",APP_ID);
 
 let carrinho=JSON.parse(localStorage.getItem("carrinho_"+APP_ID))||[];
 let CLIENTE=JSON.parse(localStorage.getItem("cliente_"+APP_ID))||{};
-
 let WHATS="",NOME="";
 
 async function init(){
   const {data:cfg}=await sb.from("config_site").select("*").eq("app_id",APP_ID).single();
-  WHATS=cfg.whatsapp; NOME=cfg.nome_site;
+  WHATS=cfg.whatsapp; 
+  NOME=cfg.nome_site;
 
   nomeLoja.innerText=cfg.nome_site;
   descLoja.innerText=cfg.descricao_site||"";
@@ -179,7 +179,6 @@ function renderCarrinho(){
 }
 
 function carregarCliente(){
-  if(!CLIENTE) return;
   cliNome.value=CLIENTE.nome||"";
   cliCpf.value=CLIENTE.cpf||"";
   cliEndereco.value=CLIENTE.endereco||"";
@@ -188,19 +187,47 @@ function carregarCliente(){
 
 function troco(){
   trocoDiv.style.display=pagamento.value==="Dinheiro"?"block":"none";
-  precisaTroco.value=""; trocoValor.value=""; trocoValor.style.display="none";
+  precisaTroco.value="";
+  trocoValor.value="";
+  trocoValor.style.display="none";
 }
 
 function mostrarCampoTroco(){
   trocoValor.style.display=precisaTroco.value==="sim"?"block":"none";
 }
 
+/* ⭐ FUNÇÃO À PROVA DE FALHA */
 function enviarLocalizacao(){
-  navigator.geolocation.getCurrentPosition(pos=>{
-    CLIENTE.localizacao=`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        CLIENTE.localizacao =
+          `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+        localStorage.setItem("cliente_"+APP_ID,JSON.stringify(CLIENTE));
+        alert("📍 Localização capturada automaticamente!");
+      },
+      ()=>{
+        pedirLocalizacaoManual();
+      },
+      {timeout:8000}
+    );
+  }else{
+    pedirLocalizacaoManual();
+  }
+}
+
+function pedirLocalizacaoManual(){
+  const link = prompt(
+    "Não foi possível pegar sua localização automaticamente.\n\n" +
+    "Abra o Google Maps, toque e segure no local e copie o link.\n\n" +
+    "Cole o link aqui:"
+  );
+
+  if(link){
+    CLIENTE.localizacao = link;
     localStorage.setItem("cliente_"+APP_ID,JSON.stringify(CLIENTE));
-    alert("Localização capturada");
-  });
+    alert("📍 Localização salva manualmente!");
+  }
 }
 
 function finalizar(){
@@ -218,7 +245,7 @@ function finalizar(){
 
   let msg=`🛍️ *${NOME}*\n\n👤 ${CLIENTE.nome}\n📄 ${CLIENTE.cpf}\n🏠 ${CLIENTE.endereco}\n`;
   if(CLIENTE.referencia) msg+=`📌 ${CLIENTE.referencia}\n`;
-  msg+=`📍 ${CLIENTE.localizacao}\n\n`;
+  if(CLIENTE.localizacao) msg+=`📍 ${CLIENTE.localizacao}\n\n`;
 
   carrinho.forEach(i=>msg+=`• ${i.nome} x${i.qtd}\n`);
   msg+=`\n💰 Total: R$ ${total.innerText}\n💳 ${pagamento.value}`;
