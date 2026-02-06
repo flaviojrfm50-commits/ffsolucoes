@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Painel do bar / Restaurante</title>
+<title>Painel do Bar / Restaurante</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <!-- PWA -->
@@ -70,7 +69,7 @@ body{
 <body>
 
 <div class="topo">
-  <h2>🍻 Painel do bar / Restaurante</h2>
+  <h2>🍻 Painel do Bar / Restaurante</h2>
   <button class="sair" onclick="logout()">Sair</button>
 </div>
 
@@ -84,62 +83,55 @@ body{
 
   <div class="grid">
 
-    <!-- PRODUTOS DO BAR (INTERNO) -->
-    <div class="card" onclick="location.href='/ffsolucoes/bar/produtos.html'">
+    <div class="card" onclick="irPara('/produtos.html')">
       <h3>📦 Produtos do Bar</h3>
-      <p>Cadastro geral interno do bar</p>
+      <p>Cadastro geral interno</p>
     </div>
 
-    <div class="card" onclick="location.href='categorias.html'">
+    <div class="card" onclick="irPara('/categorias.html')">
       <h3>📂 Categorias</h3>
       <p>Bebidas, pratos, lanches</p>
     </div>
 
-    <div class="card" onclick="location.href='mesas.html'">
+    <div class="card" onclick="irPara('/mesas.html')">
       <h3>🪑 Mesas</h3>
       <p>Status e controle</p>
     </div>
 
-    <div class="card" onclick="location.href='pedidos.html'">
+    <div class="card" onclick="irPara('/pedidos.html')">
       <h3>🧾 Cozinha</h3>
       <p>Comandas e entregas</p>
     </div>
 
-    <div class="card" onclick="location.href='caixa.html'">
+    <div class="card" onclick="irPara('/caixa.html')">
       <h3>💰 Caixa</h3>
       <p>Entradas e saídas</p>
     </div>
 
-    <div class="card" onclick="location.href='admins.html'">
+    <div class="card" onclick="irPara('/admins.html')">
       <h3>⚙️ Admins</h3>
       <p>Usuários e permissões</p>
     </div>
 
-    <!-- MODO DO SITE -->
     <div class="card">
       <h3>🔀 Modo do Site</h3>
       <p>Escolha o que fica ativo</p>
       <div class="toggle">
         <input type="checkbox" id="toggleSite">
-        <span id="labelModo">Usar Cardápio (Delivery)</span>
+        <span id="labelModo"></span>
       </div>
-    </div>
-
-    <div class="card" onclick="abrirBanners()">
-      <h3>🖼️ Banners do Site</h3>
-      <p>Imagens de destaque</p>
     </div>
 
     <div class="card" onclick="abrirSite()">
       <h3>🌍 Abrir Site</h3>
       <p>Visualizar conforme o modo</p>
     </div>
-    
-    <div class="card" onclick="location.href='config-site.html'">
-      <h3>📂 Configurar cardapio</h3>
+
+    <div class="card" onclick="irPara('/config-site.html')">
+      <h3>📂 Configurar Cardápio</h3>
       <p>Bebidas, pratos, lanches</p>
     </div>
-    
+
     <div class="card" onclick="window.open('../chat-admin.html','_blank')">
       <h3>💬 Suporte</h3>
       <p>Falar com o suporte</p>
@@ -149,6 +141,20 @@ body{
 </div>
 
 <script>
+/* ========= BASE PATH DINÂMICO ========= */
+function getBasePath(){
+  const path = window.location.pathname;
+  if(path.includes("/ffsolucoes/")){
+    return "/ffsolucoes/bar";
+  }
+  return "/bar";
+}
+
+/* ========= NAVEGAÇÃO INTERNA ========= */
+function irPara(pagina){
+  location.href = getBasePath() + pagina;
+}
+
 /* ========= SESSÃO ========= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
@@ -161,7 +167,7 @@ localStorage.setItem("app_id", admin.app_id);
 document.getElementById("nome").innerText = admin.usuario;
 document.getElementById("appId").innerText = admin.app_id;
 
-/* ========= MODO SITE ========= */
+/* ========= MODO DO SITE ========= */
 const toggle = document.getElementById("toggleSite");
 const label = document.getElementById("labelModo");
 
@@ -183,19 +189,25 @@ toggle.addEventListener("change", () => {
 
 syncModo();
 
-/* ========= NAVEGAÇÃO ========= */
-
+/* ========= SITE PÚBLICO ========= */
 function abrirSite(){
   const app = localStorage.getItem("app_id");
   const modo = localStorage.getItem("modo_site") || "cardapio";
+  const base = getBasePath();
+
+  if(!app){
+    alert("App ID não encontrado");
+    return;
+  }
 
   if(modo === "institucional"){
-    window.open(`/ffsolucoes/bar/public/site/index.html?app=${app}`, "_blank");
+    window.open(`${base}/public/site/index.html?app=${app}`, "_blank");
   } else {
-    window.open(`/ffsolucoes/bar/public/cardapio/index.html?app=${app}`, "_blank");
+    window.open(`${base}/public/cardapio/index.html?app=${app}`, "_blank");
   }
 }
 
+/* ========= LOGOUT ========= */
 function logout(){
   localStorage.clear();
   location.href = "../auth/login.html";
@@ -204,6 +216,3 @@ function logout(){
 
 </body>
 </html>
-
-
-
