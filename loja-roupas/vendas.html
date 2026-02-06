@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Loja</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -102,6 +103,12 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 </div>
 
 <script>
+/* 🔒 HTTPS obrigatório no celular */
+if(location.protocol !== "https:"){
+  alert("⚠️ Para usar localização no celular, o site precisa estar em HTTPS.");
+}
+
+/* Supabase */
 const sb=supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
@@ -114,18 +121,20 @@ localStorage.setItem("APP_ID",APP_ID);
 
 let carrinho=JSON.parse(localStorage.getItem("carrinho_"+APP_ID))||[];
 let CLIENTE=JSON.parse(localStorage.getItem("cliente_"+APP_ID))||{};
-
 let WHATS="",NOME="";
 
 async function init(){
   const {data:cfg}=await sb.from("config_site").select("*").eq("app_id",APP_ID).single();
-  WHATS=cfg.whatsapp; NOME=cfg.nome_site;
+  WHATS=cfg.whatsapp; 
+  NOME=cfg.nome_site;
 
   nomeLoja.innerText=cfg.nome_site;
   descLoja.innerText=cfg.descricao_site||"";
   banner.innerHTML=cfg.banner_url?`<img src="${cfg.banner_url}">`:"";
 
-  const {data}=await sb.from("produtos").select("*").eq("ativo",true).eq("app_id",APP_ID);
+  const {data}=await sb.from("produtos").select("*")
+    .eq("ativo",true)
+    .eq("app_id",APP_ID);
 
   produtos.innerHTML=data.map(p=>`
     <div class="card">
@@ -179,7 +188,6 @@ function renderCarrinho(){
 }
 
 function carregarCliente(){
-  if(!CLIENTE) return;
   cliNome.value=CLIENTE.nome||"";
   cliCpf.value=CLIENTE.cpf||"";
   cliEndereco.value=CLIENTE.endereco||"";
@@ -188,19 +196,42 @@ function carregarCliente(){
 
 function troco(){
   trocoDiv.style.display=pagamento.value==="Dinheiro"?"block":"none";
-  precisaTroco.value=""; trocoValor.value=""; trocoValor.style.display="none";
+  precisaTroco.value=""; 
+  trocoValor.value=""; 
+  trocoValor.style.display="none";
 }
 
 function mostrarCampoTroco(){
   trocoValor.style.display=precisaTroco.value==="sim"?"block":"none";
 }
 
+/* 📍 LOCALIZAÇÃO ROBUSTA (PC + CELULAR) */
 function enviarLocalizacao(){
-  navigator.geolocation.getCurrentPosition(pos=>{
-    CLIENTE.localizacao=`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-    localStorage.setItem("cliente_"+APP_ID,JSON.stringify(CLIENTE));
-    alert("Localização capturada");
-  });
+  if(!navigator.geolocation){
+    alert("Seu navegador não suporta localização.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      CLIENTE.localizacao =
+        `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+      localStorage.setItem("cliente_"+APP_ID,JSON.stringify(CLIENTE));
+      alert("📍 Localização capturada com sucesso!");
+    },
+    ()=>{
+      alert(
+        "⚠️ Não foi possível pegar sua localização.\n\n" +
+        "Vou abrir o Google Maps para você confirmar manualmente."
+      );
+      window.open("https://www.google.com/maps", "_blank");
+    },
+    {
+      enableHighAccuracy:true,
+      timeout:10000,
+      maximumAge:0
+    }
+  );
 }
 
 function finalizar(){
@@ -218,7 +249,7 @@ function finalizar(){
 
   let msg=`🛍️ *${NOME}*\n\n👤 ${CLIENTE.nome}\n📄 ${CLIENTE.cpf}\n🏠 ${CLIENTE.endereco}\n`;
   if(CLIENTE.referencia) msg+=`📌 ${CLIENTE.referencia}\n`;
-  msg+=`📍 ${CLIENTE.localizacao}\n\n`;
+  if(CLIENTE.localizacao) msg+=`📍 ${CLIENTE.localizacao}\n\n`;
 
   carrinho.forEach(i=>msg+=`• ${i.nome} x${i.qtd}\n`);
   msg+=`\n💰 Total: R$ ${total.innerText}\n💳 ${pagamento.value}`;
