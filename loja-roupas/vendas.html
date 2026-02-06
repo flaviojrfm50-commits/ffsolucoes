@@ -195,12 +195,33 @@ function mostrarCampoTroco(){
   trocoValor.style.display=precisaTroco.value==="sim"?"block":"none";
 }
 
+/* ✅ FUNÇÃO AJUSTADA */
 function enviarLocalizacao(){
-  navigator.geolocation.getCurrentPosition(pos=>{
-    CLIENTE.localizacao=`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-    localStorage.setItem("cliente_"+APP_ID,JSON.stringify(CLIENTE));
-    alert("Localização capturada");
-  });
+  if(!("geolocation" in navigator)){
+    alert("Seu navegador não suporta localização.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      CLIENTE.localizacao =
+        `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+
+      localStorage.setItem("cliente_"+APP_ID,JSON.stringify(CLIENTE));
+      alert("📍 Localização capturada com sucesso!");
+    },
+    erro=>{
+      alert(
+        "⚠️ Não foi possível obter sua localização.\n\n" +
+        "Ative o GPS e permita a localização para este site, depois tente novamente."
+      );
+    },
+    {
+      enableHighAccuracy:true,
+      timeout:10000,
+      maximumAge:0
+    }
+  );
 }
 
 function finalizar(){
