@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Caixa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -53,37 +54,54 @@ th{color:#94a3b8}
 <body>
 
 <script>
+/* ========= BASE PATH DINÂMICO ========= */
+function getBasePath(){
+  const path = window.location.pathname;
+  if(path.includes("/ffsolucoes/")){
+    return "/ffsolucoes/bar";
+  }
+  return "/bar";
+}
+
+function irPara(pagina){
+  location.href = getBasePath() + pagina;
+}
+
+/* ========= SUPABASE ========= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
+/* ========= SESSÃO ========= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
-if(!admin?.app_id){
+
+if(!admin || !admin.app_id){
   alert("Sessão expirada");
-  location.href="../auth/login.html";
+  location.replace("../auth/login.html");
+  throw new Error("Sessão inválida");
 }
+
+// garante app_id para o pagamento
+localStorage.setItem("app_id", admin.app_id);
 </script>
 
 <div class="topo">
   <h2>💰 Caixa</h2>
   <div>
-    <button onclick="location.href='venda-avulsa.html'">
-      ➕ Venda Avulsa
-    </button>
+    <button onclick="irPara('/venda-avulsa.html')">➕ Venda Avulsa</button>
 
     <button class="alerta" id="btnContas" style="display:none" onclick="scrollContas()">
       🔔 Contas <span class="badge" id="qtdContas">0</span>
     </button>
 
-    <button class="sec" onclick="location.href='historico.html'">📊 Histórico</button>
-    <button class="sec" onclick="location.href='admin.html'">Voltar</button>
+    <button class="sec" onclick="irPara('/historico.html')">📊 Histórico</button>
+    <button class="sec" onclick="irPara('/admin.html')">Voltar</button>
   </div>
 </div>
 
 <div class="container">
 
-<!-- CONTAS -->
 <div class="box" id="boxContas" style="display:none">
   <h3>🧾 Mesas aguardando pagamento</h3>
   <table>
@@ -104,7 +122,7 @@ if(!admin?.app_id){
 
 <script>
 async function verificarContas(){
-  const { data } = await sb
+  const { data, error } = await sb
     .from("pedidos")
     .select(`
       id,
@@ -115,6 +133,11 @@ async function verificarContas(){
     `)
     .eq("app_id", admin.app_id)
     .in("status", ["conta_solicitada","aguardando_pagamento"]);
+
+  if(error){
+    console.error(error);
+    return;
+  }
 
   const btn = document.getElementById("btnContas");
   const qtd = document.getElementById("qtdContas");
@@ -154,8 +177,17 @@ async function verificarContas(){
   }
 }
 
-function irPagamento(id){
-  location.href = `pagamento.html?pedido=${id}&app_id=${admin.app_id}`;
+/* ========= PAGAMENTO ========= */
+function irPagamento(pedidoId){
+  if(!pedidoId || !admin.app_id){
+    alert("Pedido inválido");
+    return;
+  }
+
+  // NÃO abre fora do contexto (evita quebra da baixa)
+  location.href =
+    getBasePath() +
+    `/pagamento.html?pedido=${pedidoId}&app=${admin.app_id}`;
 }
 
 function scrollContas(){
@@ -169,4 +201,3 @@ setInterval(verificarContas,3000);
 
 </body>
 </html>
-
