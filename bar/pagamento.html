@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <title>Pagamento</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -33,13 +32,13 @@ select,input{
 }
 
 small{opacity:.7}
+.alert{color:#facc15;margin-top:8px}
 </style>
 </head>
 
 <body>
 
 <script>
-/* ========= BASE PATH ========= */
 function getBasePath(){
   const path = window.location.pathname;
   if(path.includes("/ffsolucoes/")){
@@ -48,13 +47,11 @@ function getBasePath(){
   return "/bar";
 }
 
-/* ========= SUPABASE ========= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* ========= PARAMETROS ========= */
 const params = new URLSearchParams(location.search);
 const pedidoId = params.get("pedido");
 const appId = params.get("app") || localStorage.getItem("app_id");
@@ -66,6 +63,7 @@ if(!pedidoId || !appId){
 
 let totalPedido = 0;
 let mesaId = null;
+const DESCONTO_MAXIMO = 10;
 </script>
 
 <div class="topo">
@@ -84,32 +82,28 @@ let mesaId = null;
       <option value="cartao">Cartão</option>
     </select>
 
-    <div id="boxDinheiro">
-      <label>Valor pago</label>
-      <input
-        type="number"
-        id="valorRecebido"
-        placeholder="0.00"
-        oninput="calcularTroco()"
-      />
-      <small>Pagamento mínimo permitido: R$ 10,00</small>
+    <label>Valor pago</label>
+    <input
+      type="number"
+      id="valorRecebido"
+      placeholder="0.00"
+      oninput="calcular()"
+    />
 
-      <p>Troco</p>
-      <h3 id="troco">R$ 0,00</h3>
+    <p>Troco</p>
+    <h3 id="troco">R$ 0,00</h3>
 
-      <p id="infoDesconto" style="display:none;color:#facc15"></p>
-    </div>
+    <p id="info" class="alert"></p>
 
     <button onclick="confirmarPagamento()">✅ Confirmar Pagamento</button>
   </div>
 </div>
 
 <script>
-/* ========= CARREGAR PEDIDO ========= */
 async function carregarPedido(){
   const { data: pedido } = await sb
     .from("pedidos")
-    .select("id, mesa_id")
+    .select("mesa_id")
     .eq("id", pedidoId)
     .eq("app_id", appId)
     .single();
@@ -130,62 +124,48 @@ async function carregarPedido(){
     `R$ ${totalPedido.toFixed(2)}`;
 }
 
-/* ========= TROCO / DESCONTO ========= */
-function calcularTroco(){
-  const recebido = Number(
-    document.getElementById("valorRecebido").value || 0
-  );
-
+function calcular(){
+  const recebido = Number(document.getElementById("valorRecebido").value || 0);
   const troco = recebido - totalPedido;
-  const info = document.getElementById("infoDesconto");
+  const desconto = totalPedido - recebido;
+  const info = document.getElementById("info");
 
-  if(recebido < totalPedido){
-    const desconto = totalPedido - recebido;
-    info.style.display = "block";
-    info.innerText = `Desconto aplicado: R$ ${desconto.toFixed(2)}`;
+  if(desconto > 0){
+    info.innerText = `Desconto: R$ ${desconto.toFixed(2)} (máx. permitido R$ 10,00)`;
   } else {
-    info.style.display = "none";
+    info.innerText = "";
   }
 
   document.getElementById("troco").innerText =
     troco > 0 ? `R$ ${troco.toFixed(2)}` : "R$ 0,00";
 }
 
-/* ========= CONFIRMAR PAGAMENTO ========= */
 async function confirmarPagamento(){
   const forma = document.getElementById("formaPagamento").value;
-  const valorPago = Number(
-    document.getElementById("valorRecebido").value || 0
-  );
+  const valorPago = Number(document.getElementById("valorRecebido").value || 0);
 
-  if(valorPago < 10){
-    alert("Pagamento mínimo permitido é R$ 10,00");
+  const desconto = totalPedido - valorPago;
+
+  if(desconto > DESCONTO_MAXIMO){
+    alert(
+      `Desconto máximo permitido é R$ ${DESCONTO_MAXIMO.toFixed(2)}.\n` +
+      `Valor mínimo a pagar: R$ ${(totalPedido - DESCONTO_MAXIMO).toFixed(2)}`
+    );
     return;
   }
 
-  if(totalPedido <= 0){
-    alert("Total inválido");
-    return;
-  }
-
-  const desconto = valorPago < totalPedido
-    ? totalPedido - valorPago
-    : 0;
-
-  /* 1️⃣ Atualiza pedido */
   await sb
     .from("pedidos")
     .update({
       status: "pago",
       forma_pagamento: forma,
       valor_pago: valorPago,
-      desconto: desconto,
+      desconto: desconto > 0 ? desconto : 0,
       pago_em: new Date().toISOString()
     })
     .eq("id", pedidoId)
     .eq("app_id", appId);
 
-  /* 2️⃣ Baixa estoque */
   const { data: itens } = await sb
     .from("pedido_itens")
     .select("produto_id, quantidade")
@@ -199,7 +179,6 @@ async function confirmarPagamento(){
     });
   }
 
-  /* 3️⃣ Libera mesa */
   if(mesaId){
     await sb
       .from("mesas")
@@ -208,14 +187,12 @@ async function confirmarPagamento(){
       .eq("app_id", appId);
   }
 
-  /* 4️⃣ Finaliza pedido */
   await sb
     .from("pedidos")
     .update({ status: "finalizado" })
     .eq("id", pedidoId)
     .eq("app_id", appId);
 
-  /* 5️⃣ Volta pro caixa */
   location.href = getBasePath() + "/caixa.html";
 }
 
