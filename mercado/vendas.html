@@ -19,116 +19,64 @@ body{
   background:#020617;
   color:#e5e7eb;
 }
-
-/* HEADER */
 .topo-app{
-  position:sticky;
-  top:0;
-  z-index:20;
+  position:sticky;top:0;z-index:20;
   background:#020617;
   padding:14px 16px;
   border-bottom:1px solid #0f172a;
 }
-.brand{
-  display:flex;
-  align-items:center;
-  gap:12px;
-}
-.brand img{
-  width:40px;height:40px;object-fit:contain
-}
-.brand span{
-  font-size:26px;
-  font-weight:900;
-  color:#38bdf8;
-}
-
-/* LAYOUT */
-.mobile-pos{
-  padding:16px;
-  padding-bottom:110px;
-}
-
-/* CARDS */
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{width:40px;height:40px}
+.brand span{font-size:26px;font-weight:900;color:#38bdf8}
+.mobile-pos{padding:16px;padding-bottom:110px}
 .card{
   background:#0f172a;
   border-radius:18px;
   padding:16px;
   margin-bottom:14px;
-  box-shadow:0 10px 30px rgba(0,0,0,.35);
 }
 .card input{
-  width:100%;
-  padding:14px;
-  font-size:18px;
-  border-radius:14px;
-  border:none;
-  background:#020617;
-  color:#fff;
+  width:100%;padding:14px;font-size:18px;
+  border-radius:14px;border:none;
+  background:#020617;color:#fff;
   margin-bottom:10px;
 }
 .card button{
-  width:100%;
-  padding:14px;
-  font-size:18px;
-  border-radius:14px;
-  border:none;
-  cursor:pointer;
-  background:#0ea5e9;
-  color:#fff;
+  width:100%;padding:14px;
+  font-size:18px;border-radius:14px;
+  border:none;cursor:pointer;
+  background:#0ea5e9;color:#fff;
 }
-
-/* PREVIEW */
 .preview button{background:#22c55e}
-
-/* CARRINHO */
 .carrinho div{
   padding:10px 0;
   border-bottom:1px solid #1e293b;
 }
-
-/* PAGAMENTO */
 .pagamento .pix{background:#16a34a;margin-bottom:10px}
 .pagamento .cartao{background:#2563eb}
-
-/* TOTAL FIXO */
 .total-fixo{
-  position:fixed;
-  bottom:0;left:0;width:100%;
-  background:#020617;
-  border-top:1px solid #0f172a;
-  color:#38bdf8;
-  text-align:center;
-  padding:18px;
-  font-size:24px;
-  font-weight:900;
-  z-index:30;
+  position:fixed;bottom:0;left:0;width:100%;
+  background:#020617;border-top:1px solid #0f172a;
+  color:#38bdf8;text-align:center;
+  padding:18px;font-size:24px;font-weight:900;
 }
-
-/* ESTOQUE */
 .estoque-ok{color:#22c55e;font-weight:bold}
 .estoque-atencao{color:#eab308;font-weight:bold}
 .estoque-baixo{
-  color:#ef4444;
-  font-weight:bold;
+  color:#ef4444;font-weight:bold;
   animation:piscar 1s infinite;
 }
 @keyframes piscar{
   0%{opacity:1}50%{opacity:.4}100%{opacity:1}
-}
-
-@media(min-width:900px){
-  .mobile-pos{max-width:900px;margin:auto}
 }
 </style>
 </head>
 
 <body>
 
-<!-- HEADER (segurar 5s pra sair) -->
 <div class="topo-app">
   <div class="brand" onmousedown="segurarLogo()" onmouseup="cancelarSegurar()">
-    <img src="logo.png" alt="FF Soluções">
+    <img src="logo.png">
     <span>CAIXA</span>
   </div>
 </div>
@@ -137,7 +85,8 @@ body{
 
   <div class="card">
     <input id="codigo" placeholder="Código de barras"
-      onkeydown="if(event.key==='Enter') buscarProduto()">
+      onkeydown="if(event.key==='Enter') buscarProduto()"
+      oninput="buscarAuto()">
     <button onclick="abrirLeitor()">📷 Ler código</button>
     <div id="leitor" style="display:none"></div>
   </div>
@@ -161,7 +110,6 @@ body{
   <div class="card pagamento">
     <button class="pix" onclick="pagarPix()">PIX</button>
     <button class="cartao" onclick="pagarCartao()">Cartão</button>
-
     <div id="pixBox" style="display:none">
       <div id="qrcode"></div>
       <button onclick="confirmarPagamento('PIX')">Confirmar PIX</button>
@@ -176,19 +124,26 @@ body{
 
 <script>
 const { jsPDF } = window.jspdf;
-
-/* BLOQUEIA VOLTAR */
-history.pushState(null, null, location.href);
-window.onpopstate = ()=>history.go(1);
-
-/* SUPABASE */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
+
 const supabaseClient = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
 let carrinho=[], total=0, produtoLido=null;
+let buscaTimer=null;
+
+/* BUSCA AUTOMÁTICA */
+function buscarAuto(){
+  const cod=codigo.value.trim();
+  if(cod.length<4){
+    previewProduto.style.display="none";
+    return;
+  }
+  clearTimeout(buscaTimer);
+  buscaTimer=setTimeout(()=>buscarProduto(),500);
+}
 
 /* LEITOR */
 function abrirLeitor(){
@@ -206,9 +161,11 @@ function abrirLeitor(){
   });
 }
 
-/* BUSCAR */
+/* BUSCAR PRODUTO */
 async function buscarProduto(){
   const cod=codigo.value.trim();
+  if(!cod) return;
+
   const {data}=await supabaseClient
     .from("produtos")
     .select("*")
@@ -216,13 +173,11 @@ async function buscarProduto(){
     .eq("app_id",admin.app_id)
     .single();
 
-  if(!data){alert("Produto não encontrado");return;}
-  if(data.estoque===0){alert("⛔ Produto sem estoque");return;}
+  if(!data){return;}
 
   produtoLido=data;
   prevNome.innerText=data.nome;
   prevPreco.innerText=data.preco.toFixed(2);
-
   prevEstoque.innerText=data.estoque;
   prevEstoque.className="";
   if(data.estoque<=5) prevEstoque.classList.add("estoque-baixo");
@@ -235,7 +190,7 @@ async function buscarProduto(){
 /* ADICIONAR */
 function confirmarAdicionar(){
   const qtd=Number(quantidade.value);
-  if(produtoLido.estoque<qtd){alert("Estoque insuficiente");return;}
+  if(produtoLido.estoque<qtd)return alert("Estoque insuficiente");
 
   const item=carrinho.find(i=>i.id===produtoLido.id);
   if(item){
@@ -279,56 +234,38 @@ function pagarPix(){
   new QRCode(qrcode,{text:`PIX|TOTAL:${total.toFixed(2)}`,width:180,height:180});
 }
 function pagarCartao(){
-  if(confirm("Pagamento no cartão confirmado?")){
-    confirmarPagamento("CARTAO");
-  }
+  if(confirm("Pagamento confirmado?"))confirmarPagamento("CARTAO");
 }
 
-/* FINALIZAR + PDF */
+/* FINALIZAR */
 async function confirmarPagamento(tipo){
-  const itens=[...carrinho];
-  for(const i of itens){
+  for(const i of carrinho){
     await supabaseClient.from("produtos")
       .update({estoque:i.estoque-i.qtd})
       .eq("id",i.id);
-    await supabaseClient.from("vendas").insert({
-      app_id:admin.app_id,
-      produto_id:i.id,
-      quantidade:i.qtd,
-      valor_total:i.subtotal,
-      forma_pagamento:tipo
-    });
   }
-  gerarPDF(itens, tipo);
-  carrinho=[]; atualizarCarrinho(); pixBox.style.display="none";
+  gerarPDF(carrinho,tipo);
+  carrinho=[]; atualizarCarrinho();
+  pixBox.style.display="none";
 }
 
 /* PDF */
-function gerarPDF(itens, tipo){
-  const doc=new jsPDF(); let y=10;
-  doc.text("COMPROVANTE DE VENDA",105,y,{align:"center"}); y+=10;
+function gerarPDF(itens,tipo){
+  const doc=new jsPDF();let y=10;
+  doc.text("COMPROVANTE",105,y,{align:"center"});y+=10;
   itens.forEach(i=>{
-    doc.text(i.nome,10,y); y+=6;
-    doc.text(`${i.qtd} x R$ ${i.preco.toFixed(2)} = R$ ${i.subtotal.toFixed(2)}`,10,y);
-    y+=8;
+    doc.text(`${i.nome} - ${i.qtd} x ${i.preco}`,10,y);y+=8;
   });
-  doc.text(`Total: R$ ${total.toFixed(2)}`,10,y+4);
-  doc.text(`Pagamento: ${tipo}`,10,y+10);
-  doc.text(`Data: ${new Date().toLocaleString()}`,10,y+16);
-  doc.save("recibo-venda.pdf");
+  doc.text(`Total: R$ ${total.toFixed(2)}`,10,y+6);
+  doc.save("recibo.pdf");
 }
 
-/* SAÍDA GERENTE (ATALHO) */
+/* SAÍDA */
 let timerSaida;
-function segurarLogo(){
-  timerSaida=setTimeout(()=>sairCaixa(),5000);
-}
-function cancelarSegurar(){ clearTimeout(timerSaida); }
+function segurarLogo(){timerSaida=setTimeout(sairCaixa,5000)}
+function cancelarSegurar(){clearTimeout(timerSaida)}
 function sairCaixa(){
-  const senha=prompt("Senha do gerente:");
-  if(senha==="1234"){ // 🔴 TROQUE A SENHA
-    window.location.href="admin.html";
-  }else alert("Senha incorreta");
+  if(prompt("Senha do gerente:")==="1234")location.href="admin.html";
 }
 
 /* ELEMENTOS */
