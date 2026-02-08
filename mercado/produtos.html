@@ -33,10 +33,23 @@ input{background:#020617;color:#fff}
 button{background:#22c55e;font-weight:bold;cursor:pointer}
 
 #btnToggle{background:#334155}
-
 #leitor video{width:100%;border-radius:12px;margin-top:10px}
 
-/* LISTA COMPACTA */
+/* PREVIEW */
+.preview{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
+.preview img{
+  width:60px;
+  height:60px;
+  object-fit:cover;
+  border-radius:8px;
+  border:1px solid #334155;
+}
+
+/* LISTA */
 .produto{
   background:#020617;
   padding:10px;
@@ -46,11 +59,10 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
   text-align:center;
 }
 .produto img{
-  width:45px;
-  height:45px;
+  width:45px;height:45px;
   object-fit:cover;
   border-radius:8px;
-  margin-top:6px;
+  margin:4px;
 }
 .produto button{
   padding:8px;
@@ -77,24 +89,38 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
 
   <input id="nome" placeholder="Nome do produto">
   <input id="codigo_barra" placeholder="Código de barras">
-  <button type="button" onclick="abrirLeitor()">📷 Ler código</button>
+
+  <!-- câmera SÓ para código -->
+  <button onclick="abrirLeitor()">📷 Ler código</button>
   <div id="leitor" style="display:none"></div>
 
   <input id="preco" type="number" step="0.01" placeholder="Preço">
   <input id="estoque" type="number" placeholder="Estoque">
 
-  <!-- 📸 FOTO (NÃO FORÇA CÂMERA) -->
-  <input id="foto" type="file" accept="image/*">
+  <!-- BOTÃO VISÍVEL PARA FOTOS -->
+  <button type="button"
+    onclick="document.getElementById('fotos').click()">
+    📸 Tirar fotos do produto (até 3)
+  </button>
+
+  <!-- INPUT REAL (ESCONDIDO) -->
+  <input id="fotos"
+    type="file"
+    accept="image/*"
+    capture="environment"
+    multiple
+    style="display:none">
+
+  <!-- PREVIEW -->
+  <div class="preview" id="preview"></div>
 
   <button onclick="cadastrar()">Cadastrar</button>
 </div>
 
-<!-- BOTÃO MOSTRAR / OCULTAR -->
 <div class="box">
   <button id="btnToggle" onclick="toggleProdutos()">📋 Mostrar produtos</button>
 </div>
 
-<!-- LISTA -->
 <div class="box" id="boxProdutos" style="display:none">
   <h2>📋 Produtos</h2>
   <div id="listaProdutos"></div>
@@ -114,37 +140,32 @@ const supabaseClient = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-const nomeEl=nome,
-codigoEl=codigo_barra,
-precoEl=preco,
-estoqueEl=estoque,
-fotoEl=foto;
+/* PREVIEW DAS FOTOS NO CADASTRO */
+fotos.addEventListener("change",()=>{
+  preview.innerHTML="";
+  [...fotos.files].slice(0,3).forEach(f=>{
+    const img=document.createElement("img");
+    img.src=URL.createObjectURL(f);
+    preview.appendChild(img);
+  });
+});
 
-/* MOSTRAR / OCULTAR */
+/* TOGGLE */
 function toggleProdutos(){
-  const box=document.getElementById("boxProdutos");
-  const btn=document.getElementById("btnToggle");
-  if(box.style.display==="none"){
-    box.style.display="block";
-    btn.innerText="❌ Ocultar produtos";
-  }else{
-    box.style.display="none";
-    btn.innerText="📋 Mostrar produtos";
-  }
+  boxProdutos.style.display =
+    boxProdutos.style.display==="none" ? "block" : "none";
 }
 
-/* LEITOR */
+/* LEITOR DE CÓDIGO */
 function abrirLeitor(){
-  const leitor=document.getElementById("leitor");
   leitor.style.display="block";
-
   Quagga.init({
     inputStream:{type:"LiveStream",target:leitor,constraints:{facingMode:"environment"}},
     decoder:{readers:["ean_reader","code_128_reader"]}
   },()=>Quagga.start());
 
-  Quagga.onDetected(res=>{
-    codigoEl.value=res.codeResult.code;
+  Quagga.onDetected(r=>{
+    codigo_barra.value=r.codeResult.code;
     Quagga.stop();
     leitor.style.display="none";
   });
@@ -152,34 +173,41 @@ function abrirLeitor(){
 
 /* CADASTRAR */
 async function cadastrar(){
-  if(!nomeEl.value||!codigoEl.value||precoEl.value<=0||estoqueEl.value<0){
-    alert("Preencha tudo corretamente");
+  if(!nome.value || !codigo_barra.value){
+    alert("Preencha nome e código");
     return;
   }
 
-  let imagem=null;
-  if(fotoEl.files[0]){
-    const nomeSeguro=fotoEl.files[0].name
+  let imagens=[];
+  const files=[...fotos.files].slice(0,3);
+
+  for(const file of files){
+    const nomeSeguro=file.name
       .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
       .replace(/[^a-zA-Z0-9._-]/g,"_");
 
     const path=`${admin.app_id}/${Date.now()}_${nomeSeguro}`;
-    await supabaseClient.storage.from("produtos").upload(path,fotoEl.files[0]);
-    imagem=supabaseClient.storage.from("produtos").getPublicUrl(path).data.publicUrl;
+    await supabaseClient.storage.from("produtos").upload(path,file);
+
+    imagens.push(
+      supabaseClient.storage
+        .from("produtos")
+        .getPublicUrl(path).data.publicUrl
+    );
   }
 
   await supabaseClient.from("produtos").insert({
     app_id:admin.app_id,
-    nome:nomeEl.value,
-    codigo_barra:codigoEl.value,
-    preco:Number(precoEl.value),
-    estoque:Number(estoqueEl.value),
-    imagem,
-    ativo:true
+    nome:nome.value,
+    codigo_barra:codigo_barra.value,
+    preco:Number(preco.value),
+    estoque:Number(estoque.value),
+    imagens
   });
 
-  nomeEl.value=codigoEl.value=precoEl.value=estoqueEl.value="";
-  fotoEl.value="";
+  nome.value=codigo_barra.value=preco.value=estoque.value="";
+  fotos.value="";
+  preview.innerHTML="";
   carregar();
 }
 
@@ -193,84 +221,92 @@ async function carregar(){
 
   listaProdutos.innerHTML="";
   data.forEach(p=>{
+    let imgs="";
+
+    if(Array.isArray(p.imagens)){
+      imgs = p.imagens.slice(0,3).map(u=>`<img src="${u}">`).join("");
+    } else if (typeof p.imagem === "string" && p.imagem) {
+      imgs = `<img src="${p.imagem}">`;
+    }
+
     listaProdutos.innerHTML+=`
       <div class="produto">
         <b>${p.nome}</b><br>
-        <small>${p.codigo_barra}</small><br>
-        Estoque: <b>${p.estoque}</b><br>
+        ${p.codigo_barra}<br>
+        Estoque: ${p.estoque}<br>
         R$ ${p.preco.toFixed(2)}<br>
-        ${p.imagem?`<img src="${p.imagem}">`:""}
+        ${imgs}
 
         <input type="number" placeholder="Qtd repor" id="qtd-${p.id}">
         <button class="repor" onclick="repor('${p.id}')">➕ Repor</button>
 
-        <!-- 📸 NOVA FOTO (SEM CAPTURE) -->
-        <input type="file"
-          accept="image/*"
-          id="foto-${p.id}"
-          style="display:none"
-          onchange="novaFoto(event,'${p.id}')">
+        <!-- EDITAR FOTOS -->
+        <input type="file" accept="image/*" capture="environment"
+          id="foto-${p.id}" style="display:none"
+          onchange="editarFoto(event,'${p.id}')">
 
-        <button class="editar" onclick="document.getElementById('foto-${p.id}').click()">📸 Nova foto</button>
-        <button class="editar" onclick="editar('${p.id}','${p.nome}','${p.codigo_barra}','${p.preco}','${p.estoque}')">Editar</button>
+        <button class="editar"
+          onclick="document.getElementById('foto-${p.id}').click()">
+          📸 Editar fotos
+        </button>
+
+        <button class="editar"
+          onclick="editarProduto('${p.id}','${p.nome}','${p.codigo_barra}','${p.preco}','${p.estoque}')">
+          Editar dados
+        </button>
+
         <button class="excluir" onclick="excluir('${p.id}')">Excluir</button>
       </div>
     `;
   });
 }
 
-/* REPOR ESTOQUE */
-async function repor(id){
-  const qtd=Number(document.getElementById(`qtd-${id}`).value);
-  if(qtd<=0)return alert("Quantidade inválida");
-
-  const { error } = await supabaseClient.rpc("repor_estoque",{
-    p_produto_id:id,
-    p_qtd:qtd
-  });
-
-  if(error){
-    alert("Erro ao repor estoque");
-    console.error(error);
-    return;
-  }
-
-  alert("✅ Estoque reposto");
-  carregar();
-}
-
-/* NOVA FOTO */
-async function novaFoto(e,id){
+/* EDITAR FOTO */
+async function editarFoto(e,id){
   const file=e.target.files[0];
   if(!file)return;
 
-  const nomeSeguro=file.name
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .replace(/[^a-zA-Z0-9._-]/g,"_");
-
-  const path=`${admin.app_id}/${Date.now()}_${nomeSeguro}`;
+  const path=`${admin.app_id}/${Date.now()}_${file.name}`;
   await supabaseClient.storage.from("produtos").upload(path,file);
+  const url=supabaseClient.storage.from("produtos").getPublicUrl(path).data.publicUrl;
 
-  const imagem=supabaseClient.storage.from("produtos").getPublicUrl(path).data.publicUrl;
+  const {data}=await supabaseClient
+    .from("produtos").select("imagens").eq("id",id).single();
+
+  const imagens = Array.isArray(data.imagens) ? data.imagens : [];
+  if(imagens.length>=3)return alert("Máximo 3 fotos");
+
+  imagens.push(url);
+  await supabaseClient.from("produtos").update({imagens}).eq("id",id);
+  carregar();
+}
+
+/* EDITAR DADOS */
+async function editarProduto(id,n,c,p,e){
+  const nomeN=prompt("Nome",n);
+  if(!nomeN)return;
 
   await supabaseClient.from("produtos")
-    .update({imagem})
+    .update({
+      nome:nomeN,
+      codigo_barra:prompt("Código",c),
+      preco:Number(prompt("Preço",p)),
+      estoque:Number(prompt("Estoque",e))
+    })
     .eq("id",id);
 
   carregar();
 }
 
-/* EDITAR */
-async function editar(id,n,c,p,e){
-  const nome=prompt("Nome",n);
-  if(!nome)return;
-  const codigo=prompt("Código",c);
-  const preco=prompt("Preço",p);
-  const estoque=prompt("Estoque",e);
+/* REPOR */
+async function repor(id){
+  const qtd=Number(document.getElementById(`qtd-${id}`).value);
+  if(qtd<=0)return;
 
-  await supabaseClient.from("produtos")
-    .update({nome,codigo_barra:codigo,preco:Number(preco),estoque:Number(estoque)})
-    .eq("id",id);
+  await supabaseClient.rpc("repor_estoque",{
+    p_produto_id:id,
+    p_qtd:qtd
+  });
 
   carregar();
 }
