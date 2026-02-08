@@ -130,7 +130,7 @@ const supabaseClient = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* 🔐 senha do limpar (visual apenas) */
+/* senha limpar (visual) */
 const SENHA_LIMPAR = "1234";
 
 /* data padrão = hoje */
@@ -139,28 +139,15 @@ const hoje = new Date();
 inputData.valueAsDate = hoje;
 
 async function carregarRelatorio(){
-  const dataSelecionada = new Date(inputData.value);
-
-  // início e fim do dia no horário local (Brasil)
-  const inicioLocal = new Date(dataSelecionada);
-  inicioLocal.setHours(0,0,0,0);
-
-  const fimLocal = new Date(dataSelecionada);
-  fimLocal.setHours(23,59,59,999);
-
-  // converte corretamente para UTC
-  const inicioUTC = new Date(inicioLocal.getTime() - (inicioLocal.getTimezoneOffset() * 60000));
-  const fimUTC = new Date(fimLocal.getTime() - (fimLocal.getTimezoneOffset() * 60000));
+  const dataFiltro = inputData.value; // yyyy-mm-dd
 
   document.getElementById("dataLabel").innerText =
-    "📅 " + dataSelecionada.toLocaleDateString("pt-BR");
+    "📅 " + new Date(dataFiltro).toLocaleDateString("pt-BR");
 
   const { data, error } = await supabaseClient
     .from("vendas")
     .select("*")
     .eq("app_id", admin.app_id)
-    .gte("created_at", inicioUTC.toISOString())
-    .lte("created_at", fimUTC.toISOString())
     .order("created_at", { ascending:false });
 
   if(error){
@@ -174,13 +161,18 @@ async function carregarRelatorio(){
   const lista=document.getElementById("lista");
   lista.innerHTML="";
 
-  if(!data || data.length===0){
+  const filtradas = (data || []).filter(v=>{
+    const d = new Date(v.created_at);
+    return d.toISOString().slice(0,10) === dataFiltro;
+  });
+
+  if(filtradas.length === 0){
     lista.innerHTML=`<tr><td colspan="7" style="text-align:center;opacity:.7">
       Nenhuma venda no dia
     </td></tr>`;
   }
 
-  data?.forEach(v=>{
+  filtradas.forEach(v=>{
     totalVendido += Number(v.valor_total || 0);
     totalRecebido += Number(v.valor_pago || 0);
     totalFiado += Number(v.valor_devido || 0);
@@ -210,21 +202,13 @@ async function carregarRelatorio(){
   document.getElementById("totalCartao").innerText = `R$ ${cartao.toFixed(2)}`;
 }
 
-/* 🧹 LIMPAR RELATÓRIO (APENAS VISUAL) */
 function limparRelatorio(){
-  const senha = prompt("Digite a senha para limpar o relatório:");
+  const senha = prompt("Digite a senha:");
   if(senha !== SENHA_LIMPAR){
     alert("Senha incorreta");
     return;
   }
-
   document.getElementById("lista").innerHTML = "";
-  document.getElementById("totalVendido").innerText = "R$ 0.00";
-  document.getElementById("totalRecebido").innerText = "R$ 0.00";
-  document.getElementById("totalFiado").innerText = "R$ 0.00";
-  document.getElementById("totalDinheiro").innerText = "R$ 0.00";
-  document.getElementById("totalPix").innerText = "R$ 0.00";
-  document.getElementById("totalCartao").innerText = "R$ 0.00";
 }
 
 carregarRelatorio();
