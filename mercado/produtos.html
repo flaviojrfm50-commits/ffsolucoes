@@ -10,47 +10,19 @@
 
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Arial;
-  background:#020617;
-  color:#fff
-}
-.topo{
-  background:#0f172a;
-  padding:18px;
-  text-align:center
-}
-.container{
-  max-width:1100px;
-  margin:30px auto;
-  padding:0 20px
-}
-.box{
-  background:#0f172a;
-  padding:20px;
-  border-radius:16px;
-  margin-bottom:20px
-}
+body{margin:0;font-family:Arial;background:#020617;color:#fff}
+.topo{background:#0f172a;padding:18px;text-align:center}
+.container{max-width:1100px;margin:30px auto;padding:0 20px}
+.box{background:#0f172a;padding:20px;border-radius:16px;margin-bottom:20px}
+
 input,button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border-radius:10px;
-  border:none
+  width:100%;padding:12px;margin-top:10px;border-radius:10px;border:none
 }
-input{
-  background:#020617;
-  color:#fff
-}
-button{
-  background:#22c55e;
-  font-weight:bold;
-  cursor:pointer
-}
+input{background:#020617;color:#fff}
+button{background:#22c55e;font-weight:bold;cursor:pointer}
 #btnToggle{background:#334155}
 
-/* 🔥 CORREÇÃO CRÍTICA DO VÍDEO */
+/* 🔥 NÃO ESTICAR O VÍDEO */
 #leitor video{
   width:100%;
   height:auto;
@@ -58,34 +30,18 @@ button{
   border-radius:12px;
 }
 
-/* PREVIEW */
-.preview{
-  display:flex;
-  gap:8px;
-  margin-top:10px
-}
+/* PREVIEW FOTOS */
+.preview{display:flex;gap:8px;margin-top:10px}
 .preview img{
-  width:60px;
-  height:60px;
-  object-fit:cover;
-  border-radius:8px;
-  border:1px solid #334155
+  width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #334155
 }
 
 /* LISTA */
 .produto{
-  background:#020617;
-  padding:10px;
-  border-radius:10px;
-  margin-top:10px;
-  text-align:center
+  background:#020617;padding:10px;border-radius:10px;margin-top:10px;text-align:center
 }
 .produto img{
-  width:45px;
-  height:45px;
-  object-fit:cover;
-  border-radius:8px;
-  margin:4px
+  width:45px;height:45px;object-fit:cover;border-radius:8px;margin:4px
 }
 </style>
 </head>
@@ -114,9 +70,7 @@ button{
     📸 Tirar fotos do produto (até 3)
   </button>
 
-  <input id="fotos" type="file" accept="image/*"
-    capture="environment" multiple style="display:none">
-
+  <input id="fotos" type="file" accept="image/*" capture="environment" multiple style="display:none">
   <div class="preview" id="preview"></div>
 
   <button onclick="cadastrar()">Cadastrar</button>
@@ -146,7 +100,7 @@ const supabaseClient = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* PREVIEW */
+/* PREVIEW DAS FOTOS */
 fotos.addEventListener("change",()=>{
   preview.innerHTML="";
   [...fotos.files].slice(0,3).forEach(f=>{
@@ -162,7 +116,9 @@ function toggleProdutos(){
     boxProdutos.style.display==="none" ? "block" : "none";
 }
 
-/* 🔥 LEITOR CORRETO PARA SUPERMERCADO */
+/* =========================
+   LEITOR RÁPIDO (SUPERMERCADO)
+   ========================= */
 let ultimoCodigo="", ultimoTempo=0;
 
 function abrirLeitor(){
@@ -172,27 +128,22 @@ function abrirLeitor(){
     inputStream:{
       type:"LiveStream",
       target:leitor,
-      constraints:{
-        facingMode:"environment",
-        width:{ideal:1280},
-        height:{ideal:720}
-      }
+      constraints:{ facingMode:"environment" }
     },
     locator:{
-      patchSize:"x-large",
-      halfSample:false
+      patchSize:"large",   // 🔥 rápido
+      halfSample:true      // 🔥 tolerante
     },
     decoder:{
-      readers:[
-        "ean_reader",
-        "ean_8_reader",
-        "upc_reader",
-        "code_128_reader"
-      ]
+      readers:["ean_reader","ean_8_reader","upc_reader","code_128_reader"]
     },
     locate:true
-  },err=>{
-    if(err){ alert("Erro câmera"); return; }
+  }, err=>{
+    if(err){
+      alert("Erro ao abrir câmera (verifique HTTPS/permissão)");
+      leitor.style.display="none";
+      return;
+    }
     Quagga.start();
   });
 
@@ -200,13 +151,13 @@ function abrirLeitor(){
     const code=r.codeResult.code;
     const agora=Date.now();
     if(!code) return;
-    if(code===ultimoCodigo && agora-ultimoTempo<1500) return;
+    if(code===ultimoCodigo && agora-ultimoTempo<800) return;
 
     ultimoCodigo=code;
     ultimoTempo=agora;
 
     document.getElementById("beep").play().catch(()=>{});
-    if(navigator.vibrate) navigator.vibrate(200);
+    if(navigator.vibrate) navigator.vibrate(120);
 
     codigo_barra.value=code;
     Quagga.stop();
@@ -216,7 +167,7 @@ function abrirLeitor(){
 
 /* CADASTRAR */
 async function cadastrar(){
-  if(!nome.value||!codigo_barra.value){
+  if(!nome.value || !codigo_barra.value){
     alert("Preencha nome e código");
     return;
   }
@@ -226,8 +177,7 @@ async function cadastrar(){
     const path=`${admin.app_id}/${Date.now()}_${f.name}`;
     await supabaseClient.storage.from("produtos").upload(path,f);
     imagens.push(
-      supabaseClient.storage.from("produtos")
-      .getPublicUrl(path).data.publicUrl
+      supabaseClient.storage.from("produtos").getPublicUrl(path).data.publicUrl
     );
   }
 
@@ -255,16 +205,16 @@ async function carregar(){
 
   listaProdutos.innerHTML="";
   data.forEach(p=>{
-    let imgs="";
-    if(Array.isArray(p.imagens)){
-      imgs=p.imagens.map(u=>`<img src="${u}">`).join("");
-    }
+    const imgs = Array.isArray(p.imagens)
+      ? p.imagens.map(u=>`<img src="${u}">`).join("")
+      : "";
+
     listaProdutos.innerHTML+=`
       <div class="produto">
         <b>${p.nome}</b><br>
         ${p.codigo_barra}<br>
         Estoque: ${p.estoque}<br>
-        R$ ${p.preco.toFixed(2)}<br>
+        R$ ${Number(p.preco).toFixed(2)}<br>
         ${imgs}
       </div>`;
   });
