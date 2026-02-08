@@ -25,14 +25,12 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
 #btnToggle{background:#334155}
 #leitor video{width:100%;height:auto;object-fit:contain;border-radius:12px}
 
-/* preview */
-.preview{display:flex;gap:8px;margin-top:10px}
+.preview{margin-top:10px}
 .preview img{
   width:60px;height:60px;
   object-fit:cover;border-radius:8px;border:1px solid #334155
 }
 
-/* lista */
 .produto{
   background:#020617;padding:10px;border-radius:10px;
   margin-top:10px;text-align:center
@@ -41,6 +39,8 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
   width:45px;height:45px;
   object-fit:cover;border-radius:8px;margin:4px
 }
+.editar{background:#334155}
+.repor{background:#f59e0b}
 </style>
 </head>
 
@@ -52,6 +52,7 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
 
 <div class="container">
 
+<!-- CADASTRO -->
 <div class="box">
   <h2>➕ Cadastrar Produto</h2>
 
@@ -64,13 +65,10 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
   <input id="preco" type="number" step="0.01" placeholder="Preço">
   <input id="estoque" type="number" placeholder="Estoque">
 
-  <!-- UMA FOTO (PADRÃO VITRINE) -->
   <button onclick="document.getElementById('foto').click()">
     📸 Tirar foto do produto
   </button>
-
-  <input id="foto" type="file" accept="image/*"
-    capture="environment" style="display:none">
+  <input id="foto" type="file" accept="image/*" capture="environment" style="display:none">
 
   <div class="preview" id="preview"></div>
 
@@ -89,17 +87,14 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
 
 <script>
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
-if(!admin){
-  alert("Sessão inválida");
-  location.href="login.html";
-}
+if(!admin){ alert("Sessão inválida"); location.href="login.html"; }
 
 const supabaseClient = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* preview */
+/* preview cadastro */
 foto.addEventListener("change",()=>{
   preview.innerHTML="";
   if(foto.files[0]){
@@ -114,7 +109,7 @@ function toggleProdutos(){
     boxProdutos.style.display==="none" ? "block" : "none";
 }
 
-/* leitor simples */
+/* leitor */
 function abrirLeitor(){
   leitor.style.display="block";
   Quagga.init({
@@ -129,32 +124,17 @@ function abrirLeitor(){
   });
 }
 
-/* CADASTRAR — SALVA EM `imagem` */
+/* CADASTRAR */
 async function cadastrar(){
-  if(!nome.value || !codigo_barra.value){
-    alert("Preencha nome e código");
-    return;
-  }
+  if(!nome.value || !codigo_barra.value) return alert("Preencha nome e código");
 
   let imagem=null;
-
   if(foto.files[0]){
     const ext=foto.files[0].name.split(".").pop();
     const path=`${admin.app_id}/${crypto.randomUUID()}.${ext}`;
-
-    const { error } =
-      await supabaseClient.storage.from("produtos")
-        .upload(path,foto.files[0]);
-
-    if(error){
-      alert("Erro ao enviar imagem");
-      console.error(error);
-      return;
-    }
-
-    imagem = supabaseClient.storage
-      .from("produtos")
-      .getPublicUrl(path).data.publicUrl;
+    const { error } = await supabaseClient.storage.from("produtos").upload(path,foto.files[0]);
+    if(error) return alert("Erro ao enviar imagem");
+    imagem=supabaseClient.storage.from("produtos").getPublicUrl(path).data.publicUrl;
   }
 
   await supabaseClient.from("produtos").insert({
@@ -163,22 +143,19 @@ async function cadastrar(){
     codigo_barra:codigo_barra.value,
     preco:Number(preco.value),
     estoque:Number(estoque.value),
-    imagem   // 🔥 COMPATÍVEL COM VITRINE
+    imagem
   });
 
   nome.value=codigo_barra.value=preco.value=estoque.value="";
-  foto.value="";
-  preview.innerHTML="";
+  foto.value=""; preview.innerHTML="";
   carregar();
 }
 
 /* LISTAR */
 async function carregar(){
   const {data}=await supabaseClient
-    .from("produtos")
-    .select("*")
-    .eq("app_id",admin.app_id)
-    .order("nome");
+    .from("produtos").select("*")
+    .eq("app_id",admin.app_id).order("nome");
 
   listaProdutos.innerHTML="";
   data.forEach(p=>{
@@ -186,11 +163,75 @@ async function carregar(){
       <div class="produto">
         <b>${p.nome}</b><br>
         ${p.codigo_barra}<br>
-        Estoque: ${p.estoque}<br>
+        Estoque: <b>${p.estoque}</b><br>
         R$ ${p.preco.toFixed(2)}<br>
         ${p.imagem?`<img src="${p.imagem}">`:""}
-      </div>`;
+
+        <input type="number" placeholder="Qtd repor" id="rep-${p.id}">
+        <button class="repor" onclick="repor('${p.id}',${p.estoque})">➕ Repor</button>
+
+        <input type="file" accept="image/*" capture="environment"
+          id="foto-${p.id}" style="display:none"
+          onchange="editarFoto(event,'${p.id}')">
+
+        <button class="editar"
+          onclick="document.getElementById('foto-${p.id}').click()">
+          📸 Editar foto
+        </button>
+
+        <button class="editar"
+          onclick="editarProduto('${p.id}','${p.nome}','${p.codigo_barra}','${p.preco}')">
+          ✏️ Editar dados
+        </button>
+      </div>
+    `;
   });
+}
+
+/* REPOR ESTOQUE */
+async function repor(id,atual){
+  const qtd=Number(document.getElementById(`rep-${id}`).value);
+  if(qtd<=0) return alert("Quantidade inválida");
+
+  await supabaseClient.from("produtos")
+    .update({estoque: atual + qtd})
+    .eq("id",id);
+
+  carregar();
+}
+
+/* EDITAR FOTO */
+async function editarFoto(e,id){
+  const file=e.target.files[0];
+  if(!file) return;
+
+  const ext=file.name.split(".").pop();
+  const path=`${admin.app_id}/${crypto.randomUUID()}.${ext}`;
+  await supabaseClient.storage.from("produtos").upload(path,file);
+  const imagem=supabaseClient.storage.from("produtos").getPublicUrl(path).data.publicUrl;
+
+  await supabaseClient.from("produtos")
+    .update({imagem})
+    .eq("id",id);
+
+  carregar();
+}
+
+/* EDITAR DADOS */
+async function editarProduto(id,n,c,p){
+  const nomeN=prompt("Nome",n); if(!nomeN) return;
+  const codN=prompt("Código",c);
+  const precoN=prompt("Preço",p);
+
+  await supabaseClient.from("produtos")
+    .update({
+      nome:nomeN,
+      codigo_barra:codN,
+      preco:Number(precoN)
+    })
+    .eq("id",id);
+
+  carregar();
 }
 
 carregar();
