@@ -66,10 +66,12 @@ body{
 .pagamento .dinheiro{background:#16a34a}
 .pagamento .pix{background:#0ea5e9}
 .pagamento .cartao{background:#2563eb}
+
 .carrinho div{
   padding:10px 0;
   border-bottom:1px solid #1e293b;
 }
+
 .total-fixo{
   position:fixed;
   bottom:0;left:0;width:100%;
@@ -81,6 +83,18 @@ body{
   font-size:24px;
   font-weight:900;
   z-index:30;
+}
+
+/* lista busca */
+.lista-item{
+  background:#020617;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:6px;
+  cursor:pointer;
+}
+.lista-item:hover{
+  background:#1e293b;
 }
 </style>
 </head>
@@ -95,8 +109,11 @@ body{
 
   <div class="card">
     <input id="codigo" placeholder="Código ou nome do produto"
-      onkeydown="if(event.key==='Enter') buscarProduto()"
-      oninput="buscarAuto()">
+      oninput="buscarAuto()"
+      onkeydown="if(event.key==='Enter') buscarProdutoCodigo()">
+
+    <div id="listaBusca"></div>
+
     <button onclick="abrirLeitor()">📷 Ler código</button>
     <div id="leitor" style="display:none"></div>
   </div>
@@ -147,59 +164,82 @@ const supabaseClient = supabase.createClient(
 let carrinho=[], total=0, produtoLido=null;
 let buscaTimer=null;
 
-/* BUSCA */
+/* 🔍 BUSCA AUTOMÁTICA */
 function buscarAuto(){
   const v=codigo.value.trim();
-  if(v.length<2){previewProduto.style.display="none";return;}
+  if(v.length<1){
+    listaBusca.innerHTML="";
+    previewProduto.style.display="none";
+    return;
+  }
   clearTimeout(buscaTimer);
-  buscaTimer=setTimeout(buscarProduto,500);
+  buscaTimer=setTimeout(()=>buscarLista(v),300);
 }
 
-function abrirLeitor(){
-  leitor.style.display="block";
-  Quagga.init({
-    inputStream:{type:"LiveStream",target:leitor,constraints:{facingMode:"environment"}},
-    decoder:{readers:["ean_reader","code_128_reader"]}
-  },()=>Quagga.start());
+async function buscarLista(valor){
+  const { data } = await supabaseClient
+    .from("produtos")
+    .select("*")
+    .eq("app_id", admin.app_id)
+    .ilike("nome", `%${valor}%`)
+    .limit(5);
 
-  Quagga.onDetected(r=>{
-    codigo.value=r.codeResult.code;
-    Quagga.stop();
-    leitor.style.display="none";
-    buscarProduto();
+  listaBusca.innerHTML="";
+  if(!data) return;
+
+  data.forEach(p=>{
+    listaBusca.innerHTML+=`
+      <div class="lista-item"
+        onclick='selecionarProduto(${JSON.stringify(p)})'>
+        ${p.nome} — R$ ${p.preco.toFixed(2)} (Est: ${p.estoque})
+      </div>
+    `;
   });
 }
 
-async function buscarProduto(){
+function selecionarProduto(p){
+  produtoLido=p;
+  prevNome.innerText=p.nome;
+  prevPreco.innerText=p.preco.toFixed(2);
+  prevEstoque.innerText=p.estoque;
+  previewProduto.style.display="block";
+  listaBusca.innerHTML="";
+}
+
+/* 🔎 BUSCA POR CÓDIGO */
+async function buscarProdutoCodigo(){
   const valor=codigo.value.trim();
   if(!valor) return;
 
-  let { data } = await supabaseClient
+  const { data } = await supabaseClient
     .from("produtos")
     .select("*")
     .eq("codigo_barra",valor)
     .eq("app_id",admin.app_id)
     .maybeSingle();
 
-  if(!data){
-    const r=await supabaseClient
-      .from("produtos")
-      .select("*")
-      .ilike("nome",`%${valor}%`)
-      .eq("app_id",admin.app_id)
-      .limit(1);
-    data=r.data?.[0];
-  }
+  if(!data) return;
 
-  if(!data){previewProduto.style.display="none";return;}
-
-  produtoLido=data;
-  prevNome.innerText=data.nome;
-  prevPreco.innerText=data.preco.toFixed(2);
-  prevEstoque.innerText=data.estoque;
-  previewProduto.style.display="block";
+  selecionarProduto(data);
 }
 
+/* 📷 LEITOR */
+function abrirLeitor(){
+  leitor.style.display="block";
+  Quagga.init({
+    inputStream:{type:"LiveStream",target:leitor,constraints:{facingMode:"environment"}},
+    decoder:{readers:["ean_reader","ean_8_reader","upc_reader"]}
+  },()=>Quagga.start());
+
+  Quagga.onDetected(r=>{
+    codigo.value=r.codeResult.code;
+    Quagga.stop();
+    leitor.style.display="none";
+    buscarProdutoCodigo();
+  });
+}
+
+/* ➕ ADD CARRINHO */
 function confirmarAdicionar(){
   const qtd=Number(quantidade.value);
   if(produtoLido.estoque<qtd)return alert("Estoque insuficiente");
@@ -218,13 +258,13 @@ function confirmarAdicionar(){
       subtotal:qtd*produtoLido.preco
     });
   }
-
   atualizarCarrinho();
   previewProduto.style.display="none";
   codigo.value="";
   quantidade.value=1;
 }
 
+/* 🛒 CARRINHO */
 function atualizarCarrinho(){
   carrinhoDiv.innerHTML="";
   total=0;
@@ -236,6 +276,7 @@ function atualizarCarrinho(){
   totalSpan.innerText=total.toFixed(2);
 }
 
+/* 💸 PIX */
 function pagarPix(){
   if(total<=0)return;
   pixBox.style.display="block";
@@ -243,16 +284,18 @@ function pagarPix(){
   new QRCode(qrcode,{text:`PIX|TOTAL:${total.toFixed(2)}`,width:180,height:180});
 }
 
-/* 🔥 FINALIZAR (AJUSTADO PRO SEU BANCO) */
+/* ✅ FINALIZAR — BAIXA DE ESTOQUE CORRETA */
 async function finalizarVenda(tipo){
   if(carrinho.length===0)return alert("Carrinho vazio");
   if(!confirm(`Confirmar pagamento em ${tipo}?`))return;
 
   for(const i of carrinho){
-    const { error } = await supabaseClient.rpc("baixar_estoque", {
-      p_produto_id: i.id,
-      p_qtd: i.qtd
-    });
+    const { error } = await supabaseClient
+      .from("produtos")
+      .update({ estoque: i.estoque - i.qtd })
+      .eq("id", i.id)
+      .eq("app_id", admin.app_id)
+      .gte("estoque", i.qtd);
 
     if(error){
       alert("Erro ao baixar estoque");
@@ -261,11 +304,11 @@ async function finalizarVenda(tipo){
     }
 
     await supabaseClient.from("vendas").insert({
-      app_id: admin.app_id,
-      produto_id: i.id,
-      quantidade: i.qtd,
-      valor_total: i.subtotal,
-      forma_pagamento: tipo
+      app_id:admin.app_id,
+      produto_id:i.id,
+      quantidade:i.qtd,
+      valor_total:i.subtotal,
+      forma_pagamento:tipo
     });
   }
 
@@ -275,6 +318,7 @@ async function finalizarVenda(tipo){
   pixBox.style.display="none";
 }
 
+/* 🧾 PDF */
 function gerarPDF(tipo){
   const doc=new jsPDF();
   let y=10;
@@ -289,6 +333,7 @@ function gerarPDF(tipo){
   doc.save("recibo.pdf");
 }
 
+/* ELEMENTOS */
 const codigo=document.getElementById("codigo");
 const quantidade=document.getElementById("quantidade");
 const carrinhoDiv=document.getElementById("carrinho");
@@ -296,6 +341,7 @@ const totalSpan=document.getElementById("total");
 const leitor=document.getElementById("leitor");
 const pixBox=document.getElementById("pixBox");
 const qrcode=document.getElementById("qrcode");
+const listaBusca=document.getElementById("listaBusca");
 </script>
 
 </body>
