@@ -21,36 +21,25 @@ input,button{
 }
 input{background:#020617;color:#fff}
 button{background:#22c55e;font-weight:bold;cursor:pointer}
-#btnToggle{background:#334155}
 
-#leitor video{
-  width:100%;
-  height:auto;
-  object-fit:contain;
-  border-radius:12px;
-  margin-top:10px;
-}
+#btnToggle{background:#334155}
+#leitor video{width:100%;height:auto;object-fit:contain;border-radius:12px}
 
 /* preview */
 .preview{display:flex;gap:8px;margin-top:10px}
 .preview img{
   width:60px;height:60px;
-  object-fit:cover;border-radius:8px;
-  border:1px solid #334155
+  object-fit:cover;border-radius:8px;border:1px solid #334155
 }
 
 /* lista */
 .produto{
-  background:#020617;
-  padding:10px;
-  border-radius:10px;
-  margin-top:10px;
-  text-align:center
+  background:#020617;padding:10px;border-radius:10px;
+  margin-top:10px;text-align:center
 }
 .produto img{
   width:45px;height:45px;
-  object-fit:cover;border-radius:8px;
-  margin:4px
+  object-fit:cover;border-radius:8px;margin:4px
 }
 </style>
 </head>
@@ -75,12 +64,13 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
   <input id="preco" type="number" step="0.01" placeholder="Preço">
   <input id="estoque" type="number" placeholder="Estoque">
 
-  <button onclick="document.getElementById('fotos').click()">
-    📸 Tirar fotos (até 3)
+  <!-- UMA FOTO (PADRÃO VITRINE) -->
+  <button onclick="document.getElementById('foto').click()">
+    📸 Tirar foto do produto
   </button>
 
-  <input id="fotos" type="file" accept="image/*"
-    capture="environment" multiple style="display:none">
+  <input id="foto" type="file" accept="image/*"
+    capture="environment" style="display:none">
 
   <div class="preview" id="preview"></div>
 
@@ -109,14 +99,14 @@ const supabaseClient = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-/* preview fotos */
-fotos.addEventListener("change",()=>{
+/* preview */
+foto.addEventListener("change",()=>{
   preview.innerHTML="";
-  [...fotos.files].slice(0,3).forEach(f=>{
+  if(foto.files[0]){
     const img=document.createElement("img");
-    img.src=URL.createObjectURL(f);
+    img.src=URL.createObjectURL(foto.files[0]);
     preview.appendChild(img);
-  });
+  }
 });
 
 function toggleProdutos(){
@@ -139,57 +129,50 @@ function abrirLeitor(){
   });
 }
 
-/* CADASTRAR — AGORA SEGURO */
+/* CADASTRAR — SALVA EM `imagem` */
 async function cadastrar(){
   if(!nome.value || !codigo_barra.value){
     alert("Preencha nome e código");
     return;
   }
 
-  const imagens=[];
-  const files=[...fotos.files].slice(0,3);
+  let imagem=null;
 
-  for(const file of files){
-    const ext=file.name.split(".").pop();
+  if(foto.files[0]){
+    const ext=foto.files[0].name.split(".").pop();
     const path=`${admin.app_id}/${crypto.randomUUID()}.${ext}`;
 
-    const { error: uploadError } =
-      await supabaseClient.storage.from("produtos").upload(path,file);
+    const { error } =
+      await supabaseClient.storage.from("produtos")
+        .upload(path,foto.files[0]);
 
-    if(uploadError){
+    if(error){
       alert("Erro ao enviar imagem");
-      console.error(uploadError);
+      console.error(error);
       return;
     }
 
-    const { data } =
-      supabaseClient.storage.from("produtos").getPublicUrl(path);
-
-    imagens.push(data.publicUrl);
+    imagem = supabaseClient.storage
+      .from("produtos")
+      .getPublicUrl(path).data.publicUrl;
   }
 
-  const { error } = await supabaseClient.from("produtos").insert({
+  await supabaseClient.from("produtos").insert({
     app_id:admin.app_id,
     nome:nome.value,
     codigo_barra:codigo_barra.value,
     preco:Number(preco.value),
     estoque:Number(estoque.value),
-    imagens   // 🔥 SEMPRE array válido
+    imagem   // 🔥 COMPATÍVEL COM VITRINE
   });
 
-  if(error){
-    alert("Erro ao salvar produto");
-    console.error(error);
-    return;
-  }
-
   nome.value=codigo_barra.value=preco.value=estoque.value="";
-  fotos.value="";
+  foto.value="";
   preview.innerHTML="";
   carregar();
 }
 
-/* LISTAR — NÃO SOME */
+/* LISTAR */
 async function carregar(){
   const {data}=await supabaseClient
     .from("produtos")
@@ -199,17 +182,13 @@ async function carregar(){
 
   listaProdutos.innerHTML="";
   data.forEach(p=>{
-    const imgs = Array.isArray(p.imagens)
-      ? p.imagens.map(u=>`<img src="${u}">`).join("")
-      : "";
-
     listaProdutos.innerHTML+=`
       <div class="produto">
         <b>${p.nome}</b><br>
         ${p.codigo_barra}<br>
         Estoque: ${p.estoque}<br>
-        R$ ${Number(p.preco).toFixed(2)}<br>
-        ${imgs}
+        R$ ${p.preco.toFixed(2)}<br>
+        ${p.imagem?`<img src="${p.imagem}">`:""}
       </div>`;
   });
 }
