@@ -12,95 +12,27 @@
 
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Inter,Arial,sans-serif;
-  background:#020617;
-  color:#e5e7eb;
-  font-size:14px;
-}
-.topo-app{
-  position:sticky;
-  top:0;
-  background:#020617;
-  padding:10px 14px;
-  border-bottom:1px solid #0f172a;
-}
-.brand span{
-  font-size:22px;
-  font-weight:900;
-  color:#38bdf8;
-}
-.mobile-pos{
-  padding:12px;
-  padding-bottom:180px;
-}
-.card{
-  background:#0f172a;
-  border-radius:14px;
-  padding:12px;
-  margin-bottom:10px;
-}
-.card input{
-  width:100%;
-  padding:10px;
-  font-size:14px;
-  border-radius:10px;
-  border:none;
-  background:#020617;
-  color:#fff;
-  margin-bottom:8px;
-}
-.card button{
-  width:100%;
-  padding:10px;
-  font-size:14px;
-  border-radius:10px;
-  border:none;
-  cursor:pointer;
-  background:#0ea5e9;
-  color:#fff;
-  margin-bottom:6px;
-}
+body{margin:0;font-family:Inter,Arial;background:#020617;color:#e5e7eb;font-size:14px}
+.topo-app{position:sticky;top:0;background:#020617;padding:10px 14px;border-bottom:1px solid #0f172a}
+.brand span{font-size:22px;font-weight:900;color:#38bdf8}
+.mobile-pos{padding:12px;padding-bottom:180px}
+.card{background:#0f172a;border-radius:14px;padding:12px;margin-bottom:10px}
+.card input,.card button{width:100%;padding:10px;font-size:14px;border-radius:10px;border:none}
+.card input{background:#020617;color:#fff;margin-bottom:8px}
+.card button{cursor:pointer;background:#0ea5e9;color:#fff;margin-bottom:6px}
 .pagamento .dinheiro{background:#16a34a}
 .pagamento .pix{background:#0ea5e9}
 .pagamento .cartao{background:#2563eb}
-
-.carrinho div{
-  padding:6px 0;
-  border-bottom:1px solid #1e293b;
-  font-size:13px;
-}
-
-.total-fixo{
-  position:fixed;
-  bottom:0;left:0;width:100%;
-  background:#020617;
-  border-top:1px solid #0f172a;
-  color:#38bdf8;
-  text-align:center;
-  padding:12px;
-  font-size:18px;
-  font-weight:900;
-}
-
-.lista-item{
-  background:#020617;
-  padding:8px;
-  border-radius:8px;
-  margin-bottom:4px;
-  cursor:pointer;
-  font-size:13px;
-}
+.carrinho div{padding:6px 0;border-bottom:1px solid #1e293b;font-size:13px}
+.total-fixo{position:fixed;bottom:0;left:0;width:100%;background:#020617;border-top:1px solid #0f172a;color:#38bdf8;text-align:center;padding:12px;font-size:18px;font-weight:900}
+.lista-item{background:#020617;padding:8px;border-radius:8px;margin-bottom:4px;cursor:pointer;font-size:13px}
 .lista-item:hover{background:#1e293b}
 </style>
 </head>
 
 <body>
 
-<div class="topo-app">
-  <div class="brand"><span>CAIXA</span></div>
-</div>
+<div class="topo-app"><div class="brand"><span>CAIXA</span></div></div>
 
 <div class="mobile-pos">
 
@@ -142,9 +74,7 @@ body{
 
 </div>
 
-<div class="total-fixo">
-  TOTAL: R$ <span id="total">0.00</span>
-</div>
+<div class="total-fixo">TOTAL: R$ <span id="total">0.00</span></div>
 
 <script>
 const { jsPDF } = window.jspdf;
@@ -155,18 +85,40 @@ const supabaseClient = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-let carrinho = JSON.parse(localStorage.getItem("carrinho_caixa")) || [];
-let total=0, produtoLido=null;
-let buscaTimer=null;
+/* 🔗 ELEMENTOS DOM (PRIMEIRO!) */
+const codigo=document.getElementById("codigo");
+const quantidade=document.getElementById("quantidade");
+const carrinhoDiv=document.getElementById("carrinho");
+const totalSpan=document.getElementById("total");
+const leitor=document.getElementById("leitor");
+const pixBox=document.getElementById("pixBox");
+const qrcode=document.getElementById("qrcode");
+const listaBusca=document.getElementById("listaBusca");
+const previewProduto=document.getElementById("previewProduto");
+const prevNome=document.getElementById("prevNome");
+const prevPreco=document.getElementById("prevPreco");
+const prevEstoque=document.getElementById("prevEstoque");
 
-/* 💾 CARRINHO PERSISTENTE */
+/* 🛒 ESTADO */
+let carrinho = JSON.parse(localStorage.getItem("carrinho_caixa")) || [];
+let total=0, produtoLido=null, buscaTimer=null;
+
+/* 💾 PERSISTÊNCIA */
 function salvarCarrinho(){
   localStorage.setItem("carrinho_caixa", JSON.stringify(carrinho));
 }
-function carregarCarrinho(){
-  atualizarCarrinho();
+
+/* 🔄 CARRINHO */
+function atualizarCarrinho(){
+  carrinhoDiv.innerHTML="";
+  total=0;
+  carrinho.forEach(i=>{
+    total+=i.subtotal;
+    carrinhoDiv.innerHTML+=`<div>${i.qtd} x ${i.nome} = R$ ${i.subtotal.toFixed(2)}</div>`;
+  });
+  totalSpan.innerText=total.toFixed(2);
 }
-carregarCarrinho();
+atualizarCarrinho();
 
 /* 🔍 BUSCA */
 function buscarAuto(){
@@ -191,6 +143,21 @@ async function buscarLista(valor){
         ${p.nome} — R$ ${p.preco.toFixed(2)}
       </div>`;
   });
+}
+
+/* 🔎 BUSCA POR CÓDIGO */
+async function buscarProdutoCodigo(){
+  const valor=codigo.value.trim();
+  if(!valor) return;
+
+  const { data } = await supabaseClient
+    .from("produtos")
+    .select("*")
+    .eq("codigo_barra",valor)
+    .eq("app_id",admin.app_id)
+    .maybeSingle();
+
+  if(data) selecionarProduto(data);
 }
 
 function selecionarProduto(p){
@@ -222,17 +189,8 @@ function confirmarAdicionar(){
   salvarCarrinho();
   atualizarCarrinho();
   previewProduto.style.display="none";
-}
-
-/* 🛒 */
-function atualizarCarrinho(){
-  carrinhoDiv.innerHTML="";
-  total=0;
-  carrinho.forEach(i=>{
-    total+=i.subtotal;
-    carrinhoDiv.innerHTML+=`<div>${i.qtd} x ${i.nome} = R$ ${i.subtotal.toFixed(2)}</div>`;
-  });
-  totalSpan.innerText=total.toFixed(2);
+  codigo.value="";
+  quantidade.value=1;
 }
 
 /* 💸 PIX */
@@ -265,7 +223,7 @@ async function finalizarVenda(tipo){
 
   gerarPDF(tipo);
   carrinho=[];
-  salvarCarrinho(); // 👈 limpa só aqui
+  salvarCarrinho();
   atualizarCarrinho();
   pixBox.style.display="none";
 }
@@ -284,16 +242,6 @@ function gerarPDF(tipo){
   doc.text(`Pagamento: ${tipo}`,10,y+10);
   doc.save("recibo.pdf");
 }
-
-/* ELEMENTOS */
-const codigo=document.getElementById("codigo");
-const quantidade=document.getElementById("quantidade");
-const carrinhoDiv=document.getElementById("carrinho");
-const totalSpan=document.getElementById("total");
-const leitor=document.getElementById("leitor");
-const pixBox=document.getElementById("pixBox");
-const qrcode=document.getElementById("qrcode");
-const listaBusca=document.getElementById("listaBusca");
 </script>
 
 </body>
