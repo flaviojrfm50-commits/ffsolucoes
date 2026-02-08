@@ -2,271 +2,124 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Caixa | FF Soluções</title>
+<title>Painel | Mercado</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial;background:#020617;color:#e5e7eb}
-.topo-app{padding:10px 14px;border-bottom:1px solid #0f172a}
-.brand{font-size:22px;font-weight:900;color:#38bdf8}
-.mobile-pos{padding:12px;padding-bottom:220px}
-.card{background:#0f172a;border-radius:14px;padding:12px;margin-bottom:10px}
-.card input,.card textarea,.card button{
-  width:100%;padding:10px;font-size:14px;
-  border-radius:10px;border:none;margin-bottom:6px
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#020617;
+  color:#fff;
 }
-.card input,.card textarea{background:#020617;color:#fff}
-.card button{cursor:pointer;background:#0ea5e9;color:#fff}
-.lista-item{padding:8px;border-radius:8px;background:#020617;margin-bottom:4px;cursor:pointer}
-.lista-item:hover{background:#1e293b}
-.carrinho div{padding:4px 0;border-bottom:1px solid #1e293b}
-.pagamento .dinheiro{background:#16a34a}
-.pagamento .pix{background:#0ea5e9}
-.pagamento .cartao{background:#2563eb}
-.pagamento .fiado{background:#7c3aed}
-.total-fixo{
-  position:fixed;bottom:0;left:0;width:100%;
-  background:#020617;border-top:1px solid #0f172a;
-  color:#38bdf8;text-align:center;padding:12px;
-  font-size:18px;font-weight:900
+.topo{
+  background:#0f172a;
+  padding:18px 24px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
-.info{text-align:center;font-weight:bold}
-.hidden{display:none}
+.topo h2{margin:0}
+.sair{
+  background:#e53935;
+  color:#fff;
+  border:none;
+  padding:10px 16px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.container{
+  max-width:900px;
+  margin:40px auto;
+  padding:20px;
+}
+
+.bemvindo{
+  margin-bottom:30px;
+  opacity:.9;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:20px;
+}
+
+.card{
+  background:#0f172a;
+  padding:24px;
+  border-radius:18px;
+  cursor:pointer;
+  transition:.2s;
+}
+.card:hover{
+  background:#162033;
+  transform:translateY(-3px);
+}
+.card h3{margin-top:0}
+.card p{opacity:.8;font-size:14px}
 </style>
 </head>
 
 <body>
 
-<div class="topo-app"><div class="brand">CAIXA</div></div>
+<script>
+/* 🔐 VALIDA SESSÃO */
+const admin = JSON.parse(localStorage.getItem("admin_logado"));
 
-<div class="mobile-pos">
+if(!admin || admin.tipo !== "mercado"){
+  alert("Sessão inválida. Faça login novamente.");
+  window.location.href = "login.html";
+}
+</script>
 
-  <!-- BUSCA -->
-  <div class="card">
-    <input id="codigo" placeholder="Código ou nome do produto" oninput="autoBuscar()">
-    <div id="listaBusca"></div>
-  </div>
-
-  <div class="card">
-    <input id="quantidade" type="number" min="1" value="1">
-  </div>
-
-  <div class="card hidden" id="previewProduto">
-    <b id="prevNome"></b>
-    <p>R$ <span id="prevPreco"></span> | Estoque: <span id="prevEstoque"></span></p>
-    <button onclick="confirmarAdicionar()">Adicionar</button>
-  </div>
-
-  <!-- CARRINHO -->
-  <div class="card carrinho">
-    <b>🛒 Carrinho</b>
-    <div id="carrinho"></div>
-  </div>
-
-  <!-- PAGAMENTO -->
-  <div class="card pagamento">
-    <b>💳 Pagamento</b>
-    <input id="valorPago" type="number" step="0.01" placeholder="Valor pago" oninput="calcularPagamento()">
-    <button class="dinheiro" onclick="finalizarVenda('DINHEIRO')">Dinheiro</button>
-    <button class="pix" onclick="finalizarVenda('PIX')">PIX</button>
-    <button class="cartao" onclick="finalizarVenda('CARTAO')">Cartão</button>
-    <button class="fiado" onclick="abrirFiado()">Fiado</button>
-    <div id="infoPagamento" class="info"></div>
-  </div>
-
-  <!-- FIADO -->
-  <div class="card hidden" id="formFiado">
-    <input id="fiadoNome" placeholder="Nome do cliente">
-    <input id="fiadoCpf" placeholder="CPF">
-    <textarea id="fiadoObs" placeholder="Observação"></textarea>
-    <button class="fiado" onclick="confirmarFiado()">Confirmar Fiado</button>
-  </div>
-
+<div class="topo">
+  <h2>🛒 Admin Mercado</h2>
+  <button class="sair" onclick="logout()">Sair</button>
 </div>
 
-<div class="total-fixo">
-  TOTAL: R$ <span id="total">0.00</span>
+<div class="container">
+  <div class="bemvindo">
+    <h3>Bem-vindo, <b id="nome"></b></h3>
+    <p>Painel administrativo do mercado</p>
+  </div>
+
+  <div class="grid">
+    <div class="card" onclick="go('admins.html')">
+      <h3>👥 Administradores</h3>
+      <p>Criar e gerenciar usuários do mercado</p>
+    </div>
+
+    <div class="card" onclick="go('produtos.html')">
+      <h3>📦 Produtos</h3>
+      <p>Cadastrar e controlar estoque</p>
+    </div>
+
+    <div class="card" onclick="go('vendas.html')">
+      <h3>🛒 Vendas</h3>
+      <p>Registrar vendas no caixa</p>
+    </div>
+
+    <div class="card" onclick="go('relatorios.html')">
+      <h3>📊 Relatórios</h3>
+      <p>Visualizar faturamento e vendas</p>
+    </div>
+  </div>
 </div>
 
 <script>
-const admin = JSON.parse(localStorage.getItem("admin_logado"));
-const supabaseClient = supabase.createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-);
+document.getElementById("nome").innerText = admin.usuario;
 
-const codigo = document.getElementById("codigo");
-const listaBusca = document.getElementById("listaBusca");
-const quantidade = document.getElementById("quantidade");
-const previewProduto = document.getElementById("previewProduto");
-const prevNome = document.getElementById("prevNome");
-const prevPreco = document.getElementById("prevPreco");
-const prevEstoque = document.getElementById("prevEstoque");
-const carrinhoDiv = document.getElementById("carrinho");
-const totalSpan = document.getElementById("total");
-const valorPago = document.getElementById("valorPago");
-const infoPagamento = document.getElementById("infoPagamento");
-const formFiado = document.getElementById("formFiado");
-
-let carrinho = [];
-let produtoAtual = null;
-let total = 0;
-let timerBusca = null;
-
-function round2(v){return Math.round(v*100)/100;}
-
-/* BUSCA */
-function autoBuscar(){
-  clearTimeout(timerBusca);
-  const v = codigo.value.trim();
-  if(!v){ listaBusca.innerHTML=""; return; }
-
-  timerBusca = setTimeout(()=>{
-    if(/^\d+$/.test(v)) buscarCodigo(v);
-    else buscarNome(v);
-  },300);
+function go(pagina){
+  window.location.href = pagina;
 }
 
-async function buscarNome(v){
-  const {data} = await supabaseClient
-    .from("produtos")
-    .select("*")
-    .eq("app_id", admin.app_id)
-    .ilike("nome", `%${v}%`)
-    .limit(5);
-
-  listaBusca.innerHTML="";
-  data?.forEach(p=>{
-    listaBusca.innerHTML+=`
-      <div class="lista-item" onclick='selecionarProduto(${JSON.stringify(p)})'>
-        ${p.nome} — R$ ${p.preco.toFixed(2)}
-      </div>`;
-  });
-}
-
-async function buscarCodigo(v){
-  const {data} = await supabaseClient
-    .from("produtos")
-    .select("*")
-    .eq("codigo_barra", v)
-    .eq("app_id", admin.app_id)
-    .maybeSingle();
-  if(data) selecionarProduto(data);
-}
-
-/* PRODUTO */
-function selecionarProduto(p){
-  produtoAtual = p;
-  prevNome.innerText = p.nome;
-  prevPreco.innerText = p.preco.toFixed(2);
-  prevEstoque.innerText = p.estoque;
-  previewProduto.classList.remove("hidden");
-  listaBusca.innerHTML="";
-}
-
-function confirmarAdicionar(){
-  const qtd = Number(quantidade.value);
-  carrinho.push({
-    id: produtoAtual.id,
-    nome: produtoAtual.nome,
-    qtd,
-    preco: produtoAtual.preco,
-    subtotal: round2(qtd*produtoAtual.preco)
-  });
-  atualizarCarrinho();
-  previewProduto.classList.add("hidden");
-  codigo.value="";
-}
-
-/* CARRINHO */
-function atualizarCarrinho(){
-  carrinhoDiv.innerHTML="";
-  total=0;
-  carrinho.forEach(i=>{
-    total+=i.subtotal;
-    carrinhoDiv.innerHTML+=`${i.qtd} x ${i.nome} = R$ ${i.subtotal.toFixed(2)}<br>`;
-  });
-  totalSpan.innerText = round2(total).toFixed(2);
-}
-
-/* INFO */
-function calcularPagamento(){
-  infoPagamento.innerText="";
-  const pago = Number(valorPago.value);
-  if(!pago) return;
-  if(pago < total) infoPagamento.innerText=`Falta R$ ${(total-pago).toFixed(2)}`;
-  else if(pago > total) infoPagamento.innerText=`Troco R$ ${(pago-total).toFixed(2)}`;
-}
-
-/* RECIBO */
-function gerarRecibo(tipo,pago,devido){
-  const w = window.open("","_blank");
-  w.document.write(`
-    <h2>RECIBO</h2>
-    ${new Date().toLocaleString("pt-BR")}<hr>
-    ${carrinho.map(i=>`${i.qtd} x ${i.nome} = R$ ${i.subtotal.toFixed(2)}`).join("<br>")}
-    <hr>
-    Total: R$ ${total.toFixed(2)}<br>
-    Pago: R$ ${pago.toFixed(2)}<br>
-    ${devido>0?"Devido":"Troco"}: R$ ${Math.abs(devido).toFixed(2)}<br>
-    Pagamento: ${tipo}
-    <script>window.print()</script>
-  `);
-}
-
-/* VENDA */
-async function finalizarVenda(tipo){
-  const pago = Number(valorPago.value);
-  const devido = round2(total - pago);
-
-  for(const i of carrinho){
-    await supabaseClient.from("vendas").insert({
-      app_id: admin.app_id,
-      produto_id: i.id,
-      quantidade: i.qtd,
-      valor_total: total,
-      valor_pago: pago,
-      valor_devido: 0,
-      forma_pagamento: tipo
-    });
-  }
-
-  gerarRecibo(tipo,pago,0);
-  carrinho=[];
-  atualizarCarrinho();
-  valorPago.value="";
-}
-
-/* FIADO */
-function abrirFiado(){ formFiado.classList.remove("hidden"); }
-
-async function confirmarFiado(){
-  const nome=document.getElementById("fiadoNome").value;
-  const cpf=document.getElementById("fiadoCpf").value;
-  const obs=document.getElementById("fiadoObs").value;
-  const pago=Number(valorPago.value)||0;
-  const devido=round2(total-pago);
-
-  for(const i of carrinho){
-    await supabaseClient.from("vendas").insert({
-      app_id: admin.app_id,
-      produto_id: i.id,
-      quantidade: i.qtd,
-      valor_total: total,
-      valor_pago: pago,
-      valor_devido: devido,
-      forma_pagamento:"FIADO",
-      cliente_nome:nome,
-      cliente_cpf:cpf,
-      observacao:obs
-    });
-  }
-
-  gerarRecibo("FIADO",pago,devido);
-  location.reload();
+function logout(){
+  localStorage.removeItem("admin_logado");
+  window.location.href = "login.html";
 }
 </script>
 
