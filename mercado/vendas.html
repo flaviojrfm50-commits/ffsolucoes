@@ -13,29 +13,96 @@
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Inter,Arial,sans-serif;background:#020617;color:#e5e7eb}
-.topo-app{position:sticky;top:0;z-index:20;background:#020617;padding:14px 16px;border-bottom:1px solid #0f172a}
-.brand span{font-size:26px;font-weight:900;color:#38bdf8}
-.mobile-pos{padding:16px;padding-bottom:120px}
-.card{background:#0f172a;border-radius:18px;padding:16px;margin-bottom:14px}
-.card input{width:100%;padding:14px;font-size:18px;border-radius:14px;border:none;background:#020617;color:#fff;margin-bottom:10px}
-.card button{width:100%;padding:14px;font-size:18px;border-radius:14px;border:none;cursor:pointer;background:#0ea5e9;color:#fff;margin-bottom:8px}
-.preview button{background:#22c55e}
+body{
+  margin:0;
+  font-family:Inter,Arial,sans-serif;
+  background:#020617;
+  color:#e5e7eb;
+}
+
+/* HEADER */
+.topo-app{
+  position:sticky;
+  top:0;
+  z-index:20;
+  background:#020617;
+  padding:14px 16px;
+  border-bottom:1px solid #0f172a;
+}
+.brand span{
+  font-size:26px;
+  font-weight:900;
+  color:#38bdf8;
+}
+
+/* LAYOUT */
+.mobile-pos{
+  padding:16px;
+  padding-bottom:260px; /* 🔴 espaço GARANTIDO pro pagamento */
+}
+
+/* CARDS */
+.card{
+  background:#0f172a;
+  border-radius:18px;
+  padding:16px;
+  margin-bottom:14px;
+}
+.card input{
+  width:100%;
+  padding:14px;
+  font-size:18px;
+  border-radius:14px;
+  border:none;
+  background:#020617;
+  color:#fff;
+  margin-bottom:10px;
+}
+.card button{
+  width:100%;
+  padding:14px;
+  font-size:18px;
+  border-radius:14px;
+  border:none;
+  cursor:pointer;
+  background:#0ea5e9;
+  color:#fff;
+  margin-bottom:10px;
+}
+
+/* PAGAMENTO */
 .pagamento .dinheiro{background:#16a34a}
 .pagamento .pix{background:#0ea5e9}
 .pagamento .cartao{background:#2563eb}
-.carrinho div{padding:10px 0;border-bottom:1px solid #1e293b}
-.total-fixo{position:fixed;bottom:0;left:0;width:100%;background:#020617;border-top:1px solid #0f172a;color:#38bdf8;text-align:center;padding:18px;font-size:24px;font-weight:900}
-.estoque-ok{color:#22c55e;font-weight:bold}
-.estoque-atencao{color:#eab308;font-weight:bold}
-.estoque-baixo{color:#ef4444;font-weight:bold}
+
+/* CARRINHO */
+.carrinho div{
+  padding:10px 0;
+  border-bottom:1px solid #1e293b;
+}
+
+/* TOTAL FIXO */
+.total-fixo{
+  position:fixed;
+  bottom:0;left:0;width:100%;
+  background:#020617;
+  border-top:1px solid #0f172a;
+  color:#38bdf8;
+  text-align:center;
+  padding:18px;
+  font-size:24px;
+  font-weight:900;
+  z-index:30;
+}
 </style>
 </head>
 
 <body>
 
 <div class="topo-app">
-  <div class="brand"><span>CAIXA</span></div>
+  <div class="brand">
+    <span>CAIXA</span>
+  </div>
 </div>
 
 <div class="mobile-pos">
@@ -49,13 +116,13 @@ body{margin:0;font-family:Inter,Arial,sans-serif;background:#020617;color:#e5e7e
     <div id="leitor" style="display:none"></div>
   </div>
 
-  <!-- QTD -->
+  <!-- QUANTIDADE -->
   <div class="card">
     <input id="quantidade" type="number" min="1" value="1">
   </div>
 
   <!-- PREVIEW -->
-  <div class="card preview" id="previewProduto" style="display:none">
+  <div class="card" id="previewProduto" style="display:none">
     <h3 id="prevNome"></h3>
     <p>Preço: <b>R$ <span id="prevPreco"></span></b></p>
     <p>Estoque: <span id="prevEstoque"></span></p>
@@ -68,12 +135,21 @@ body{margin:0;font-family:Inter,Arial,sans-serif;background:#020617;color:#e5e7e
     <div id="carrinho"></div>
   </div>
 
-  <!-- PAGAMENTO -->
+  <!-- PAGAMENTO (AGORA APARECE) -->
   <div class="card pagamento">
     <h3>💳 Pagamento</h3>
-    <button class="dinheiro" onclick="finalizarVenda('DINHEIRO')">Dinheiro</button>
-    <button class="pix" onclick="pagarPix()">PIX</button>
-    <button class="cartao" onclick="finalizarVenda('CARTAO')">Cartão</button>
+
+    <button class="dinheiro" onclick="finalizarVenda('DINHEIRO')">
+      Dinheiro
+    </button>
+
+    <button class="pix" onclick="pagarPix()">
+      PIX
+    </button>
+
+    <button class="cartao" onclick="finalizarVenda('CARTAO')">
+      Cartão
+    </button>
 
     <div id="pixBox" style="display:none;text-align:center">
       <div id="qrcode"></div>
@@ -99,7 +175,7 @@ const supabaseClient = supabase.createClient(
 let carrinho=[], total=0, produtoLido=null;
 let buscaTimer=null;
 
-/* BUSCA AUTOMÁTICA */
+/* BUSCA AUTO */
 function buscarAuto(){
   const v=codigo.value.trim();
   if(v.length<2){previewProduto.style.display="none";return;}
@@ -117,12 +193,13 @@ function abrirLeitor(){
 
   Quagga.onDetected(r=>{
     codigo.value=r.codeResult.code;
-    Quagga.stop(); leitor.style.display="none";
+    Quagga.stop();
+    leitor.style.display="none";
     buscarProduto();
   });
 }
 
-/* BUSCAR (CÓDIGO → NOME) */
+/* BUSCAR */
 async function buscarProduto(){
   const valor=codigo.value.trim();
   if(!valor) return;
@@ -150,10 +227,6 @@ async function buscarProduto(){
   prevNome.innerText=data.nome;
   prevPreco.innerText=data.preco.toFixed(2);
   prevEstoque.innerText=data.estoque;
-  prevEstoque.className=
-    data.estoque<=5?"estoque-baixo":
-    data.estoque<=10?"estoque-atencao":"estoque-ok";
-
   previewProduto.style.display="block";
 }
 
@@ -163,20 +236,36 @@ function confirmarAdicionar(){
   if(produtoLido.estoque<qtd)return alert("Estoque insuficiente");
 
   const item=carrinho.find(i=>i.id===produtoLido.id);
-  if(item){item.qtd+=qtd;item.subtotal=item.qtd*item.preco;}
-  else carrinho.push({...produtoLido,qtd,subtotal:qtd*produtoLido.preco});
+  if(item){
+    item.qtd+=qtd;
+    item.subtotal=item.qtd*item.preco;
+  }else{
+    carrinho.push({
+      id:produtoLido.id,
+      nome:produtoLido.nome,
+      preco:produtoLido.preco,
+      qtd,
+      estoque:produtoLido.estoque,
+      subtotal:qtd*produtoLido.preco
+    });
+  }
 
   atualizarCarrinho();
   previewProduto.style.display="none";
-  codigo.value="";quantidade.value=1;
+  codigo.value="";
+  quantidade.value=1;
 }
 
 /* CARRINHO */
 function atualizarCarrinho(){
-  carrinhoDiv.innerHTML=""; total=0;
+  carrinhoDiv.innerHTML="";
+  total=0;
   carrinho.forEach(i=>{
     total+=i.subtotal;
-    carrinhoDiv.innerHTML+=`<div>${i.qtd}x ${i.nome} = <b>R$ ${i.subtotal.toFixed(2)}</b></div>`;
+    carrinhoDiv.innerHTML+=`
+      <div>
+        ${i.qtd} x ${i.nome} = <b>R$ ${i.subtotal.toFixed(2)}</b>
+      </div>`;
   });
   totalSpan.innerText=total.toFixed(2);
 }
@@ -186,7 +275,10 @@ function pagarPix(){
   if(total<=0)return;
   pixBox.style.display="block";
   qrcode.innerHTML="";
-  new QRCode(qrcode,{text:`PIX|TOTAL:${total.toFixed(2)}`,width:180,height:180});
+  new QRCode(qrcode,{
+    text:`PIX|TOTAL:${total.toFixed(2)}`,
+    width:180,height:180
+  });
 }
 
 /* FINALIZAR */
@@ -209,16 +301,20 @@ async function finalizarVenda(tipo){
   }
 
   gerarPDF(tipo);
-  carrinho=[]; atualizarCarrinho();
+  carrinho=[];
+  atualizarCarrinho();
   pixBox.style.display="none";
 }
 
 /* PDF */
 function gerarPDF(tipo){
-  const doc=new jsPDF(); let y=10;
-  doc.text("COMPROVANTE DE VENDA",105,y,{align:"center"}); y+=10;
+  const doc=new jsPDF();
+  let y=10;
+  doc.text("COMPROVANTE DE VENDA",105,y,{align:"center"});
+  y+=10;
   carrinho.forEach(i=>{
-    doc.text(`${i.qtd}x ${i.nome} - R$ ${i.subtotal.toFixed(2)}`,10,y); y+=8;
+    doc.text(`${i.qtd} x ${i.nome} - R$ ${i.subtotal.toFixed(2)}`,10,y);
+    y+=8;
   });
   doc.text(`Total: R$ ${total.toFixed(2)}`,10,y+4);
   doc.text(`Pagamento: ${tipo}`,10,y+10);
