@@ -19,6 +19,8 @@ body{
   background:#020617;
   color:#fff;
 }
+
+/* TOPO */
 .topo{
   background:#0f172a;
   padding:14px 20px;
@@ -40,23 +42,25 @@ body{
   font-weight:bold;
 }
 
+/* CONTEÚDO */
 .container{
-  padding:20px;
+  padding:16px;
   max-width:1100px;
   margin:auto;
 }
-
 .container p{
   margin-top:0;
   margin-bottom:20px;
 }
 
+/* GRID */
 .grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
   gap:14px;
 }
 
+/* CARD */
 .card{
   background:#0f172a;
   padding:14px;
@@ -69,17 +73,17 @@ body{
   background:#162033;
   transform:translateY(-2px);
 }
-
 .card h3{
   margin:0 0 6px 0;
   font-size:16px;
 }
 .card p{
+  margin:0;
   opacity:.75;
   font-size:13px;
-  margin:0;
 }
 
+/* TOGGLE */
 .toggle{
   display:flex;
   align-items:center;
@@ -89,6 +93,38 @@ body{
 }
 .toggle input{
   transform:scale(1.2);
+}
+
+/* 🔥 AJUSTE REAL PARA CELULAR */
+@media (max-width: 600px){
+  .grid{
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+  }
+
+  .card{
+    padding:10px;
+    min-height:90px;
+    border-radius:12px;
+  }
+
+  .card h3{
+    font-size:14px;
+    margin-bottom:4px;
+  }
+
+  .card p{
+    font-size:12px;
+  }
+
+  .topo h2{
+    font-size:18px;
+  }
+
+  .sair{
+    padding:6px 10px;
+    font-size:13px;
+  }
 }
 </style>
 </head>
@@ -142,7 +178,7 @@ body{
 
     <div class="card">
       <h3>🔀 Modo do Site</h3>
-      <p>Escolha o modo ativo</p>
+      <p>Escolha o modo</p>
       <div class="toggle">
         <input type="checkbox" id="toggleSite">
         <span id="labelModo"></span>
@@ -168,7 +204,7 @@ body{
 </div>
 
 <script>
-/* ========= BASE PATH DINÂMICO ========= */
+/* ========= BASE PATH ========= */
 function getBasePath(){
   const path = window.location.pathname;
   if(path.includes("/ffsolucoes/")){
@@ -184,7 +220,6 @@ function irPara(pagina){
 
 /* ========= SESSÃO ========= */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
-
 if(!admin || !admin.app_id){
   location.replace("../auth/login.html");
   throw new Error("Sessão inválida");
@@ -194,7 +229,7 @@ localStorage.setItem("app_id", admin.app_id);
 document.getElementById("nome").innerText = admin.usuario;
 document.getElementById("appId").innerText = admin.app_id;
 
-/* ========= MODO DO SITE ========= */
+/* ========= MODO SITE ========= */
 const toggle = document.getElementById("toggleSite");
 const label = document.getElementById("labelModo");
 
@@ -213,10 +248,9 @@ toggle.addEventListener("change", () => {
   );
   syncModo();
 });
-
 syncModo();
 
-/* ========= SITE PÚBLICO ========= */
+/* ========= SITE ========= */
 function abrirSite(){
   const app = localStorage.getItem("app_id");
   const modo = localStorage.getItem("modo_site") || "cardapio";
