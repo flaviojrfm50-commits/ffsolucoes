@@ -36,6 +36,20 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
 
 #leitor video{width:100%;border-radius:12px;margin-top:10px}
 
+/* PREVIEW FOTOS */
+.preview-fotos{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
+.preview-fotos img{
+  width:60px;
+  height:60px;
+  object-fit:cover;
+  border-radius:8px;
+  border:1px solid #334155;
+}
+
 /* LISTA */
 .produto{
   background:#020617;
@@ -83,8 +97,14 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
   <input id="preco" type="number" step="0.01" placeholder="Preço">
   <input id="estoque" type="number" placeholder="Estoque">
 
-  <!-- ATÉ 3 FOTOS -->
-  <input id="fotos" type="file" accept="image/*" multiple>
+  <!-- BOTÃO VISÍVEL -->
+  <button type="button" onclick="document.getElementById('fotos').click()">
+    📸 Adicionar até 3 fotos
+  </button>
+  <input id="fotos" type="file" accept="image/*" multiple style="display:none">
+
+  <!-- PREVIEW -->
+  <div class="preview-fotos" id="previewFotos"></div>
 
   <button onclick="cadastrar()">Cadastrar</button>
 </div>
@@ -118,7 +138,18 @@ const nomeEl=nome,
 codigoEl=codigo_barra,
 precoEl=preco,
 estoqueEl=estoque,
-fotosEl=fotos;
+fotosEl=fotos,
+previewBox=document.getElementById("previewFotos");
+
+/* PREVIEW DAS FOTOS */
+fotosEl.addEventListener("change",()=>{
+  previewBox.innerHTML="";
+  [...fotosEl.files].slice(0,3).forEach(file=>{
+    const img=document.createElement("img");
+    img.src=URL.createObjectURL(file);
+    previewBox.appendChild(img);
+  });
+});
 
 /* TOGGLE */
 function toggleProdutos(){
@@ -183,6 +214,7 @@ async function cadastrar(){
 
   nomeEl.value=codigoEl.value=precoEl.value=estoqueEl.value="";
   fotosEl.value="";
+  previewBox.innerHTML="";
   carregar();
 }
 
@@ -196,7 +228,7 @@ async function carregar(){
 
   listaProdutos.innerHTML="";
   data.forEach(p=>{
-    const imgs=(p.imagens||[]).slice(0,3).map(u=>`<img src="${u}">`).join("");
+    const imgs=(p.imagens||[]).map(u=>`<img src="${u}">`).join("");
     listaProdutos.innerHTML+=`
       <div class="produto">
         <b>${p.nome}</b><br>
@@ -204,7 +236,6 @@ async function carregar(){
         Estoque: <b>${p.estoque}</b><br>
         R$ ${p.preco.toFixed(2)}<br>
         ${imgs}
-
         <button class="editar" onclick="editar('${p.id}','${p.nome}','${p.codigo_barra}','${p.preco}','${p.estoque}')">Editar</button>
         <button class="excluir" onclick="excluir('${p.id}')">Excluir</button>
       </div>
