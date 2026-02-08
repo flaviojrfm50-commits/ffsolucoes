@@ -2,323 +2,253 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Caixa | FF Soluções</title>
+<title>Painel do Bar / Restaurante</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#020617">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Inter,Arial;background:#020617;color:#e5e7eb;font-size:14px}
-.topo-app{padding:10px 14px;border-bottom:1px solid #0f172a}
-.brand{font-size:22px;font-weight:900;color:#38bdf8}
-.mobile-pos{padding:12px;padding-bottom:200px}
-.card{background:#0f172a;border-radius:14px;padding:12px;margin-bottom:10px}
-.card input,.card button{width:100%;padding:10px;font-size:14px;border-radius:10px;border:none}
-.card input{background:#020617;color:#fff;margin-bottom:6px}
-.card button{cursor:pointer;background:#0ea5e9;color:#fff;margin-bottom:6px}
-.lista-item{padding:8px;border-radius:8px;background:#020617;margin-bottom:4px;cursor:pointer}
-.lista-item:hover{background:#1e293b}
-.carrinho div{padding:4px 0;border-bottom:1px solid #1e293b}
-.pagamento .dinheiro{background:#16a34a}
-.pagamento .pix{background:#0ea5e9}
-.pagamento .cartao{background:#2563eb}
-.pagamento .fiado{background:#7c3aed}
-.total-fixo{
-  position:fixed;bottom:0;left:0;width:100%;
-  background:#020617;border-top:1px solid #0f172a;
-  color:#38bdf8;text-align:center;
-  padding:12px;font-size:18px;font-weight:900
+
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#020617;
+  color:#fff;
 }
-.info{text-align:center;font-weight:bold;margin-top:4px}
+
+/* TOPO */
+.topo{
+  background:#0f172a;
+  padding:14px 16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.topo h2{
+  margin:0;
+  font-size:18px;
+}
+.sair{
+  background:#e53935;
+  color:#fff;
+  border:none;
+  padding:8px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+/* CONTEÚDO */
+.container{
+  padding:16px;
+  padding-bottom:90px; /* espaço pros atalhos */
+  max-width:1100px;
+  margin:auto;
+}
+.container p{
+  margin:0 0 16px;
+}
+
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+}
+
+/* CARD */
+.card{
+  background:#0f172a;
+  padding:14px;
+  border-radius:14px;
+  cursor:pointer;
+  min-height:100px;
+}
+.card h3{
+  margin:0 0 6px;
+  font-size:15px;
+}
+.card p{
+  margin:0;
+  font-size:12px;
+  opacity:.7;
+}
+
+/* TOGGLE */
+.toggle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:8px;
+  font-size:12px;
+}
+
+/* ATALHOS */
+.bottom-nav{
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  background:#020617;
+  border-top:1px solid #0f172a;
+  display:flex;
+  justify-content:space-around;
+  padding:8px 0;
+}
+.bottom-nav button{
+  background:none;
+  border:none;
+  color:#cbd5f5;
+  font-size:11px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  cursor:pointer;
+}
+.bottom-nav button span{
+  font-size:20px;
+}
+
+/* DESKTOP */
+@media (min-width:768px){
+  .grid{
+    grid-template-columns:repeat(4,1fr);
+  }
+}
 </style>
 </head>
 
 <body>
 
-<div class="topo-app"><div class="brand">CAIXA</div></div>
-
-<div class="mobile-pos">
-
-  <!-- BUSCA AUTOMÁTICA -->
-  <div class="card">
-    <input id="codigo" placeholder="Código ou nome do produto" oninput="autoBuscar()">
-    <div id="listaBusca"></div>
-  </div>
-
-  <div class="card">
-    <input id="quantidade" type="number" min="1" value="1">
-  </div>
-
-  <div class="card" id="previewProduto" style="display:none">
-    <b id="prevNome"></b>
-    <p>R$ <span id="prevPreco"></span> | Estoque: <span id="prevEstoque"></span></p>
-    <button onclick="confirmarAdicionar()">Adicionar ao carrinho</button>
-  </div>
-
-  <!-- CARRINHO -->
-  <div class="card carrinho">
-    <b>🛒 Carrinho</b>
-    <div id="carrinho"></div>
-  </div>
-
-  <!-- PAGAMENTO -->
-  <div class="card pagamento">
-    <b>💳 Pagamento</b>
-    <input id="valorPago" type="number" step="0.01"
-      placeholder="Valor pago"
-      oninput="calcularPagamento()">
-
-    <button class="dinheiro" onclick="finalizarVenda('DINHEIRO')">Dinheiro</button>
-    <button class="pix" onclick="finalizarVenda('PIX')">PIX</button>
-    <button class="cartao" onclick="finalizarVenda('CARTAO')">Cartão</button>
-    <button class="fiado" onclick="finalizarFiado()">Fiado</button>
-
-    <div id="infoPagamento" class="info"></div>
-  </div>
-
+<div class="topo">
+  <h2>🍻 Painel</h2>
+  <button class="sair" onclick="logout()">Sair</button>
 </div>
 
-<div class="total-fixo">
-  TOTAL: R$ <span id="total">0.00</span>
+<div class="container">
+  <p>
+    Bem-vindo, <b id="nome"></b><br>
+    <small style="opacity:.6">ID: <span id="appId"></span></small>
+  </p>
+
+  <div class="grid">
+
+    <div class="card" onclick="irPara('/produtos.html')">
+      <h3>📦 Produtos</h3>
+      <p>Cadastro interno</p>
+    </div>
+
+    <div class="card" onclick="irPara('/categorias.html')">
+      <h3>📂 Categorias</h3>
+      <p>Bebidas e pratos</p>
+    </div>
+
+    <div class="card" onclick="irPara('/mesas.html')">
+      <h3>🪑 Mesas</h3>
+      <p>Status</p>
+    </div>
+
+    <div class="card" onclick="irPara('/pedidos.html')">
+      <h3>🧾 Cozinha</h3>
+      <p>Comandas</p>
+    </div>
+
+    <div class="card" onclick="irPara('/admins.html')">
+      <h3>⚙️ Admins</h3>
+      <p>Usuários</p>
+    </div>
+
+    <div class="card">
+      <h3>🔀 Modo do Site</h3>
+      <p>Escolha o modo</p>
+      <div class="toggle">
+        <input type="checkbox" id="toggleSite">
+        <span id="labelModo"></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ATALHOS FIXOS -->
+<div class="bottom-nav">
+  <button onclick="irPara('/caixa.html')">
+    <span>💰</span>Caixa
+  </button>
+  <button onclick="irPara('/pedidos.html')">
+    <span>🧾</span>Pedidos
+  </button>
+  <button onclick="irPara('/produtos.html')">
+    <span>📦</span>Produtos
+  </button>
+  <button onclick="abrirSite()">
+    <span>🌍</span>Site
+  </button>
 </div>
 
 <script>
+function getBasePath(){
+  const p = location.pathname;
+  if(p.includes("/ffsolucoes/")) return "/ffsolucoes/bar";
+  return "/bar";
+}
+
+function irPara(p){
+  location.href = getBasePath() + p;
+}
+
+/* SESSÃO */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
-const supabaseClient = supabase.createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-);
-
-function round2(v){ return Math.round(v*100)/100; }
-
-const codigo = document.getElementById("codigo");
-const quantidade = document.getElementById("quantidade");
-const listaBusca = document.getElementById("listaBusca");
-const previewProduto = document.getElementById("previewProduto");
-const prevNome = document.getElementById("prevNome");
-const prevPreco = document.getElementById("prevPreco");
-const prevEstoque = document.getElementById("prevEstoque");
-const carrinhoDiv = document.getElementById("carrinho");
-const totalSpan = document.getElementById("total");
-const valorPago = document.getElementById("valorPago");
-const infoPagamento = document.getElementById("infoPagamento");
-
-let carrinho = JSON.parse(localStorage.getItem("carrinho_caixa")) || [];
-let produtoAtual = null;
-let total = 0;
-let timerBusca = null;
-
-/* ===== CARRINHO ===== */
-function atualizarCarrinho(){
-  carrinhoDiv.innerHTML="";
-  total=0;
-  carrinho.forEach(i=>{
-    total+=i.subtotal;
-    carrinhoDiv.innerHTML+=
-      `<div>${i.qtd} x ${i.nome} = R$ ${i.subtotal.toFixed(2)}</div>`;
-  });
-  total=round2(total);
-  totalSpan.innerText=total.toFixed(2);
-}
-atualizarCarrinho();
-
-/* ===== BUSCA AUTOMÁTICA ===== */
-function autoBuscar(){
-  clearTimeout(timerBusca);
-  const v = codigo.value.trim();
-  if(v.length < 1){
-    listaBusca.innerHTML="";
-    return;
-  }
-
-  timerBusca = setTimeout(()=>{
-    if(/^\d+$/.test(v) && v.length >= 8){
-      buscarProdutoCodigo(v);
-    }else{
-      buscarLista(v);
-    }
-  },300);
+if(!admin || !admin.app_id){
+  location.replace("../auth/login.html");
 }
 
-async function buscarLista(valor){
-  const {data} = await supabaseClient
-    .from("produtos")
-    .select("*")
-    .eq("app_id", admin.app_id)
-    .ilike("nome", `%${valor}%`)
-    .limit(5);
+document.getElementById("nome").innerText = admin.usuario;
+document.getElementById("appId").innerText = admin.app_id;
+localStorage.setItem("app_id", admin.app_id);
 
-  listaBusca.innerHTML="";
-  data?.forEach(p=>{
-    listaBusca.innerHTML+=`
-      <div class="lista-item" onclick='selecionarProduto(${JSON.stringify(p)})'>
-        ${p.nome} — R$ ${p.preco.toFixed(2)}
-      </div>`;
-  });
+/* MODO SITE */
+const toggle = document.getElementById("toggleSite");
+const label = document.getElementById("labelModo");
+
+function syncModo(){
+  const modo = localStorage.getItem("modo_site") || "cardapio";
+  toggle.checked = modo === "institucional";
+  label.innerText = toggle.checked
+    ? "Site Institucional"
+    : "Cardápio / Delivery";
+}
+toggle.onchange = ()=>{
+  localStorage.setItem(
+    "modo_site",
+    toggle.checked ? "institucional" : "cardapio"
+  );
+  syncModo();
+};
+syncModo();
+
+/* SITE */
+function abrirSite(){
+  const app = localStorage.getItem("app_id");
+  const modo = localStorage.getItem("modo_site") || "cardapio";
+  const base = getBasePath();
+  window.open(
+    modo==="institucional"
+    ? `${base}/public/site/index.html?app=${app}`
+    : `${base}/public/cardapio/index.html?app=${app}`,
+    "_blank"
+  );
 }
 
-async function buscarProdutoCodigo(valor){
-  const {data} = await supabaseClient
-    .from("produtos")
-    .select("*")
-    .eq("codigo_barra", valor)
-    .eq("app_id", admin.app_id)
-    .maybeSingle();
-
-  if(data) selecionarProduto(data);
-}
-
-/* ===== PRODUTO ===== */
-function selecionarProduto(p){
-  produtoAtual=p;
-  prevNome.innerText=p.nome;
-  prevPreco.innerText=p.preco.toFixed(2);
-  prevEstoque.innerText=p.estoque;
-  previewProduto.style.display="block";
-  listaBusca.innerHTML="";
-}
-
-function confirmarAdicionar(){
-  const qtd = Number(quantidade.value);
-  if(produtoAtual.estoque < qtd){
-    alert("Estoque insuficiente");
-    return;
-  }
-
-  const item = carrinho.find(i=>i.id===produtoAtual.id);
-  if(item){
-    item.qtd += qtd;
-    item.subtotal = round2(item.qtd * item.preco);
-  }else{
-    carrinho.push({
-      id: produtoAtual.id,
-      nome: produtoAtual.nome,
-      preco: produtoAtual.preco,
-      qtd,
-      estoque: produtoAtual.estoque,
-      subtotal: round2(qtd * produtoAtual.preco)
-    });
-  }
-
-  localStorage.setItem("carrinho_caixa", JSON.stringify(carrinho));
-  atualizarCarrinho();
-  previewProduto.style.display="none";
-  codigo.value="";
-  quantidade.value=1;
-}
-
-/* ===== PAGAMENTO INFO ===== */
-function calcularPagamento(){
-  infoPagamento.innerText="";
-  const pago = round2(Number(valorPago.value));
-  if(isNaN(pago) || pago<=0) return;
-
-  const minimo = round2(total * 0.9);
-  if(pago < minimo){
-    infoPagamento.innerText = "⚠️ Desconto máximo 10%";
-    return;
-  }
-
-  if(pago < total)
-    infoPagamento.innerText = `Desconto: R$ ${(total-pago).toFixed(2)}`;
-  else if(pago > total)
-    infoPagamento.innerText = `Troco: R$ ${(pago-total).toFixed(2)}`;
-  else
-    infoPagamento.innerText = "Pagamento exato";
-}
-
-/* ===== FINALIZAR NORMAL ===== */
-async function finalizarVenda(tipo){
-  if(carrinho.length===0){
-    alert("Carrinho vazio");
-    return;
-  }
-
-  const pago = round2(Number(valorPago.value));
-  if(isNaN(pago) || pago<=0){
-    alert("Informe valor válido");
-    return;
-  }
-
-  if(pago < round2(total * 0.9)){
-    alert("Desconto máximo 10%");
-    return;
-  }
-
-  if(tipo!=="DINHEIRO" && pago > total){
-    alert("PIX/Cartão não aceita valor maior");
-    return;
-  }
-
-  if(!confirm(`Confirmar pagamento em ${tipo}?`)) return;
-
-  for(const i of carrinho){
-    await supabaseClient.from("produtos")
-      .update({ estoque: i.estoque - i.qtd })
-      .eq("id", i.id)
-      .eq("app_id", admin.app_id);
-
-    await supabaseClient.from("vendas").insert({
-      app_id: admin.app_id,
-      produto_id: i.id,
-      quantidade: i.qtd,
-      valor_total: total,
-      valor_pago: pago,
-      forma_pagamento: tipo
-    });
-  }
-
-  carrinho=[];
-  localStorage.removeItem("carrinho_caixa");
-  atualizarCarrinho();
-  valorPago.value="";
-}
-
-/* ===== FINALIZAR FIADO ===== */
-async function finalizarFiado(){
-  if(carrinho.length===0){
-    alert("Carrinho vazio");
-    return;
-  }
-
-  const pago = round2(Number(valorPago.value) || 0);
-  const devido = round2(total - pago);
-  if(devido<=0){
-    alert("Nada para fiar");
-    return;
-  }
-
-  const nome = prompt("Nome do cliente:");
-  if(!nome) return;
-
-  const obs = prompt("Observação (ex: ficou devendo 5 reais):") || "";
-
-  for(const i of carrinho){
-    await supabaseClient.from("produtos")
-      .update({ estoque: i.estoque - i.qtd })
-      .eq("id", i.id)
-      .eq("app_id", admin.app_id);
-
-    await supabaseClient.from("vendas").insert({
-      app_id: admin.app_id,
-      produto_id: i.id,
-      quantidade: i.qtd,
-      valor_total: total,
-      valor_pago: pago,
-      valor_devido: devido,
-      forma_pagamento: "FIADO",
-      cliente_nome: nome,
-      observacao: obs
-    });
-  }
-
-  alert(`Fiado registrado\nCliente: ${nome}\nDeve: R$ ${devido.toFixed(2)}`);
-
-  carrinho=[];
-  localStorage.removeItem("carrinho_caixa");
-  atualizarCarrinho();
-  valorPago.value="";
+/* LOGOUT */
+function logout(){
+  localStorage.clear();
+  location.href="../auth/login.html";
 }
 </script>
 
