@@ -5,9 +5,6 @@
 <title>Painel do Bar / Restaurante</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#020617">
-
 <style>
 *{box-sizing:border-box}
 
@@ -50,27 +47,27 @@ body{
   margin:0 0 16px;
 }
 
-/* GRID — ISSO RESOLVE */
+/* 🔥 GRID FORÇADO */
 .grid{
-  display:grid;
-  grid-template-columns:repeat(2, 1fr); /* 2 POR LINHA NO CEL */
-  gap:12px;
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important; /* 2 LADO A LADO */
+  gap:14px !important;
 }
 
-/* CARD — TODOS IGUAIS */
+/* 🔥 CARD FORÇADO */
 .card{
-  background:#0f172a;
-  padding:16px;
-  border-radius:16px;
+  background:#0f172a !important;
+  padding:16px !important;
+  border-radius:16px !important;
   cursor:pointer;
 
-  height:140px;                 /* ALTURA FIXA */
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
+  height:150px !important;   /* TODOS IGUAIS */
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:center !important;
 }
 
-/* TEXTO NÃO QUEBRA O CARD */
+/* TEXTO CONTROLADO */
 .card h3{
   margin:0 0 6px;
   font-size:15px;
@@ -87,19 +84,10 @@ body{
   text-overflow:ellipsis;
 }
 
-/* TOGGLE */
-.toggle{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin-top:8px;
-  font-size:12px;
-}
-
 /* DESKTOP */
 @media (min-width:768px){
   .grid{
-    grid-template-columns:repeat(4, 1fr);
+    grid-template-columns:repeat(4,1fr) !important;
   }
 }
 </style>
@@ -115,41 +103,29 @@ body{
 <div class="container">
   <p>
     Bem-vindo, <b id="nome"></b><br>
-    <small style="opacity:.6">
-      ID do Negócio: <span id="appId"></span>
-    </small>
+    <small style="opacity:.6">ID do Negócio: <span id="appId"></span></small>
   </p>
 
   <div class="grid">
 
     <div class="card" onclick="irPara('/produtos.html')">
-      <h3>📦 Produtos do Bar</h3>
-      <p>Cadastro geral interno</p>
+      <h3>📦 Produtos</h3>
+      <p>Cadastro interno</p>
     </div>
 
     <div class="card" onclick="irPara('/categorias.html')">
       <h3>📂 Categorias</h3>
-      <p>Bebidas, pratos, lanches</p>
+      <p>Bebidas e pratos</p>
     </div>
 
     <div class="card" onclick="irPara('/mesas.html')">
       <h3>🪑 Mesas</h3>
-      <p>Status e controle</p>
+      <p>Status</p>
     </div>
 
     <div class="card" onclick="irPara('/pedidos.html')">
       <h3>🧾 Cozinha</h3>
-      <p>Comandas e entregas</p>
-    </div>
-
-    <div class="card" onclick="irPara('/caixa.html')">
-      <h3>💰 Caixa</h3>
-      <p>Entradas e saídas</p>
-    </div>
-
-    <div class="card" onclick="irPara('/admins.html')">
-      <h3>⚙️ Admins</h3>
-      <p>Usuários</p>
+      <p>Comandas</p>
     </div>
 
   </div>
@@ -161,22 +137,15 @@ function getBasePath(){
   if(p.includes("/ffsolucoes/")) return "/ffsolucoes/bar";
   return "/bar";
 }
-
 function irPara(p){
   location.href = getBasePath() + p;
 }
-
-/* SESSÃO */
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
 if(!admin || !admin.app_id){
   location.replace("../auth/login.html");
 }
-
 document.getElementById("nome").innerText = admin.usuario;
 document.getElementById("appId").innerText = admin.app_id;
-localStorage.setItem("app_id", admin.app_id);
-
-/* LOGOUT */
 function logout(){
   localStorage.clear();
   location.href="../auth/login.html";
