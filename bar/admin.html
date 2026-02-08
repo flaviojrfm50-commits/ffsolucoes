@@ -5,7 +5,6 @@
 <title>Painel do Bar / Restaurante</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#020617">
 
@@ -46,7 +45,6 @@ body{
 /* CONTEÚDO */
 .container{
   padding:16px;
-  padding-bottom:90px; /* espaço pros atalhos */
   max-width:1100px;
   margin:auto;
 }
@@ -59,24 +57,37 @@ body{
   display:grid;
   grid-template-columns:repeat(2,1fr);
   gap:12px;
+  align-items:stretch; /* <<< garante alinhamento */
 }
 
-/* CARD */
+/* CARD (AJUSTE PRINCIPAL) */
 .card{
   background:#0f172a;
   padding:14px;
   border-radius:14px;
   cursor:pointer;
-  min-height:100px;
+
+  height:130px;                 /* <<< TODOS IGUAIS */
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
 }
+
 .card h3{
   margin:0 0 6px;
   font-size:15px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
+
 .card p{
   margin:0;
   font-size:12px;
   opacity:.7;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 /* TOGGLE */
@@ -86,32 +97,6 @@ body{
   gap:8px;
   margin-top:8px;
   font-size:12px;
-}
-
-/* ATALHOS */
-.bottom-nav{
-  position:fixed;
-  bottom:0;
-  left:0;
-  width:100%;
-  background:#020617;
-  border-top:1px solid #0f172a;
-  display:flex;
-  justify-content:space-around;
-  padding:8px 0;
-}
-.bottom-nav button{
-  background:none;
-  border:none;
-  color:#cbd5f5;
-  font-size:11px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  cursor:pointer;
-}
-.bottom-nav button span{
-  font-size:20px;
 }
 
 /* DESKTOP */
@@ -175,22 +160,6 @@ body{
   </div>
 </div>
 
-<!-- ATALHOS FIXOS -->
-<div class="bottom-nav">
-  <button onclick="irPara('/caixa.html')">
-    <span>💰</span>Caixa
-  </button>
-  <button onclick="irPara('/pedidos.html')">
-    <span>🧾</span>Pedidos
-  </button>
-  <button onclick="irPara('/produtos.html')">
-    <span>📦</span>Produtos
-  </button>
-  <button onclick="abrirSite()">
-    <span>🌍</span>Site
-  </button>
-</div>
-
 <script>
 function getBasePath(){
   const p = location.pathname;
@@ -231,19 +200,6 @@ toggle.onchange = ()=>{
   syncModo();
 };
 syncModo();
-
-/* SITE */
-function abrirSite(){
-  const app = localStorage.getItem("app_id");
-  const modo = localStorage.getItem("modo_site") || "cardapio";
-  const base = getBasePath();
-  window.open(
-    modo==="institucional"
-    ? `${base}/public/site/index.html?app=${app}`
-    : `${base}/public/cardapio/index.html?app=${app}`,
-    "_blank"
-  );
-}
 
 /* LOGOUT */
 function logout(){
