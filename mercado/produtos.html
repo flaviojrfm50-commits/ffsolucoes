@@ -16,13 +16,17 @@ body{margin:0;font-family:Arial;background:#020617;color:#fff}
 .box{background:#0f172a;padding:20px;border-radius:16px;margin-bottom:20px}
 
 input,button{
-  width:100%;padding:12px;margin-top:10px;border-radius:10px;border:none
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border-radius:10px;
+  border:none
 }
 input{background:#020617;color:#fff}
 button{background:#22c55e;font-weight:bold;cursor:pointer}
 #btnToggle{background:#334155}
 
-/* 🔥 NÃO ESTICAR O VÍDEO */
+/* NÃO ESTICAR VÍDEO */
 #leitor video{
   width:100%;
   height:auto;
@@ -30,18 +34,28 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
   border-radius:12px;
 }
 
-/* PREVIEW FOTOS */
+/* PREVIEW */
 .preview{display:flex;gap:8px;margin-top:10px}
 .preview img{
-  width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #334155
+  width:60px;height:60px;
+  object-fit:cover;
+  border-radius:8px;
+  border:1px solid #334155
 }
 
 /* LISTA */
 .produto{
-  background:#020617;padding:10px;border-radius:10px;margin-top:10px;text-align:center
+  background:#020617;
+  padding:10px;
+  border-radius:10px;
+  margin-top:10px;
+  text-align:center
 }
 .produto img{
-  width:45px;height:45px;object-fit:cover;border-radius:8px;margin:4px
+  width:45px;height:45px;
+  object-fit:cover;
+  border-radius:8px;
+  margin:4px
 }
 </style>
 </head>
@@ -70,7 +84,9 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
     📸 Tirar fotos do produto (até 3)
   </button>
 
-  <input id="fotos" type="file" accept="image/*" capture="environment" multiple style="display:none">
+  <input id="fotos" type="file" accept="image/*"
+    capture="environment" multiple style="display:none">
+
   <div class="preview" id="preview"></div>
 
   <button onclick="cadastrar()">Cadastrar</button>
@@ -86,14 +102,17 @@ button{background:#22c55e;font-weight:bold;cursor:pointer}
 
 </div>
 
-<!-- 🔊 BIP -->
+<!-- BIP -->
 <audio id="beep">
   <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQgAAAAA">
 </audio>
 
 <script>
 const admin = JSON.parse(localStorage.getItem("admin_logado"));
-if(!admin){ alert("Sessão inválida"); location.href="login.html"; }
+if(!admin){
+  alert("Sessão inválida");
+  location.href="login.html";
+}
 
 const supabaseClient = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
@@ -116,10 +135,26 @@ function toggleProdutos(){
     boxProdutos.style.display==="none" ? "block" : "none";
 }
 
-/* =========================
-   LEITOR RÁPIDO (SUPERMERCADO)
-   ========================= */
-let ultimoCodigo="", ultimoTempo=0;
+/* ===== VALIDAÇÃO EAN REAL ===== */
+function validarEAN(codigo){
+  if(!/^\d{8}$|^\d{13}$/.test(codigo)) return false;
+
+  let soma = 0;
+  let mult = codigo.length === 13 ? 1 : 3;
+
+  for(let i=codigo.length-2;i>=0;i--){
+    soma += Number(codigo[i]) * mult;
+    mult = mult === 3 ? 1 : 3;
+  }
+
+  const digito = (10 - (soma % 10)) % 10;
+  return digito === Number(codigo[codigo.length-1]);
+}
+
+/* ===== LEITOR ESTÁVEL ===== */
+let ultimoConfirmado="";
+let contadorIgual=0;
+let travado=false;
 
 function abrirLeitor(){
   leitor.style.display="block";
@@ -131,8 +166,8 @@ function abrirLeitor(){
       constraints:{ facingMode:"environment" }
     },
     locator:{
-      patchSize:"large",   // 🔥 rápido
-      halfSample:true      // 🔥 tolerante
+      patchSize:"large",
+      halfSample:true
     },
     decoder:{
       readers:["ean_reader","ean_8_reader","upc_reader","code_128_reader"]
@@ -140,28 +175,43 @@ function abrirLeitor(){
     locate:true
   }, err=>{
     if(err){
-      alert("Erro ao abrir câmera (verifique HTTPS/permissão)");
+      alert("Erro ao abrir câmera (HTTPS/permissão)");
       leitor.style.display="none";
       return;
     }
     Quagga.start();
   });
 
-  Quagga.onDetected(r=>{
-    const code=r.codeResult.code;
-    const agora=Date.now();
-    if(!code) return;
-    if(code===ultimoCodigo && agora-ultimoTempo<800) return;
+  Quagga.onDetected(result=>{
+    if(travado) return;
 
-    ultimoCodigo=code;
-    ultimoTempo=agora;
+    const code=result.codeResult.code;
+    if(!validarEAN(code)) return;
+
+    if(code===ultimoConfirmado){
+      contadorIgual++;
+    }else{
+      ultimoConfirmado=code;
+      contadorIgual=1;
+    }
+
+    if(contadorIgual<2) return;
+
+    travado=true;
 
     document.getElementById("beep").play().catch(()=>{});
     if(navigator.vibrate) navigator.vibrate(120);
 
     codigo_barra.value=code;
+
     Quagga.stop();
     leitor.style.display="none";
+
+    setTimeout(()=>{
+      travado=false;
+      contadorIgual=0;
+      ultimoConfirmado="";
+    },1000);
   });
 }
 
@@ -177,7 +227,8 @@ async function cadastrar(){
     const path=`${admin.app_id}/${Date.now()}_${f.name}`;
     await supabaseClient.storage.from("produtos").upload(path,f);
     imagens.push(
-      supabaseClient.storage.from("produtos").getPublicUrl(path).data.publicUrl
+      supabaseClient.storage.from("produtos")
+      .getPublicUrl(path).data.publicUrl
     );
   }
 
