@@ -7,13 +7,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+/* ================= VARIÁVEIS BASE ================= */
 :root{
   --primaria:#22c55e;
   --fundo:#020617;
   --card:#0f172a;
 }
 
-/* TEMAS */
+/* ================= TEMAS (CONTROLADOS PELO CONFIG) ================= */
 body.tema-carnaval{--primaria:#ec4899;--card:#1f0a16;}
 body.tema-saojoao{--primaria:#f97316;--card:#2a1608;}
 body.tema-natal{--primaria:#22c55e;--card:#052e1a;}
@@ -27,7 +28,7 @@ body{
   color:#fff;
 }
 
-/* BANNER */
+/* ================= BANNER ================= */
 .banner{
   height:220px;
   background-size:cover;
@@ -47,7 +48,7 @@ body{
   z-index:2;
 }
 
-/* PRODUTOS */
+/* ================= PRODUTOS ================= */
 .section{padding:20px 12px}
 .grid{
   display:grid;
@@ -70,7 +71,7 @@ body{
 .preco{color:var(--primaria);font-weight:700;font-size:13px}
 .produto button{
   margin-top:4px;
-  padding:5px;
+  padding:6px;
   width:100%;
   border:none;
   border-radius:6px;
@@ -79,7 +80,7 @@ body{
   font-weight:700;
 }
 
-/* CARRINHO */
+/* ================= CARRINHO ================= */
 .carrinho-btn{
   position:fixed;
   bottom:14px;
@@ -102,7 +103,7 @@ body{
   display:none;
 }
 
-/* MODAL CARRINHO */
+/* ================= MODAL CARRINHO ================= */
 .carrinho{
   position:fixed;
   inset:0;
@@ -135,7 +136,7 @@ input,select,textarea{
   color:#fff;
 }
 
-/* MODAL IMAGEM */
+/* ================= MODAL IMAGEM ================= */
 .modal-imagem{
   position:fixed;
   inset:0;
@@ -184,7 +185,7 @@ input,select,textarea{
     <div id="itens"></div>
 
     <input id="cliente" placeholder="Seu nome">
-    <input id="localizacao" placeholder="Endereço">
+    <input id="localizacao" placeholder="Endereço / referência">
 
     <select id="pagamento">
       <option value="">Forma de pagamento</option>
@@ -193,7 +194,6 @@ input,select,textarea{
       <option>Cartão</option>
     </select>
 
-    <input id="troco" placeholder="Troco para quanto?">
     <textarea id="observacao" placeholder="Observações"></textarea>
 
     <button class="finalizar" onclick="finalizar()">Enviar no WhatsApp</button>
@@ -201,45 +201,66 @@ input,select,textarea{
   </div>
 </div>
 
-<!-- MODAL IMAGEM (AJUSTADO) -->
+<!-- MODAL IMAGEM -->
 <div class="modal-imagem" id="modalImagem" onclick="fecharImagem(event)">
   <span onclick="fecharImagem(event)">✕</span>
   <img id="imgModal" onclick="event.stopPropagation()">
 </div>
 
 <script>
+/* ================= SUPABASE ================= */
 const sb = supabase.createClient(
   "https://pdajixsoowcyhnjwhgpc.supabase.co",
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-const app=new URLSearchParams(location.search).get("app");
-if(!app){document.body.innerText="Mercado não encontrado";throw"";}
+/* ================= APP ================= */
+const app = new URLSearchParams(location.search).get("app");
+if(!app){ document.body.innerText="Mercado não encontrado"; throw ""; }
 
 const carrinhoKey="carrinho_"+app;
 let carrinho=JSON.parse(localStorage.getItem(carrinhoKey))||[];
 let whatsapp="";
 
-/* CONFIG */
+/* ELEMENTOS MODAL IMAGEM */
+const modalImagem=document.getElementById("modalImagem");
+const imgModal=document.getElementById("imgModal");
+
+/* ================= CONFIG SITE ================= */
 (async()=>{
-  const {data}=await sb.from("config_site").select("*").eq("app_id",app).maybeSingle();
-  if(!data)return;
+  const {data}=await sb
+    .from("config_site")
+    .select("*")
+    .eq("app_id",app)
+    .maybeSingle();
+
+  if(!data) return;
+
   nome.innerText=data.nome_site||"";
   descricao.innerText=data.descricao_site||"";
-  if(data.banner_url) banner.style.backgroundImage=`url(${data.banner_url})`;
   whatsapp=data.whatsapp||"";
-  if(data.tema_site && data.tema_site!=="padrao")
+
+  if(data.banner_url)
+    banner.style.backgroundImage=`url(${data.banner_url})`;
+
+  /* AQUI O TEMA PELO CONFIG */
+  document.body.className="";
+  if(data.tema_site && data.tema_site!=="padrao"){
     document.body.classList.add("tema-"+data.tema_site);
+  }
 })();
 
-/* PRODUTOS */
+/* ================= PRODUTOS ================= */
 async function carregarProdutos(){
-  const {data}=await sb.from("produtos").select("*")
-    .eq("app_id",app).eq("ativo",true);
+  const {data}=await sb
+    .from("produtos")
+    .select("*")
+    .eq("app_id",app)
+    .eq("ativo",true);
 
   listaProdutos.innerHTML=data.map(p=>`
     <div class="produto">
-      ${p.imagem?`<img src="${p.imagem}" onclick="abrirImagem('${p.imagem}')">`:""}
+      ${p.imagem ? `<img src="${p.imagem}" onclick="abrirImagem('${p.imagem}')">` : ""}
       <div class="info">
         <h4>${p.nome}</h4>
         <div class="preco">R$ ${p.preco.toFixed(2)}</div>
@@ -249,18 +270,18 @@ async function carregarProdutos(){
   `).join("");
 }
 
-/* IMAGEM – CORRIGIDO */
+/* ================= IMAGEM ================= */
 function abrirImagem(url){
-  imgModal.src = url;
-  modalImagem.style.display = "flex";
+  imgModal.src=url;
+  modalImagem.style.display="flex";
 }
 function fecharImagem(e){
   if(e) e.stopPropagation();
-  modalImagem.style.display = "none";
-  imgModal.src = "";
+  modalImagem.style.display="none";
+  imgModal.src="";
 }
 
-/* CARRINHO */
+/* ================= CARRINHO ================= */
 function atualizarBadge(){
   const total=carrinho.reduce((s,p)=>s+p.qtd,0);
   badgeCarrinho.innerText=total;
@@ -297,9 +318,9 @@ function renderCarrinho(){
   itens.innerHTML+=`<b>Total: R$ ${total.toFixed(2)}</b>`;
 }
 
-/* FINALIZAR */
+/* ================= FINALIZAR ================= */
 function finalizar(){
-  if(!whatsapp)return alert("WhatsApp não configurado");
+  if(!whatsapp){alert("WhatsApp não configurado");return;}
   let msg="🛒 *Novo Pedido*\n\n";
   let total=0;
   carrinho.forEach(p=>{
@@ -310,8 +331,7 @@ function finalizar(){
   msg+=`\n💰 Total: R$ ${total.toFixed(2)}`;
   msg+=`\n👤 ${cliente.value||"Não informado"}`;
   msg+=`\n📍 ${localizacao.value||"Não informado"}`;
-  msg+=`\n💳 ${pagamento.value||""}`;
-  msg+=`\n💵 Troco: ${troco.value||"Não precisa"}`;
+  msg+=`\n💳 ${pagamento.value||"Não informado"}`;
   msg+=`\n📝 ${observacao.value||""}`;
 
   window.open(`https://wa.me/55${whatsapp}?text=${encodeURIComponent(msg)}`,"_blank");
