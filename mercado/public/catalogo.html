@@ -201,10 +201,10 @@ input,select,textarea{
   </div>
 </div>
 
-<!-- MODAL IMAGEM -->
-<div class="modal-imagem" id="modalImagem" onclick="fecharImagem()">
-  <span>✕</span>
-  <img id="imgModal">
+<!-- MODAL IMAGEM (AJUSTADO) -->
+<div class="modal-imagem" id="modalImagem" onclick="fecharImagem(event)">
+  <span onclick="fecharImagem(event)">✕</span>
+  <img id="imgModal" onclick="event.stopPropagation()">
 </div>
 
 <script>
@@ -249,14 +249,15 @@ async function carregarProdutos(){
   `).join("");
 }
 
-/* IMAGEM */
+/* IMAGEM – CORRIGIDO */
 function abrirImagem(url){
-  imgModal.src=url;
-  modalImagem.style.display="flex";
+  imgModal.src = url;
+  modalImagem.style.display = "flex";
 }
-function fecharImagem(){
-  modalImagem.style.display="none";
-  imgModal.src="";
+function fecharImagem(e){
+  if(e) e.stopPropagation();
+  modalImagem.style.display = "none";
+  imgModal.src = "";
 }
 
 /* CARRINHO */
