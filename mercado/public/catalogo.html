@@ -7,35 +7,22 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-/* ===== VARIÁVEIS BASE ===== */
 :root{
   --primaria:#22c55e;
   --fundo:#020617;
   --card:#0f172a;
 }
 
-/* ===== TEMAS ===== */
-body.tema-carnaval{
-  --primaria:#ec4899;
-  --card:#1f0a16;
-}
-body.tema-saojoao{
-  --primaria:#f97316;
-  --card:#2a1608;
-}
-body.tema-natal{
-  --primaria:#22c55e;
-  --card:#052e1a;
-}
-body.tema-anonovo{
-  --primaria:#eab308;
-  --card:#1f1a00;
-}
+/* TEMAS */
+body.tema-carnaval{--primaria:#ec4899;--card:#1f0a16;}
+body.tema-saojoao{--primaria:#f97316;--card:#2a1608;}
+body.tema-natal{--primaria:#22c55e;--card:#052e1a;}
+body.tema-anonovo{--primaria:#eab308;--card:#1f1a00;}
 
 *{box-sizing:border-box}
 body{
   margin:0;
-  font-family:'Segoe UI',system-ui,sans-serif;
+  font-family:system-ui,sans-serif;
   background:var(--fundo);
   color:#fff;
 }
@@ -59,8 +46,6 @@ body{
   left:14px;
   z-index:2;
 }
-.banner-content h1{margin:0;font-size:22px}
-.banner-content p{opacity:.85;font-size:14px}
 
 /* PRODUTOS */
 .section{padding:20px 12px}
@@ -78,6 +63,7 @@ body{
   width:100%;
   height:90px;
   object-fit:cover;
+  cursor:pointer;
 }
 .info{padding:6px;text-align:center}
 .info h4{font-size:12px;margin:2px 0}
@@ -99,7 +85,6 @@ body{
   bottom:14px;
   right:14px;
   background:var(--primaria);
-  color:#022c22;
   padding:14px;
   border-radius:50%;
   font-size:18px;
@@ -110,7 +95,6 @@ body{
   top:-4px;
   right:-4px;
   background:#ef4444;
-  color:#fff;
   font-size:12px;
   font-weight:700;
   padding:2px 6px;
@@ -118,7 +102,7 @@ body{
   display:none;
 }
 
-/* MODAL */
+/* MODAL CARRINHO */
 .carrinho{
   position:fixed;
   inset:0;
@@ -132,12 +116,14 @@ body{
   justify-content:space-between;
   margin-bottom:8px;
 }
-.item button{
-  background:#334155;
-  color:#fff;
+.finalizar{
+  margin-top:12px;
+  padding:12px;
+  width:100%;
   border:none;
-  border-radius:6px;
-  padding:4px 8px;
+  border-radius:10px;
+  background:var(--primaria);
+  font-weight:700;
 }
 input,select,textarea{
   width:100%;
@@ -148,14 +134,28 @@ input,select,textarea{
   background:#0f172a;
   color:#fff;
 }
-.finalizar{
-  margin-top:12px;
-  padding:12px;
-  width:100%;
-  border:none;
+
+/* MODAL IMAGEM */
+.modal-imagem{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.9);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:50;
+}
+.modal-imagem img{
+  max-width:95%;
+  max-height:95%;
   border-radius:10px;
-  background:var(--primaria);
-  font-weight:700;
+}
+.modal-imagem span{
+  position:absolute;
+  top:15px;
+  right:20px;
+  font-size:28px;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -175,8 +175,7 @@ input,select,textarea{
 </section>
 
 <div class="carrinho-btn" onclick="abrirCarrinho()">
-  🛒
-  <span class="badge" id="badgeCarrinho">0</span>
+  🛒 <span class="badge" id="badgeCarrinho">0</span>
 </div>
 
 <div class="carrinho" id="carrinhoModal">
@@ -185,7 +184,7 @@ input,select,textarea{
     <div id="itens"></div>
 
     <input id="cliente" placeholder="Seu nome">
-    <input id="localizacao" placeholder="Endereço / referência">
+    <input id="localizacao" placeholder="Endereço">
 
     <select id="pagamento">
       <option value="">Forma de pagamento</option>
@@ -194,12 +193,18 @@ input,select,textarea{
       <option>Cartão</option>
     </select>
 
-    <input id="troco" placeholder="Precisa de troco? Ex: 50" />
+    <input id="troco" placeholder="Troco para quanto?">
     <textarea id="observacao" placeholder="Observações"></textarea>
 
     <button class="finalizar" onclick="finalizar()">Enviar no WhatsApp</button>
     <button class="finalizar" style="background:#334155" onclick="fecharCarrinho()">Fechar</button>
   </div>
+</div>
+
+<!-- MODAL IMAGEM -->
+<div class="modal-imagem" id="modalImagem" onclick="fecharImagem()">
+  <span>✕</span>
+  <img id="imgModal">
 </div>
 
 <script>
@@ -208,8 +213,8 @@ const sb = supabase.createClient(
   "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
 );
 
-const app = new URLSearchParams(location.search).get("app");
-if(!app){ document.body.innerText="Mercado não encontrado"; throw ""; }
+const app=new URLSearchParams(location.search).get("app");
+if(!app){document.body.innerText="Mercado não encontrado";throw"";}
 
 const carrinhoKey="carrinho_"+app;
 let carrinho=JSON.parse(localStorage.getItem(carrinhoKey))||[];
@@ -219,27 +224,22 @@ let whatsapp="";
 (async()=>{
   const {data}=await sb.from("config_site").select("*").eq("app_id",app).maybeSingle();
   if(!data)return;
-
   nome.innerText=data.nome_site||"";
   descricao.innerText=data.descricao_site||"";
-
-  if(data.banner_url)
-    banner.style.backgroundImage=`url(${data.banner_url})`;
-
+  if(data.banner_url) banner.style.backgroundImage=`url(${data.banner_url})`;
   whatsapp=data.whatsapp||"";
-
-  /* APLICA TEMA */
-  if(data.tema_site && data.tema_site!=="padrao"){
+  if(data.tema_site && data.tema_site!=="padrao")
     document.body.classList.add("tema-"+data.tema_site);
-  }
 })();
 
 /* PRODUTOS */
 async function carregarProdutos(){
-  const {data}=await sb.from("produtos").select("*").eq("app_id",app).eq("ativo",true);
+  const {data}=await sb.from("produtos").select("*")
+    .eq("app_id",app).eq("ativo",true);
+
   listaProdutos.innerHTML=data.map(p=>`
     <div class="produto">
-      ${p.imagem?`<img src="${p.imagem}">`:""}
+      ${p.imagem?`<img src="${p.imagem}" onclick="abrirImagem('${p.imagem}')">`:""}
       <div class="info">
         <h4>${p.nome}</h4>
         <div class="preco">R$ ${p.preco.toFixed(2)}</div>
@@ -247,6 +247,16 @@ async function carregarProdutos(){
       </div>
     </div>
   `).join("");
+}
+
+/* IMAGEM */
+function abrirImagem(url){
+  imgModal.src=url;
+  modalImagem.style.display="flex";
+}
+function fecharImagem(){
+  modalImagem.style.display="none";
+  imgModal.src="";
 }
 
 /* CARRINHO */
@@ -288,7 +298,7 @@ function renderCarrinho(){
 
 /* FINALIZAR */
 function finalizar(){
-  if(!whatsapp){alert("WhatsApp não configurado");return;}
+  if(!whatsapp)return alert("WhatsApp não configurado");
   let msg="🛒 *Novo Pedido*\n\n";
   let total=0;
   carrinho.forEach(p=>{
@@ -299,15 +309,12 @@ function finalizar(){
   msg+=`\n💰 Total: R$ ${total.toFixed(2)}`;
   msg+=`\n👤 ${cliente.value||"Não informado"}`;
   msg+=`\n📍 ${localizacao.value||"Não informado"}`;
-  msg+=`\n💳 Pagamento: ${pagamento.value||"Não informado"}`;
+  msg+=`\n💳 ${pagamento.value||""}`;
   msg+=`\n💵 Troco: ${troco.value||"Não precisa"}`;
   msg+=`\n📝 ${observacao.value||""}`;
 
   window.open(`https://wa.me/55${whatsapp}?text=${encodeURIComponent(msg)}`,"_blank");
-
-  carrinho=[];
-  salvar();
-  fecharCarrinho();
+  carrinho=[]; salvar(); fecharCarrinho();
 }
 
 atualizarBadge();
