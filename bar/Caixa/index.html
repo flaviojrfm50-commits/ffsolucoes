@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Caixa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script type="module" src="../js/auth.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{margin:0;font-family:Arial;background:#020617;color:#fff}
+.topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+.container{max-width:1200px;margin:auto;padding:24px}
+.box{background:#0f172a;padding:20px;border-radius:16px;margin-bottom:20px}
+.resumo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:15px}
+.card{background:#1e293b;padding:15px;border-radius:12px;text-align:center}
+.card h4{margin:0;color:#94a3b8;font-size:14px}
+.card p{margin:8px 0 0 0;font-size:18px;font-weight:bold;color:#22c55e}
+button{padding:10px 16px;border:none;border-radius:10px;background:#22c55e;font-weight:bold;cursor:pointer;margin-right:8px}
+button.sec{background:#1e293b;color:#fff}
+.badge{background:#ef4444;color:#fff;border-radius:999px;padding:2px 8px;font-size:12px;margin-left:6px}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{padding:10px;border-bottom:1px solid #1e293b;font-size:14px}
+th{color:#94a3b8}
+@keyframes piscar{0%{box-shadow:0 0 0 transparent}50%{box-shadow:0 0 18px rgba(234,179,8,.9)}100%{box-shadow:0 0 0 transparent}}
+.alerta.piscar{animation:piscar 1s infinite}
+</style>
+</head>
+
+<body>
+
+<div class="topo">
+  <h2>💰 Caixa</h2>
+  <div>
+    <button onclick="irPara('venda-avulsa.html')">➕ Venda Avulsa</button>
+    <button class="alerta" id="btnContas" style="display:none" onclick="scrollContas()">
+      🔔 Contas <span class="badge" id="qtdContas">0</span>
+    </button>
+    <button class="sec" onclick="irPara('historico.html')">📊 Histórico</button>
+    <button class="sec" onclick="irPara('admin.html')">Voltar</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="box">
+    <h3>📊 Fechamento de Caixa</h3>
+
+    <div class="resumo-grid">
+      <div class="card">
+        <h4>Total Recebido Hoje</h4>
+        <p id="totalRecebido">R$ 0.00</p>
+      </div>
+      <div class="card">
+        <h4>Quantidade de Vendas</h4>
+        <p id="qtdVendas">0</p>
+      </div>
+      <div class="card">
+        <h4>Data</h4>
+        <p id="dataHoje">--/--/----</p>
+      </div>
+    </div>
+
+    <br>
+    <button onclick="gerarFechamento()">🔄 Atualizar</button>
+    <button onclick="fecharCaixa()">📄 Fechar Caixa Hoje (PDF)</button>
+  </div>
+
+  <div class="box" id="boxContas" style="display:none">
+    <h3>🧾 Mesas aguardando pagamento</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Mesa</th>
+          <th>Total</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody id="listaContas"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script type="module">
+import { supabase } from "../js/supabase.js";
+
+let resumoPagamentosGlobal = "";
+let canalRealtime = null;
+
+async function aguardarSessao(){
+  while(!window.APP_ID){
+    await new Promise(r=>setTimeout(r,100));
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if(session){
+    await supabase.realtime.setAuth(session.access_token);
+  }
+
+  await verificarContas();
+  await gerarFechamento();
+  ativarRealtime();
+}
+aguardarSessao();
+
+window.irPara = p => location.href = p;
+window.scrollContas = () => document.getElementById("boxContas").scrollIntoView({behavior:"smooth"});
+window.irPagamento = id => location.href = `pagamento.html?pedido=${id}`;
+
+/* =========================
+   REALTIME
+========================= */
+function ativarRealtime(){
+  if(canalRealtime){
+    supabase.removeChannel(canalRealtime);
+  }
+
+  canalRealtime = supabase
+    .channel("caixa-realtime")
+    .on("postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "pedidos"
+      },
+      async (payload) => {
+        if(payload.new.status === "conta_solicitada"){
+          tocarSom();
+        }
+        await verificarContas();
+        await gerarFechamento();
+      }
+    )
+    .subscribe();
+}
+
+function tocarSom(){
+  const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+  audio.play().catch(()=>{});
+}
+
+/* =========================
+   CONTAS
+========================= */
+async function verificarContas(){
+
+  const { data: pedidos } = await supabase
+    .from("pedidos")
+    .select("id, app_id, mesa_id")
+    .eq("status", "conta_solicitada");
+
+  const filtrados = (pedidos || []).filter(p => p.app_id === window.APP_ID);
+
+  const btn = document.getElementById("btnContas");
+  const qtd = document.getElementById("qtdContas");
+  const box = document.getElementById("boxContas");
+  const lista = document.getElementById("listaContas");
+
+  lista.innerHTML = "";
+
+  if(filtrados.length === 0){
+    btn.style.display = "none";
+    btn.classList.remove("piscar");
+    box.style.display = "none";
+    return;
+  }
+
+  const ids = filtrados.map(p => p.id);
+
+  const { data: itens } = await supabase
+    .from("pedido_itens")
+    .select("pedido_id, preco, quantidade")
+    .in("pedido_id", ids);
+
+  const mesaIds = filtrados.map(p => p.mesa_id);
+
+  const { data: mesas } = await supabase
+    .from("mesas")
+    .select("id, numero_mesa")
+    .in("id", mesaIds);
+
+  btn.style.display = "inline-block";
+  btn.classList.add("piscar");
+  qtd.innerText = filtrados.length;
+  box.style.display = "block";
+
+  filtrados.forEach(p=>{
+
+    let total = 0;
+
+    (itens || [])
+      .filter(i => i.pedido_id === p.id)
+      .forEach(i=>{
+        total += Number(i.preco) * Number(i.quantidade);
+      });
+
+    const mesa = (mesas || []).find(m => m.id === p.mesa_id);
+
+    lista.innerHTML += `
+      <tr>
+        <td>Mesa ${mesa?.numero_mesa || "-"}</td>
+        <td>R$ ${total.toFixed(2)}</td>
+        <td>
+          <button onclick="irPagamento('${p.id}')">💳 Pagar</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+/* =========================
+   FECHAMENTO
+========================= */
+window.gerarFechamento = async function(){
+
+  const inicio = new Date();
+  inicio.setHours(0,0,0,0);
+  const amanha = new Date(inicio.getTime() + 86400000);
+
+  const { data: pedidos } = await supabase
+    .from("pedidos")
+    .select("id, forma_pagamento, created_at")
+    .eq("app_id", window.APP_ID)
+    .eq("status", "finalizado")
+    .gte("created_at", inicio.toISOString())
+    .lt("created_at", amanha.toISOString());
+
+  if(!pedidos || pedidos.length === 0){
+    document.getElementById("totalRecebido").innerText = "R$ 0.00";
+    document.getElementById("qtdVendas").innerText = "0";
+    document.getElementById("dataHoje").innerText = new Date().toLocaleDateString("pt-BR");
+    resumoPagamentosGlobal = "";
+    return;
+  }
+
+  const ids = pedidos.map(p => p.id);
+
+  const { data: itens } = await supabase
+    .from("pedido_itens")
+    .select("pedido_id, preco, quantidade")
+    .in("pedido_id", ids);
+
+  let total = 0;
+  let pagamentos = {};
+
+  pedidos.forEach(p => {
+    let totalPedido = 0;
+
+    (itens || [])
+      .filter(i => i.pedido_id === p.id)
+      .forEach(i => {
+        totalPedido += Number(i.preco) * Number(i.quantidade);
+      });
+
+    total += totalPedido;
+
+    const forma = p.forma_pagamento || "Não informado";
+    if(!pagamentos[forma]) pagamentos[forma] = 0;
+    pagamentos[forma] += totalPedido;
+  });
+
+  document.getElementById("totalRecebido").innerText = "R$ " + total.toFixed(2);
+  document.getElementById("qtdVendas").innerText = pedidos.length;
+  document.getElementById("dataHoje").innerText = new Date().toLocaleDateString("pt-BR");
+
+  let resumo = "";
+  for(const forma in pagamentos){
+    resumo += `${forma}: R$ ${pagamentos[forma].toFixed(2)}\n`;
+  }
+  resumoPagamentosGlobal = resumo;
+};
+</script>
+
+</body>
+</html>

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Mesa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script type="module" src="../js/auth.js"></script>
+<script type="module" src="../js/supabase.js"></script>
+
+<style>
+body{margin:0;font-family:Arial;background:#020617;color:#fff}
+.topo{background:#0f172a;padding:16px;font-size:20px;font-weight:bold}
+.container{max-width:900px;margin:auto;padding:20px}
+input{width:100%;padding:12px;border-radius:10px;border:none;margin-bottom:10px}
+.produto,.item{background:#0f172a;border-radius:14px;padding:14px;margin-bottom:12px}
+.produto{display:flex;justify-content:space-between;align-items:center}
+button{padding:6px 12px;border:none;border-radius:8px;cursor:pointer}
+.total{font-size:18px;font-weight:bold;margin:16px 0}
+.filtros{display:flex;gap:8px;margin-bottom:16px}
+.filtros button{flex:1;background:#1e293b;color:#fff}
+.filtros button.ativo{background:#2563eb}
+.bloqueado{opacity:.4;pointer-events:none}
+</style>
+</head>
+
+<body>
+
+<div class="topo" id="tituloMesa">🍽️ Mesa</div>
+
+<div class="container">
+
+<input id="busca" placeholder="🔍 Buscar produto">
+
+<div class="filtros">
+<button id="fBar">🍹 Bar</button>
+<button id="fCozinha">🍳 Cozinha</button>
+</div>
+
+<h3>Produtos</h3>
+<div id="listaProdutos"></div>
+
+<h3>Pedido da mesa</h3>
+<div id="pedido"></div>
+
+<div class="total" id="totalPedido">Total: R$ 0,00</div>
+
+<button id="btnEnviar">📨 Enviar pedido</button>
+<button id="btnConta">🧾 Pedir conta</button>
+<button id="btnLiberar" class="bloqueado">🔓 Liberar mesa</button>
+
+</div>
+
+<script type="module">
+import { supabase } from "../js/supabase.js";
+
+const params = new URLSearchParams(location.search);
+const mesaId = params.get("mesa");
+
+let pedidoAtual = null;
+let produtosCache = [];
+let destinoSelecionado = "bar";
+
+/* 🔐 ESPERA AUTH */
+async function esperarAuth(){
+  while(!window.APP_ID){
+    await new Promise(r=>setTimeout(r,100));
+  }
+  iniciarSistema();
+}
+
+async function iniciarSistema(){
+  await carregarMesa();
+  await verificarPedidoExistente();
+  await carregarProdutos();
+}
+
+/* ===== MESA ===== */
+async function carregarMesa(){
+  const { data } = await supabase
+    .from("mesas")
+    .select("numero_mesa")
+    .eq("id", mesaId)
+    .single();
+
+  if(data){
+    document.getElementById("tituloMesa").innerText =
+      `🍽️ Mesa ${data.numero_mesa}`;
+  }
+}
+
+/* ===== VERIFICA PEDIDO ===== */
+async function verificarPedidoExistente(){
+
+  const { data } = await supabase
+    .from("pedidos")
+    .select("*")
+    .eq("mesa_id", mesaId)
+    .eq("app_id", window.APP_ID)
+    .not("status","in",'("finalizado","pago")')
+    .maybeSingle();
+
+  if(data){
+    pedidoAtual = data;
+    ativarRealtimeNotificacao(); // 🔥 ADICIONADO
+    await carregarPedido();
+  }
+}
+
+/* ===== CRIAR PEDIDO ===== */
+async function criarPedidoSeNecessario(){
+
+  if(pedidoAtual) return;
+
+  const { data } = await supabase
+    .from("pedidos")
+    .insert({
+      app_id: window.APP_ID,
+      mesa_id: mesaId,
+      status: "aberto",
+      origem: "mesa"
+    })
+    .select()
+    .single();
+
+  pedidoAtual = data;
+  ativarRealtimeNotificacao(); // 🔥 ADICIONADO
+}
+
+/* ===== PRODUTOS ===== */
+async function carregarProdutos(){
+  const { data } = await supabase
+    .from("produtos")
+    .select("id,nome,preco,destino")
+    .eq("app_id", window.APP_ID)
+    .eq("ativo", true)
+    .order("nome");
+
+  produtosCache = data || [];
+  aplicarFiltros();
+}
+
+function aplicarFiltros(){
+  const texto = document.getElementById("busca").value?.toLowerCase() || "";
+
+  const lista = produtosCache.filter(p =>
+    p.nome.toLowerCase().includes(texto) &&
+    p.destino === destinoSelecionado
+  );
+
+  const div = document.getElementById("listaProdutos");
+  div.innerHTML="";
+
+  lista.forEach(p=>{
+    div.innerHTML += `
+      <div class="produto">
+        <span>${p.nome} - R$ ${Number(p.preco).toFixed(2)}</span>
+        <button data-id="${p.id}">➕</button>
+      </div>
+    `;
+  });
+
+  div.querySelectorAll("button").forEach(btn=>{
+    btn.onclick = () => addProduto(btn.dataset.id);
+  });
+}
+
+/* ===== ADICIONAR PRODUTO ===== */
+async function addProduto(produtoId){
+
+  await criarPedidoSeNecessario();
+
+  const produto = produtosCache.find(p=>p.id===produtoId);
+  if(!produto) return;
+
+  await supabase.from("pedido_itens").insert({
+    app_id: window.APP_ID,
+    pedido_id: pedidoAtual.id,
+    produto_id: produto.id,
+    nome_produto: produto.nome,
+    preco: produto.preco,
+    quantidade: 1,
+    destino: produto.destino,
+    status:"novo"
+  });
+
+  await carregarPedido();
+}
+
+/* ===== CARREGAR PEDIDO ===== */
+async function carregarPedido(){
+
+  if(!pedidoAtual) return;
+
+  const { data } = await supabase
+    .from("pedido_itens")
+    .select("*")
+    .eq("pedido_id", pedidoAtual.id);
+
+  const div = document.getElementById("pedido");
+  div.innerHTML="";
+  let total = 0;
+
+  (data || []).forEach(i=>{
+    total += Number(i.preco) * Number(i.quantidade);
+    div.innerHTML += `
+      <div class="item">
+        ${i.nome_produto} x ${i.quantidade}
+      </div>
+    `;
+  });
+
+  document.getElementById("totalPedido").innerText =
+    `Total: R$ ${total.toFixed(2)}`;
+}
+
+/* ===== ENVIAR ===== */
+const btnEnviar = document.getElementById("btnEnviar");
+if(btnEnviar){
+  btnEnviar.onclick = async () => {
+    if(!pedidoAtual) return;
+    await supabase
+      .from("pedidos")
+      .update({ status:"novo" })
+      .eq("id", pedidoAtual.id);
+    alert("Pedido enviado!");
+  };
+}
+
+/* ===== PEDIR CONTA ===== */
+const btnConta = document.getElementById("btnConta");
+if(btnConta){
+  btnConta.onclick = async () => {
+    if(!pedidoAtual) return;
+    await supabase
+      .from("pedidos")
+      .update({ status:"conta_solicitada" })
+      .eq("id", pedidoAtual.id);
+    alert("Conta solicitada!");
+  };
+}
+
+/* ===== LIBERAR MESA ===== */
+const btnLiberar = document.getElementById("btnLiberar");
+if(btnLiberar){
+  btnLiberar.onclick = async () => {
+    if(!pedidoAtual) {
+      location.href="mesas.html";
+      return;
+    }
+    await supabase
+      .from("pedidos")
+      .update({ status:"finalizado" })
+      .eq("id", pedidoAtual.id);
+    location.href="mesas.html";
+  };
+}
+
+/* ===== 🔔 NOTIFICAÇÃO REALTIME ===== */
+function ativarRealtimeNotificacao(){
+
+  if(!pedidoAtual) return;
+
+  supabase.channel("mesa-notify-"+pedidoAtual.id)
+    .on(
+      "postgres_changes",
+      {
+        event:"UPDATE",
+        schema:"public",
+        table:"pedidos",
+        filter:`id=eq.${pedidoAtual.id}`
+      },
+      payload=>{
+        const status = payload.new.status;
+
+        if(status === "aceito"){
+          alert("👨‍🍳 Pedido em preparo!");
+        }
+
+        if(status === "pronto"){
+          alert("✅ Pedido pronto!");
+        }
+
+        if(status === "cancelado"){
+          alert("❌ Pedido cancelado!");
+        }
+      }
+    )
+    .subscribe();
+}
+
+/* EVENTOS */
+document.getElementById("busca").oninput = aplicarFiltros;
+document.getElementById("fBar").onclick = () => {
+  destinoSelecionado="bar";
+  aplicarFiltros();
+};
+document.getElementById("fCozinha").onclick = () => {
+  destinoSelecionado="cozinha";
+  aplicarFiltros();
+};
+
+esperarAuth();
+</script>
+
+</body>
+</html>

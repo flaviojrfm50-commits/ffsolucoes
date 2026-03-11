@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Histórico de Vendas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script type="module" src="../js/auth.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{margin:0;font-family:Arial;background:#020617;color:#fff}
+.topo{background:#0f172a;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+.container{max-width:1200px;margin:auto;padding:24px}
+.card{background:#0f172a;border-radius:18px;padding:18px;margin-bottom:18px}
+.top{display:flex;justify-content:space-between;align-items:flex-start}
+.total{font-size:20px;font-weight:900}
+.item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e293b;font-size:14px}
+small{color:#94a3b8}
+button,select,input{
+  padding:8px 14px;
+  border:none;
+  border-radius:10px;
+  background:#1e293b;
+  color:#fff;
+  cursor:pointer;
+}
+.filtro{margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grupo{
+  background:#1e293b;
+  padding:12px;
+  border-radius:12px;
+  margin-bottom:10px;
+  font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topo">
+  <h2>📊 Histórico de Vendas</h2>
+  <button onclick="history.back()">⬅ Voltar</button>
+</div>
+
+<div class="container">
+
+  <div class="filtro">
+    <label>Data:</label>
+    <input type="date" id="filtroData">
+
+    <label>Detalhar por:</label>
+    <select id="tipoRelatorio">
+      <option value="mesa">Mesa</option>
+      <option value="garcom">Garçom</option>
+    </select>
+
+    <button onclick="buscarPorData()">🔍 Buscar</button>
+    <button onclick="gerarPDFHistorico()">📄 Gerar PDF</button>
+  </div>
+
+  <div id="lista">Carregando histórico...</div>
+
+</div>
+
+<script type="module">
+import { supabase } from "../js/supabase.js";
+
+let vendas = [];
+let APP_ID = null;
+
+async function iniciar(){
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if(!session){
+    location.href="../auth/login.html";
+    return;
+  }
+
+  const { data: usuario } = await supabase
+    .from("usuarios")
+    .select("app_id")
+    .eq("id", session.user.id)
+    .single();
+
+  if(!usuario){
+    location.href="../auth/login.html";
+    return;
+  }
+
+  APP_ID = usuario.app_id;
+
+  carregarHistorico(APP_ID);
+
+  document
+    .getElementById("tipoRelatorio")
+    .addEventListener("change", renderizar);
+}
+
+/* ===============================
+   CARREGAR HISTÓRICO (SEM EMBED)
+=============================== */
+async function carregarHistorico(app_id, dataFiltro = null){
+
+  let query = supabase
+    .from("pedidos")
+    .select("id, created_at, recebido_por, mesa_id")
+    .eq("app_id", app_id)
+    .in("status", ["finalizado","fechado"])
+    .order("created_at", { ascending:false });
+
+  if(dataFiltro){
+    const inicio = new Date(dataFiltro);
+    inicio.setHours(0,0,0,0);
+    const fim = new Date(inicio.getTime() + 86400000);
+
+    query = query
+      .gte("created_at", inicio.toISOString())
+      .lt("created_at", fim.toISOString());
+  }
+
+  const { data: pedidos, error } = await query;
+
+  if(error){
+    document.getElementById("lista").innerHTML =
+      "Erro ao carregar histórico";
+    console.error(error);
+    return;
+  }
+
+  if(!pedidos || pedidos.length === 0){
+    vendas = [];
+    renderizar();
+    return;
+  }
+
+  const ids = pedidos.map(p => p.id);
+
+  const { data: itens } = await supabase
+    .from("pedido_itens")
+    .select("pedido_id, nome_produto, quantidade, preco")
+    .in("pedido_id", ids);
+
+  const mesaIds = pedidos
+    .map(p => p.mesa_id)
+    .filter(id => id !== null);
+
+  const { data: mesas } = await supabase
+    .from("mesas")
+    .select("id, numero_mesa")
+    .in("id", mesaIds);
+
+  vendas = pedidos.map(p => ({
+    ...p,
+    pedido_itens: (itens || []).filter(i => i.pedido_id === p.id),
+    mesas: (mesas || []).find(m => m.id === p.mesa_id)
+  }));
+
+  renderizar();
+}
+
+/* ===============================
+   BUSCAR POR DATA
+=============================== */
+window.buscarPorData = function(){
+  const dataSelecionada =
+    document.getElementById("filtroData").value;
+
+  carregarHistorico(APP_ID, dataSelecionada);
+};
+
+/* ===============================
+   RENDERIZAR
+=============================== */
+function renderizar(){
+
+  const tipo =
+    document.getElementById("tipoRelatorio").value;
+
+  const lista = document.getElementById("lista");
+  lista.innerHTML = "";
+
+  if(vendas.length === 0){
+    lista.innerHTML =
+      "<p>Nenhuma venda encontrada</p>";
+    return;
+  }
+
+  const grupos = {};
+
+  vendas.forEach(p=>{
+
+    let chave;
+
+    if(tipo === "mesa"){
+      chave = p.mesa_id
+        ? "Mesa " + (p.mesas?.numero_mesa || "-")
+        : "Delivery";
+    } else {
+      chave = p.recebido_por || "Não informado";
+    }
+
+    if(!grupos[chave]) grupos[chave] = [];
+    grupos[chave].push(p);
+  });
+
+  for(const grupo in grupos){
+
+    let totalGrupo = 0;
+
+    grupos[grupo].forEach(p=>{
+      (p.pedido_itens || []).forEach(i=>{
+        totalGrupo +=
+          Number(i.quantidade) * Number(i.preco);
+      });
+    });
+
+    lista.innerHTML += `
+      <div class="grupo">
+        ${grupo} — Total: R$ ${totalGrupo.toFixed(2)}
+      </div>
+    `;
+
+    grupos[grupo].forEach(p=>{
+
+      let total = 0;
+      (p.pedido_itens || []).forEach(i=>{
+        total +=
+          Number(i.quantidade) * Number(i.preco);
+      });
+
+      lista.innerHTML += `
+        <div class="card">
+          <div class="top">
+            <small>
+              ⏰ ${new Date(p.created_at).toLocaleString()}
+            </small>
+            <div class="total">
+              R$ ${total.toFixed(2)}
+            </div>
+          </div>
+
+          ${(p.pedido_itens || []).map(i=>`
+            <div class="item">
+              <span>${i.quantidade}x ${i.nome_produto}</span>
+              <b>R$ ${(i.quantidade * i.preco).toFixed(2)}</b>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    });
+  }
+}
+
+/* ===============================
+   GERAR PDF
+=============================== */
+window.gerarPDFHistorico = function(){
+
+  if(vendas.length === 0){
+    alert("Nenhum registro para gerar PDF.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.text("RELATÓRIO DE VENDAS", 20, 20);
+
+  let y = 35;
+  let totalGeral = 0;
+
+  vendas.forEach(p=>{
+
+    let total = 0;
+    (p.pedido_itens || []).forEach(i=>{
+      total += Number(i.quantidade) * Number(i.preco);
+    });
+
+    totalGeral += total;
+
+    doc.setFontSize(10);
+    doc.text(
+      `${new Date(p.created_at).toLocaleString()} - R$ ${total.toFixed(2)}`,
+      20,
+      y
+    );
+
+    y += 8;
+
+    if(y > 270){
+      doc.addPage();
+      y = 20;
+    }
+  });
+
+  y += 10;
+  doc.setFontSize(12);
+  doc.text("TOTAL GERAL: R$ " + totalGeral.toFixed(2), 20, y);
+
+  doc.save("relatorio-historico.pdf");
+};
+
+iniciar();
+</script>
+
+</body>
+</html>

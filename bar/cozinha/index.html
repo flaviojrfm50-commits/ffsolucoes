@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Cozinha | Pedidos</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root{
+  --bg:#020617;
+  --card:#0f172a;
+  --border:#1e293b;
+  --text:#ffffff;
+  --muted:#94a3b8;
+  --novo:#eab308;
+  --preparo:#38bdf8;
+  --finalizado:#22c55e;
+  --cancelado:#ef4444;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:system-ui,'Segoe UI',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+header{
+  padding:18px;
+  border-bottom:1px solid var(--border);
+  font-size:20px;
+  font-weight:600;
+}
+
+.container{
+  padding:20px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:16px;
+}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:16px;
+}
+
+.meta{
+  font-size:13px;
+  color:var(--muted);
+  margin-bottom:12px;
+}
+
+.itens div{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:6px;
+}
+
+.total{
+  font-weight:700;
+  margin-top:12px;
+}
+
+.actions{
+  margin-top:12px;
+  display:flex;
+  gap:8px;
+}
+
+button{
+  border:none;
+  padding:8px 12px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.preparar{background:var(--novo)}
+.entregar{background:var(--preparo)}
+.finalizar{background:var(--finalizado)}
+.cancelar{background:var(--cancelado);color:#fff}
+
+.empty{
+  grid-column:1/-1;
+  text-align:center;
+  color:var(--muted);
+  margin-top:40px;
+}
+</style>
+</head>
+
+<body>
+
+<header>🍳 Cozinha — Pedidos Ativos</header>
+
+<div class="container" id="lista"></div>
+
+<audio id="alerta" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+
+<script type="module">
+import { supabase } from "../js/supabase.js";
+
+const lista = document.getElementById("lista");
+const alerta = document.getElementById("alerta");
+
+let app_id = null;
+
+/* ===============================
+   INICIAR
+================================= */
+async function iniciar(){
+
+  const { data:{ session } } = await supabase.auth.getSession();
+
+  if(!session){
+    window.location.href="/auth/login.html";
+    return;
+  }
+
+  const { data: usuario } = await supabase
+    .from("usuarios")
+    .select("app_id")
+    .eq("id", session.user.id)
+    .single();
+
+  app_id = usuario.app_id;
+
+  carregarPedidos();
+  ativarRealtime();
+}
+
+/* ===============================
+   CARREGAR PEDIDOS
+================================= */
+async function carregarPedidos(){
+
+  const { data, error } = await supabase
+    .from("pedidos")
+    .select(`
+      id,
+      status,
+      created_at,
+      mesas ( numero_mesa ),
+      pedido_itens (
+        id,
+        nome_produto,
+        quantidade,
+        preco,
+        destino
+      )
+    `)
+    .eq("app_id", app_id)
+    .in("status", ["novo","aberto","aceito"]) /* 🔥 CORREÇÃO AQUI */
+    .order("created_at",{ascending:true});
+
+  if(error){
+    console.error(error);
+    return;
+  }
+
+  renderizar(data || []);
+}
+
+/* ===============================
+   RENDER
+================================= */
+function renderizar(pedidos){
+
+  lista.innerHTML="";
+  let encontrou=false;
+
+  pedidos.forEach(p=>{
+
+    const itensCozinha = (p.pedido_itens || [])
+      .filter(i=>i.destino==="cozinha");
+
+    if(itensCozinha.length===0) return;
+
+    encontrou=true;
+
+    let total=0;
+    const numeroMesa = p.mesas?.numero_mesa || "-";
+
+    const card=document.createElement("div");
+    card.className="card";
+
+    card.innerHTML=`
+      <h3>Mesa ${numeroMesa}</h3>
+      <div class="meta">
+        ${new Date(p.created_at).toLocaleTimeString()} · ${p.status}
+      </div>
+      <div class="itens"></div>
+      <div class="total"></div>
+      <div class="actions"></div>
+    `;
+
+    const divItens=card.querySelector(".itens");
+
+    itensCozinha.forEach(i=>{
+      total+=Number(i.preco)*Number(i.quantidade);
+
+      divItens.innerHTML+=`
+        <div>
+          <span>${i.quantidade}x ${i.nome_produto}</span>
+          <span>R$ ${(i.preco*i.quantidade).toFixed(2)}</span>
+        </div>
+      `;
+    });
+
+    card.querySelector(".total").innerText=
+      `Total Cozinha: R$ ${total.toFixed(2)}`;
+
+    const actions=card.querySelector(".actions");
+
+    if(p.status==="novo" || p.status==="aberto"){
+      actions.innerHTML+=`
+        <button class="preparar"
+          onclick="mudarStatus('${p.id}','aceito')">
+          Preparar
+        </button>`;
+    }
+
+    if(p.status==="aceito"){
+      actions.innerHTML+=`
+        <button class="entregar"
+          onclick="mudarStatus('${p.id}','pronto')">
+          Pronto
+        </button>`;
+    }
+
+    actions.innerHTML+=`
+      <button class="cancelar"
+        onclick="mudarStatus('${p.id}','cancelado')">
+        Cancelar
+      </button>`;
+
+    lista.appendChild(card);
+  });
+
+  if(!encontrou){
+    lista.innerHTML=`<div class="empty">Nenhum pedido da cozinha</div>`;
+  }
+}
+
+/* ===============================
+   MUDAR STATUS
+================================= */
+window.mudarStatus=async function(id,status){
+  await supabase
+    .from("pedidos")
+    .update({status})
+    .eq("id",id)
+    .eq("app_id",app_id);
+
+  carregarPedidos();
+};
+
+/* ===============================
+   REALTIME
+================================= */
+function ativarRealtime(){
+
+  supabase.channel("pedidos-cozinha")
+    .on("postgres_changes",
+      {event:"INSERT",schema:"public",table:"pedidos"},
+      payload=>{
+        if(payload.new.app_id===app_id){
+          alerta.play();
+          carregarPedidos();
+        }
+      }
+    )
+    .on("postgres_changes",
+      {event:"UPDATE",schema:"public",table:"pedidos"},
+      payload=>{
+        if(payload.new.app_id===app_id){
+          carregarPedidos();
+        }
+      }
+    )
+    .subscribe();
+}
+
+iniciar();
+</script>
+
+</body>
+</html>
