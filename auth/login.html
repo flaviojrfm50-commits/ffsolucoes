@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -5,24 +6,24 @@
 <title>Login | FF Soluções</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
 body{
   margin:0;
   height:100vh;
   display:flex;
-  align-items:center;
   justify-content:center;
-  font-family:Arial;
+  align-items:center;
   background:#020617;
+  font-family:Arial;
   color:#fff;
 }
 .card{
   width:380px;
+  max-width:calc(100vw - 32px);
   background:#0f172a;
   padding:30px;
   border-radius:16px;
+  box-sizing:border-box;
 }
 input,button{
   width:100%;
@@ -30,12 +31,233 @@ input,button{
   margin-top:12px;
   border-radius:10px;
   border:none;
+  box-sizing:border-box;
 }
-input{background:#e5f0ff}
 button{
   background:#22c55e;
   font-weight:bold;
   cursor:pointer;
+  color:#fff;
+}
+.link{
+  margin-top:12px;
+  text-align:center;
+  cursor:pointer;
+  color:#22c55e;
+}
+
+.aviso-plano{
+  margin-top:18px;
+  background:#111827;
+  border:1px solid #1e293b;
+  padding:18px;
+  border-radius:16px;
+  text-align:left;
+  color:#fff;
+  font-size:14px;
+  line-height:1.45;
+}
+
+.aviso-titulo{
+  font-weight:bold;
+  margin-bottom:8px;
+  font-size:15px;
+}
+
+.aviso-texto{
+  color:#94a3b8;
+  margin-bottom:14px;
+}
+
+.btn-renovar{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  background:#2563eb;
+  color:#fff;
+  font-weight:bold;
+  cursor:pointer;
+  margin-top:6px;
+}
+
+.btn-continuar{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:12px;
+  background:#334155;
+  color:#fff;
+  font-weight:bold;
+  cursor:pointer;
+  margin-top:10px;
+}
+
+/* BOTÃO FLUTUANTE */
+#chatBotao{
+  position:fixed;
+  bottom:20px;
+  left:20px;
+  height:56px;
+  padding:0 16px;
+  background:#22c55e;
+  border-radius:50px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:16px;
+  cursor:pointer;
+  z-index:9999;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+  font-weight:bold;
+}
+
+#chatBotao span{
+  font-size:14px;
+}
+
+#chatBotao.oculto{
+  display:none;
+}
+
+/* BOX CHAT */
+#chatBox{
+  position:fixed;
+  bottom:90px;
+  left:20px;
+  width:360px;
+  max-width:calc(100vw - 24px);
+  height:520px;
+  max-height:calc(100vh - 120px);
+  background:#020617;
+  border-radius:16px;
+  overflow:hidden;
+  display:none;
+  flex-direction:column;
+  z-index:9999;
+  box-shadow:0 10px 35px rgba(0,0,0,.45);
+  border:1px solid #1e293b;
+}
+
+#chatBox.ativo{
+  display:flex;
+}
+
+#chatTopo{
+  background:#0f172a;
+  padding:12px 14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-weight:bold;
+  border-bottom:1px solid #1e293b;
+}
+
+#chatTopo button{
+  width:auto;
+  margin-top:0;
+  padding:0;
+  background:none;
+  border:none;
+  color:#fff;
+  font-size:20px;
+  cursor:pointer;
+  line-height:1;
+}
+
+#ffChatFrame{
+  width:100%;
+  height:100%;
+  flex:1;
+  border:none;
+  background:#020617;
+}
+
+/* MODAL NOME */
+#chatNomeOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.7);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:10000;
+  padding:16px;
+  box-sizing:border-box;
+}
+
+#chatNomeOverlay.ativo{
+  display:flex;
+}
+
+.chatNomeBox{
+  background:#0f172a;
+  padding:20px;
+  border-radius:12px;
+  width:320px;
+  max-width:100%;
+  text-align:center;
+  box-sizing:border-box;
+  border:1px solid #1e293b;
+}
+
+.chatNomeBox h3{
+  margin:0 0 10px;
+}
+
+.chatNomeBox input{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border-radius:8px;
+  border:none;
+  outline:none;
+}
+
+.chatNomeBox button{
+  margin-top:12px;
+  width:100%;
+  padding:12px;
+  background:#22c55e;
+  border:none;
+  border-radius:8px;
+  color:#fff;
+}
+
+#chatNomeStatus{
+  min-height:18px;
+  margin-top:10px;
+  color:#fca5a5;
+  font-size:13px;
+}
+
+@media (max-width: 700px){
+  body{
+    align-items:center;
+    padding:16px;
+    box-sizing:border-box;
+  }
+
+  .card{
+    width:100%;
+    padding:22px;
+  }
+
+  #chatBotao{
+    left:14px;
+    bottom:14px;
+    width:56px;
+    height:56px;
+  }
+
+  #chatBox{
+    left:12px;
+    right:12px;
+    bottom:80px;
+    width:auto;
+    height:70vh;
+    max-height:70vh;
+  }
 }
 </style>
 </head>
@@ -43,99 +265,397 @@ button{
 <body>
 
 <div class="card">
-  <h2>🔐 Login Administrativo</h2>
-  <input id="usuario" placeholder="Usuário">
+  <h2>🔐 Login FF Soluções</h2>
+
+  <input id="usuario" placeholder="E-mail">
   <input id="senha" type="password" placeholder="Senha">
-  <button onclick="login()">Entrar</button>
+  <button id="btnEntrar" onclick="login()">Entrar</button>
+
+  <div class="link" onclick="resetSenha()">Esqueci minha senha</div>
 </div>
 
-<script>
-/* ===== SUPABASE ===== */
-const sb = window.supabase.createClient(
-  "https://pdajixsoowcyhnjwhgpc.supabase.co",
-  "sb_publishable_LatlFlcxk6IchHe3RNmfwA_9Oq4EsZw"
-);
+<div id="chatBotao" onclick="abrirModalNomeChat()">
+  💬 <span>Suporte</span>
+</div>
 
-async function login(){
-  const usuario = document.getElementById("usuario").value.trim().toLowerCase();
-  const senha   = document.getElementById("senha").value.trim();
+<div id="chatBox">
+  <div id="chatTopo">
+    <span>FF Soluções</span>
+    <button type="button" onclick="fecharChat()">✕</button>
+  </div>
+  <iframe id="ffChatFrame" title="Chat FF Soluções"></iframe>
+</div>
 
-  if(!usuario || !senha){
-    alert("Preencha usuário e senha");
-    return;
-  }
+<div id="chatNomeOverlay">
+  <div class="chatNomeBox">
+    <h3>Digite seu nome</h3>
+    <input id="chatNomeCliente" placeholder="Seu nome">
+    <div id="chatNomeStatus"></div>
+    <button type="button" onclick="confirmarEntradaChat()">Entrar no chat</button>
+  </div>
+</div>
 
-  /* 1️⃣ AUTENTICA NO admins (LEGADO) */
-  const { data: admin } = await sb
-    .from("admins")
-    .select("id, senha, ativo, app_id")
-    .eq("usuario", usuario)
-    .maybeSingle();
+<script type="module">
+import { supabase } from "../js/supabase.js";
 
-  if(!admin || admin.senha !== senha){
-    alert("Usuário ou senha inválidos");
-    return;
-  }
+function getBasePath(){
+  return location.pathname.split("/auth")[0];
+}
 
-  if(!admin.ativo){
-    alert("Usuário desativado");
-    return;
-  }
+function removerAvisoPlano(){
+  const aviso = document.getElementById("avisoPlano");
+  if(aviso) aviso.remove();
+}
 
-  /* 2️⃣ BUSCA O TIPO DO NEGÓCIO */
-  const { data: app } = await sb
-    .from("apps")
-    .select("tipo")
-    .eq("id", admin.app_id)
-    .maybeSingle();
+function mostrarAvisoPlano(dias, basePath, destinoPainel, expirado = false){
+  removerAvisoPlano();
 
-  if(!app){
-    alert("Negócio não encontrado");
-    return;
-  }
+  const box = document.createElement("div");
+  box.id = "avisoPlano";
+  box.className = "aviso-plano";
 
-  /* =====================================================
-     🔥 REGRA LEGADA CRÍTICA DA LOJA DE ROUPAS
-     ===================================================== */
+  const corTitulo = expirado ? "#f87171" : (dias <= 3 ? "#f59e0b" : "#38bdf8");
+  const titulo = expirado
+    ? "⚠️ Seu plano expirou"
+    : `⚠️ Seu plano vence em ${dias} dia(s)`;
 
-  let tipoSessao = app.tipo;
+  const texto = expirado
+    ? "Seu acesso pode ser bloqueado. Renove agora para continuar usando o sistema."
+    : "Para evitar bloqueio, renove agora. Após o pagamento você recebe a liberação do acesso.";
 
-  // 👕 LOJA DE ROUPAS EXIGE "loja"
-  if(app.tipo === "roupas"){
-    tipoSessao = "loja";
-  }
+  box.innerHTML = `
+    <div class="aviso-titulo" style="color:${corTitulo}">
+      ${titulo}
+    </div>
+    <div class="aviso-texto">
+      ${texto}
+    </div>
+    <button id="btnRenovarAgora" class="btn-renovar">Renovar agora</button>
+    ${!expirado ? '<button id="btnContinuarPainel" class="btn-continuar">Continuar para o painel</button>' : ''}
+  `;
 
-  /* 3️⃣ SALVA EXATAMENTE COMO O PAINEL ESPERA */
-  const adminLogado = {
-    id: admin.id,
-    usuario: usuario,
-    app_id: admin.app_id,
-    tipo: tipoSessao        // ← AQUI ESTÁ A PROVA
+  const card = document.querySelector(".card");
+  card.appendChild(box);
+
+  document.getElementById("btnRenovarAgora").onclick = () => {
+    window.location.href = basePath + "/pagamento/renovar.html";
   };
 
-  localStorage.setItem("admin_logado", JSON.stringify(adminLogado));
-  console.log("LOGIN SALVO 👉", adminLogado);
-
-  /* 4️⃣ REDIRECIONA (SEM INVENTAR REGRA NOVA) */
-  if(tipoSessao === "loja"){
-    location.href = "../loja-roupas/admin.html";
-
-  }else if(tipoSessao === "bar"){
-    location.href = "../bar/admin.html";
-
-  }else if(tipoSessao === "mercado"){
-    location.href = "../mercado/admin.html";
-
-  }else if(tipoSessao === "locadora"){
-    location.href = "../locadora/admin.html";
-
-  }else if(tipoSessao === "hotel"){
-    location.href = "../hotel/painel.html";
-
-  }else{
-    alert("Tipo de negócio inválido");
+  if(!expirado){
+    const btnContinuar = document.getElementById("btnContinuarPainel");
+    if(btnContinuar){
+      btnContinuar.onclick = () => {
+        window.location.href = destinoPainel;
+      };
+    }
   }
 }
+
+function normalizarDataExpiracao(origem){
+  const valor =
+    origem?.data_expiracao ||
+    origem?.expira_em ||
+    origem?.vencimento ||
+    origem?.vencimento_em ||
+    origem?.trial_fim_em ||
+    origem?.demo_expira_em ||
+    origem?.plano_expira_em ||
+    null;
+
+  return valor || null;
+}
+
+function montarDestinoPainel(basePath, usuarioSistema, appLegado){
+  const tipo = String(usuarioSistema?.tipo || "").trim().toLowerCase();
+  const sistemaUsuario = String(usuarioSistema?.sistema || "").trim();
+  const sistemaApp = String(appLegado?.tipo || appLegado?.sistema || "").trim();
+  const sistemaFinal = sistemaUsuario || sistemaApp;
+
+  // PASSAGENS: ADMIN E COBRADOR
+  if(tipo === "admin" || tipo === "cobrador"){
+    if(sistemaFinal === "passagens" || usuarioSistema?.app_id){
+      return tipo === "cobrador"
+        ? `${basePath}/passagens/cobrador.html`
+        : `${basePath}/passagens/admin.html`;
+    }
+  }
+
+  // OUTROS SISTEMAS
+  if(sistemaFinal){
+    return `${basePath}/${sistemaFinal}/admin.html`;
+  }
+
+  return `${basePath}/admin.html`;
+}
+
+async function buscarAppLegado(appId){
+  if(!appId) return null;
+
+  const { data, error } = await supabase
+    .from("apps")
+    .select("*")
+    .eq("id", appId)
+    .maybeSingle();
+
+  if(error){
+    console.warn("Falha ao buscar apps legado:", error);
+    return null;
+  }
+
+  return data || null;
+}
+
+async function login(){
+  removerAvisoPlano();
+
+  const email = document.getElementById("usuario").value.trim().toLowerCase();
+  const senha = document.getElementById("senha").value.trim();
+  const btnEntrar = document.getElementById("btnEntrar");
+
+  if(!email || !senha){
+    alert("Preencha e-mail e senha");
+    return;
+  }
+
+  btnEntrar.disabled = true;
+  btnEntrar.textContent = "Entrando...";
+
+  try{
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: senha
+    });
+
+    if(error){
+      alert("Credenciais inválidas");
+      return;
+    }
+
+    const userId = data.user.id;
+
+    const { data: usuarioSistema, error: uErr } = await supabase
+      .from("usuarios")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if(uErr || !usuarioSistema){
+      alert("Usuário não encontrado no sistema.");
+      return;
+    }
+
+    const appLegado = await buscarAppLegado(usuarioSistema.app_id);
+
+    const basePath = getBasePath();
+    const destinoPainel = montarDestinoPainel(basePath, usuarioSistema, appLegado);
+
+    const dataExpiracao =
+      normalizarDataExpiracao(usuarioSistema) ||
+      normalizarDataExpiracao(appLegado);
+
+    const ativo =
+      typeof usuarioSistema?.ativo === "boolean"
+        ? usuarioSistema.ativo
+        : (typeof appLegado?.ativo === "boolean" ? appLegado.ativo : true);
+
+    const hoje = new Date();
+    const expiracao = dataExpiracao ? new Date(dataExpiracao) : null;
+
+    if(ativo === false){
+      mostrarAvisoPlano(0, basePath, destinoPainel, true);
+      return;
+    }
+
+    if(!expiracao || isNaN(expiracao.getTime())){
+      mostrarAvisoPlano(0, basePath, destinoPainel, true);
+      return;
+    }
+
+    const diffMs = expiracao.getTime() - hoje.getTime();
+    const dias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    if(dias <= 0){
+      mostrarAvisoPlano(0, basePath, destinoPainel, true);
+      return;
+    }
+
+    if(dias <= 15){
+      mostrarAvisoPlano(dias, basePath, destinoPainel, false);
+      return;
+    }
+
+    window.location.href = destinoPainel;
+
+  }catch(err){
+    console.error("Erro no login:", err);
+    alert("Erro ao entrar.");
+  }finally{
+    btnEntrar.disabled = false;
+    btnEntrar.textContent = "Entrar";
+  }
+}
+
+async function resetSenha(){
+  const email = document.getElementById("usuario").value.trim();
+
+  if(!email){
+    alert("Digite seu e-mail primeiro");
+    return;
+  }
+
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: location.origin + "/auth/update-password.html"
+  });
+
+  alert("E-mail de recuperação enviado. Verifique sua caixa de entrada ou spam.");
+}
+
+window.login = login;
+window.resetSenha = resetSenha;
+</script>
+
+<script>
+const FF_CHAT_USER_KEY = "ff_chat_user";
+const FF_CHAT_CONTEXT_KEY = "ff_chat_contexto";
+const FF_CHAT_NOME_KEY = "ff_chat_nome_cliente";
+
+function slugTexto(texto){
+  return String(texto || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function gerarIdAleatorio(prefixo = "chat"){
+  return prefixo + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+}
+
+function abrirModalNomeChat(){
+  const overlay = document.getElementById("chatNomeOverlay");
+  const input = document.getElementById("chatNomeCliente");
+  const status = document.getElementById("chatNomeStatus");
+
+  if(!overlay || !input || !status) return;
+
+  status.textContent = "";
+  input.value = "";
+  overlay.classList.add("ativo");
+
+  setTimeout(() => input.focus(), 120);
+}
+
+function fecharModalNomeChat(){
+  const overlay = document.getElementById("chatNomeOverlay");
+  if(overlay) overlay.classList.remove("ativo");
+}
+
+function fecharChat(){
+  const box = document.getElementById("chatBox");
+  const frame = document.getElementById("ffChatFrame");
+  const botao = document.getElementById("chatBotao");
+
+  if(box) box.classList.remove("ativo");
+  if(frame) frame.src = "";
+  if(botao) botao.classList.remove("oculto");
+}
+
+function montarUsuarioTemporario(nome){
+  const nomeLimpo = String(nome || "").trim();
+  const slug = slugTexto(nomeLimpo) || "cliente";
+
+  return {
+    numero: "visitante_" + slug + "_" + Date.now(),
+    senha: gerarIdAleatorio("senha"),
+    nome: nomeLimpo,
+    tipo: "visitante_temporario",
+    sistema: "ffsolucoes",
+    criado_em: new Date().toISOString()
+  };
+}
+
+function montarContextoChat(nome, usuarioTemp){
+  return {
+    sistema_id: "ffsolucoes",
+    sistema_nome: "FF Soluções",
+    origem: "ffsolucoes",
+    app_id: null,
+    cliente_nome: nome,
+    chat_room_id: "ffsolucoes_" + slugTexto(nome) + "_" + Date.now(),
+    usuario_temporario: usuarioTemp.numero,
+    criado_em: new Date().toISOString()
+  };
+}
+
+function abrirChatComSessao(){
+  const frame = document.getElementById("ffChatFrame");
+  const box = document.getElementById("chatBox");
+  const botao = document.getElementById("chatBotao");
+
+  if(!frame || !box) return;
+
+  frame.src = "/ff-chat/ffchat-sulocoes.html?auto_login=1&t=" + Date.now();
+  box.classList.add("ativo");
+  if(botao) botao.classList.add("oculto");
+}
+
+function confirmarEntradaChat(){
+  const input = document.getElementById("chatNomeCliente");
+  const status = document.getElementById("chatNomeStatus");
+
+  if(!input || !status) return;
+
+  const nome = (input.value || "").trim();
+
+  if(!nome){
+    status.textContent = "Digite seu nome para continuar.";
+    input.focus();
+    return;
+  }
+
+  try{
+    const usuarioTemp = montarUsuarioTemporario(nome);
+    const contexto = montarContextoChat(nome, usuarioTemp);
+
+    localStorage.setItem(FF_CHAT_NOME_KEY, nome);
+    localStorage.setItem(FF_CHAT_USER_KEY, JSON.stringify(usuarioTemp));
+    localStorage.setItem(FF_CHAT_CONTEXT_KEY, JSON.stringify(contexto));
+
+    fecharModalNomeChat();
+    abrirChatComSessao();
+  }catch(err){
+    console.error("Erro ao iniciar chat:", err);
+    status.textContent = "Erro ao iniciar o chat.";
+  }
+}
+
+document.addEventListener("keydown", function(e){
+  if(e.key === "Escape"){
+    fecharModalNomeChat();
+  }
+});
+
+document.addEventListener("DOMContentLoaded", function(){
+  const inputNome = document.getElementById("chatNomeCliente");
+  const botao = document.getElementById("chatBotao");
+
+  if(botao){
+    botao.style.display = "flex";
+  }
+
+  if(inputNome){
+    inputNome.addEventListener("keydown", function(e){
+      if(e.key === "Enter"){
+        confirmarEntradaChat();
+      }
+    });
+  }
+});
+
+window.abrirModalNomeChat = abrirModalNomeChat;
+window.fecharChat = fecharChat;
+window.confirmarEntradaChat = confirmarEntradaChat;
 </script>
 
 </body>
