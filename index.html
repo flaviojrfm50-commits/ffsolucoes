@@ -1,72 +1,149 @@
-
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Login | FF Soluções</title>
+<title>Conecta | Login Passagens</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
+*{box-sizing:border-box}
+
+:root{
+  --bg:#f3f4f6;
+  --card:#ffffff;
+  --text:#1f2937;
+  --muted:#6b7280;
+  --line:#e5e7eb;
+  --primary:#251f7f;
+  --primary-2:#6b21a8;
+  --green:#22c55e;
+  --green-2:#16a34a;
+  --red:#ef4444;
+  --blue:#2563eb;
+  --gray:#475569;
+}
+
 body{
   margin:0;
-  height:100vh;
+  min-height:100vh;
+  font-family:Arial,sans-serif;
+  background:linear-gradient(180deg,#f8fafc 0%, #eef2f7 100%);
   display:flex;
-  justify-content:center;
   align-items:center;
-  background:#020617;
-  font-family:Arial;
-  color:#fff;
+  justify-content:center;
+  padding:20px;
+  color:var(--text);
 }
+
+.login-wrap{
+  width:100%;
+  max-width:430px;
+}
+
 .card{
-  width:380px;
-  max-width:calc(100vw - 32px);
-  background:#0f172a;
-  padding:30px;
-  border-radius:16px;
-  box-sizing:border-box;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:28px;
+  padding:28px 24px;
+  box-shadow:0 20px 50px rgba(15,23,42,.10);
 }
+
+.logo-box{
+  text-align:center;
+  margin-bottom:18px;
+}
+
+.logo-box img{
+  width:240px;
+  max-width:100%;
+  height:auto;
+  display:block;
+  margin:0 auto 12px;
+}
+
+.titulo{
+  margin:0;
+  text-align:center;
+  font-size:30px;
+  color:var(--primary);
+  font-weight:900;
+  letter-spacing:.2px;
+}
+
+.subtitulo{
+  margin:8px 0 0;
+  text-align:center;
+  font-size:14px;
+  color:var(--muted);
+}
+
 input,button{
   width:100%;
-  padding:14px;
-  margin-top:12px;
-  border-radius:10px;
   border:none;
-  box-sizing:border-box;
-}
-button{
-  background:#22c55e;
-  font-weight:bold;
-  cursor:pointer;
-  color:#fff;
-}
-.link{
+  border-radius:16px;
+  padding:15px 16px;
+  font-size:16px;
   margin-top:12px;
-  text-align:center;
+}
+
+input{
+  background:#f3f4f6;
+  color:#111827;
+  outline:none;
+  border:1px solid #e5e7eb;
+}
+
+input:focus{
+  border-color:#c4b5fd;
+  box-shadow:0 0 0 3px rgba(107,33,168,.10);
+}
+
+button{
   cursor:pointer;
-  color:#22c55e;
+  font-weight:700;
+}
+
+.btn-entrar{
+  margin-top:16px;
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  color:#fff;
+  box-shadow:0 10px 24px rgba(37,31,127,.18);
+}
+
+.btn-entrar:disabled{
+  opacity:.7;
+  cursor:not-allowed;
+}
+
+.link{
+  margin-top:14px;
+  text-align:center;
+  color:var(--primary-2);
+  cursor:pointer;
+  font-size:15px;
+  font-weight:700;
 }
 
 .aviso-plano{
   margin-top:18px;
-  background:#111827;
-  border:1px solid #1e293b;
+  background:#f8fafc;
+  border:1px solid #e5e7eb;
   padding:18px;
-  border-radius:16px;
+  border-radius:18px;
   text-align:left;
-  color:#fff;
+  color:#111827;
   font-size:14px;
   line-height:1.45;
 }
 
 .aviso-titulo{
-  font-weight:bold;
+  font-weight:800;
   margin-bottom:8px;
   font-size:15px;
 }
 
 .aviso-texto{
-  color:#94a3b8;
+  color:#64748b;
   margin-bottom:14px;
 }
 
@@ -74,10 +151,10 @@ button{
   width:100%;
   padding:14px;
   border:none;
-  border-radius:12px;
-  background:#2563eb;
+  border-radius:14px;
+  background:linear-gradient(135deg,var(--blue),#1d4ed8);
   color:#fff;
-  font-weight:bold;
+  font-weight:700;
   cursor:pointer;
   margin-top:6px;
 }
@@ -86,22 +163,23 @@ button{
   width:100%;
   padding:12px;
   border:none;
-  border-radius:12px;
-  background:#334155;
+  border-radius:14px;
+  background:linear-gradient(135deg,var(--gray),#334155);
   color:#fff;
-  font-weight:bold;
+  font-weight:700;
   cursor:pointer;
   margin-top:10px;
 }
 
-/* BOTÃO FLUTUANTE */
+/* SUPORTE */
 #chatBotao{
   position:fixed;
   bottom:20px;
   left:20px;
-  height:56px;
-  padding:0 16px;
-  background:#22c55e;
+  min-height:56px;
+  padding:0 18px;
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  color:#fff;
   border-radius:50px;
   display:flex;
   align-items:center;
@@ -109,8 +187,8 @@ button{
   font-size:16px;
   cursor:pointer;
   z-index:9999;
-  box-shadow:0 10px 30px rgba(0,0,0,.35);
-  font-weight:bold;
+  box-shadow:0 12px 30px rgba(0,0,0,.18);
+  font-weight:700;
 }
 
 #chatBotao span{
@@ -121,7 +199,6 @@ button{
   display:none;
 }
 
-/* BOX CHAT */
 #chatBox{
   position:fixed;
   bottom:90px;
@@ -130,14 +207,14 @@ button{
   max-width:calc(100vw - 24px);
   height:520px;
   max-height:calc(100vh - 120px);
-  background:#020617;
+  background:#fff;
   border-radius:16px;
   overflow:hidden;
   display:none;
   flex-direction:column;
   z-index:9999;
-  box-shadow:0 10px 35px rgba(0,0,0,.45);
-  border:1px solid #1e293b;
+  box-shadow:0 16px 40px rgba(0,0,0,.22);
+  border:1px solid #e5e7eb;
 }
 
 #chatBox.ativo{
@@ -145,13 +222,13 @@ button{
 }
 
 #chatTopo{
-  background:#0f172a;
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  color:#fff;
   padding:12px 14px;
   display:flex;
   justify-content:space-between;
   align-items:center;
-  font-weight:bold;
-  border-bottom:1px solid #1e293b;
+  font-weight:700;
 }
 
 #chatTopo button{
@@ -164,6 +241,7 @@ button{
   font-size:20px;
   cursor:pointer;
   line-height:1;
+  box-shadow:none;
 }
 
 #ffChatFrame{
@@ -171,20 +249,18 @@ button{
   height:100%;
   flex:1;
   border:none;
-  background:#020617;
+  background:#fff;
 }
 
-/* MODAL NOME */
 #chatNomeOverlay{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,0.7);
+  background:rgba(0,0,0,.60);
   display:none;
   align-items:center;
   justify-content:center;
   z-index:10000;
   padding:16px;
-  box-sizing:border-box;
 }
 
 #chatNomeOverlay.ativo{
@@ -192,63 +268,59 @@ button{
 }
 
 .chatNomeBox{
-  background:#0f172a;
+  background:#fff;
   padding:20px;
-  border-radius:12px;
+  border-radius:16px;
   width:320px;
   max-width:100%;
   text-align:center;
-  box-sizing:border-box;
-  border:1px solid #1e293b;
+  border:1px solid #e5e7eb;
+  box-shadow:0 18px 40px rgba(0,0,0,.20);
 }
 
 .chatNomeBox h3{
   margin:0 0 10px;
+  color:var(--primary);
 }
 
 .chatNomeBox input{
   width:100%;
   padding:12px;
   margin-top:10px;
-  border-radius:8px;
-  border:none;
-  outline:none;
+  border-radius:12px;
 }
 
 .chatNomeBox button{
   margin-top:12px;
   width:100%;
   padding:12px;
-  background:#22c55e;
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
   border:none;
-  border-radius:8px;
+  border-radius:12px;
   color:#fff;
+  font-weight:700;
 }
 
 #chatNomeStatus{
   min-height:18px;
   margin-top:10px;
-  color:#fca5a5;
+  color:#dc2626;
   font-size:13px;
 }
 
-@media (max-width: 700px){
-  body{
-    align-items:center;
-    padding:16px;
-    box-sizing:border-box;
+@media (max-width:700px){
+  .card{
+    padding:24px 18px;
+    border-radius:22px;
   }
 
-  .card{
-    width:100%;
-    padding:22px;
+  .titulo{
+    font-size:26px;
   }
 
   #chatBotao{
     left:14px;
     bottom:14px;
-    width:56px;
-    height:56px;
   }
 
   #chatBox{
@@ -265,14 +337,20 @@ button{
 
 <body>
 
-<div class="card">
-  <h2>🔐 Login FF Soluções</h2>
+<div class="login-wrap">
+  <div class="card">
+    <div class="logo-box">
+      <img src="./assets/logo-conecta.png" alt="Conecta Soluções Inteligentes">
+      <h1 class="titulo">Login Passagens</h1>
+      <div class="subtitulo">Acesso administrativo do sistema de passagens</div>
+    </div>
 
-  <input id="usuario" placeholder="E-mail">
-  <input id="senha" type="password" placeholder="Senha">
-  <button id="btnEntrar" onclick="login()">Entrar</button>
+    <input id="usuario" placeholder="E-mail">
+    <input id="senha" type="password" placeholder="Senha">
+    <button id="btnEntrar" class="btn-entrar" onclick="login()">Entrar</button>
 
-  <div class="link" onclick="resetSenha()">Esqueci minha senha</div>
+    <div class="link" onclick="resetSenha()">Esqueci minha senha</div>
+  </div>
 </div>
 
 <div id="chatBotao" onclick="abrirModalNomeChat()">
@@ -281,10 +359,10 @@ button{
 
 <div id="chatBox">
   <div id="chatTopo">
-    <span>FF Soluções</span>
+    <span>Conecta Suporte</span>
     <button type="button" onclick="fecharChat()">✕</button>
   </div>
-  <iframe id="ffChatFrame" title="Chat FF Soluções"></iframe>
+  <iframe id="ffChatFrame" title="Chat Conecta"></iframe>
 </div>
 
 <div id="chatNomeOverlay">
@@ -300,7 +378,7 @@ button{
 import { supabase } from "./js/supabase.js";
 
 function getBasePath(){
-  return location.pathname.split("/auth")[0].replace(/\/$/, "");
+  return "/ffsolucoes";
 }
 
 function removerAvisoPlano(){
@@ -308,14 +386,14 @@ function removerAvisoPlano(){
   if(aviso) aviso.remove();
 }
 
-function mostrarAvisoPlano(dias, basePath, destinoPainel, expirado = false){
+function mostrarAvisoPlano(dias, destinoPainel, expirado = false){
   removerAvisoPlano();
 
   const box = document.createElement("div");
   box.id = "avisoPlano";
   box.className = "aviso-plano";
 
-  const corTitulo = expirado ? "#f87171" : (dias <= 3 ? "#f59e0b" : "#38bdf8");
+  const corTitulo = expirado ? "#dc2626" : (dias <= 3 ? "#d97706" : "#2563eb");
   const titulo = expirado
     ? "⚠️ Seu plano expirou"
     : `⚠️ Seu plano vence em ${dias} dia(s)`;
@@ -339,7 +417,7 @@ function mostrarAvisoPlano(dias, basePath, destinoPainel, expirado = false){
   card.appendChild(box);
 
   document.getElementById("btnRenovarAgora").onclick = () => {
-    window.location.href = basePath + "/pagamento/renovar.html";
+    window.location.href = getBasePath() + "/pagamento/renovar.html";
   };
 
   if(!expirado){
@@ -353,40 +431,24 @@ function mostrarAvisoPlano(dias, basePath, destinoPainel, expirado = false){
 }
 
 function normalizarDataExpiracao(origem){
-  const valor =
-    origem?.data_expiracao ||
-    origem?.expira_em ||
-    origem?.vencimento ||
-    origem?.vencimento_em ||
-    origem?.trial_fim_em ||
-    origem?.demo_expira_em ||
-    origem?.plano_expira_em ||
-    null;
-
-  return valor || null;
+  return origem?.data_expiracao ||
+         origem?.expira_em ||
+         origem?.vencimento ||
+         origem?.vencimento_em ||
+         origem?.trial_fim_em ||
+         origem?.demo_expira_em ||
+         origem?.plano_expira_em ||
+         null;
 }
 
-function montarDestinoPainel(basePath, usuarioSistema, appLegado){
+function montarDestinoPainel(usuarioSistema){
   const tipo = String(usuarioSistema?.tipo || "").trim().toLowerCase();
-  const sistemaUsuario = String(usuarioSistema?.sistema || "").trim();
-  const sistemaApp = String(appLegado?.tipo || appLegado?.sistema || "").trim();
-  const sistemaFinal = sistemaUsuario || sistemaApp;
 
-  // PASSAGENS: ADMIN E COBRADOR
-  if(tipo === "admin" || tipo === "cobrador"){
-    if(sistemaFinal === "passagens" || usuarioSistema?.app_id){
-      return tipo === "cobrador"
-        ? `${basePath}/passagens/cobrador.html`
-        : `${basePath}/passagens/admin.html`;
-    }
+  if(tipo === "cobrador"){
+    return "/ffsolucoes/passagens/cobrador.html";
   }
 
-  // OUTROS SISTEMAS
-  if(sistemaFinal){
-    return `${basePath}/${sistemaFinal}/admin.html`;
-  }
-
-  return `${basePath}/admin.html`;
+  return "/ffsolucoes/passagens/admin.html";
 }
 
 async function buscarAppLegado(appId){
@@ -446,9 +508,7 @@ async function login(){
     }
 
     const appLegado = await buscarAppLegado(usuarioSistema.app_id);
-
-    const basePath = getBasePath();
-    const destinoPainel = montarDestinoPainel(basePath, usuarioSistema, appLegado);
+    const destinoPainel = montarDestinoPainel(usuarioSistema);
 
     const dataExpiracao =
       normalizarDataExpiracao(usuarioSistema) ||
@@ -463,12 +523,12 @@ async function login(){
     const expiracao = dataExpiracao ? new Date(dataExpiracao) : null;
 
     if(ativo === false){
-      mostrarAvisoPlano(0, basePath, destinoPainel, true);
+      mostrarAvisoPlano(0, destinoPainel, true);
       return;
     }
 
     if(!expiracao || isNaN(expiracao.getTime())){
-      mostrarAvisoPlano(0, basePath, destinoPainel, true);
+      mostrarAvisoPlano(0, destinoPainel, true);
       return;
     }
 
@@ -476,12 +536,12 @@ async function login(){
     const dias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
     if(dias <= 0){
-      mostrarAvisoPlano(0, basePath, destinoPainel, true);
+      mostrarAvisoPlano(0, destinoPainel, true);
       return;
     }
 
     if(dias <= 15){
-      mostrarAvisoPlano(dias, basePath, destinoPainel, false);
+      mostrarAvisoPlano(dias, destinoPainel, false);
       return;
     }
 
@@ -505,7 +565,7 @@ async function resetSenha(){
   }
 
   await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: location.origin + location.pathname.split("/auth")[0] + "/auth/update-password.html"
+    redirectTo: location.origin + "/ffsolucoes/auth/update-password.html"
   });
 
   alert("E-mail de recuperação enviado. Verifique sua caixa de entrada ou spam.");
@@ -579,7 +639,7 @@ function montarUsuarioTemporario(nome){
 function montarContextoChat(nome, usuarioTemp){
   return {
     sistema_id: "ffsolucoes",
-    sistema_nome: "FF Soluções",
+    sistema_nome: "Conecta",
     origem: "ffsolucoes",
     app_id: null,
     cliente_nome: nome,
@@ -596,7 +656,7 @@ function abrirChatComSessao(){
 
   if(!frame || !box) return;
 
-  frame.src = "../ff-chat/ffchat-sulocoes.html?auto_login=1&t=" + Date.now();
+  frame.src = "./ff-chat/ffchat-sulocoes.html?auto_login=1&t=" + Date.now();
   box.classList.add("ativo");
   if(botao) botao.classList.add("oculto");
 }
