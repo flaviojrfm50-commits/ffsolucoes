@@ -505,7 +505,7 @@ async function resetSenha(){
   }
 
   await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: location.origin + "/auth/update-password.html"
+    redirectTo: location.origin + location.pathname.split("/auth")[0] + "/auth/update-password.html"
   });
 
   alert("E-mail de recuperação enviado. Verifique sua caixa de entrada ou spam.");
@@ -596,7 +596,7 @@ function abrirChatComSessao(){
 
   if(!frame || !box) return;
 
-  frame.src = "/ff-chat/ffchat-sulocoes.html?auto_login=1&t=" + Date.now();
+  frame.src = "../ff-chat/ffchat-sulocoes.html?auto_login=1&t=" + Date.now();
   box.classList.add("ativo");
   if(botao) botao.classList.add("oculto");
 }
