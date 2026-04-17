@@ -1852,7 +1852,7 @@ window.abrirColaboradores = function(){
 
 window.logout = async function(){
   await supabase.auth.signOut();
-  window.location.href = "/ffsolucoes/";
+  window.location.href = location.origin + "/ffsolucoes/";
 };
 
 window.cancelarEdicaoVeiculo = function(){
