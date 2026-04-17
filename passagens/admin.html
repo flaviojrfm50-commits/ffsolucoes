@@ -1779,7 +1779,7 @@ window.abrirCardMobile = function(cardId){
 async function verificarSessao(){
   const { data:{ session } } = await supabase.auth.getSession();
   if(!session){
-    window.location.href = "/auth/login.html";
+    window.location.href = "/index.html";
     return null;
   }
   return session.user.id;
