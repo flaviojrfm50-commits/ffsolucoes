@@ -1447,6 +1447,10 @@ valor_cobrado: origemTrechoSelecionada && destinoTrechoSelecionado
 
   if(tipoViagem === "ida_volta" && dataVolta){
     reservas.push({
+      tipo_poltrona: tipoPoltronaSelecionada,
+valor_cobrado: origemTrechoSelecionada && destinoTrechoSelecionado
+  ? Number(getPrecoTrechoPublicoPorTipo(origemTrechoSelecionada, destinoTrechoSelecionado, tipoPoltronaSelecionada) || 0)
+  : Number(await getPrecoViagemPorTipoPublico(viagemSelecionada, tipoPoltronaSelecionada) || 0),
   viagem_id: viagemSelecionada,
   poltrona: poltronaSelecionada,
   nome: `${nome} (volta)`,
@@ -1674,14 +1678,14 @@ async function compartilharReciboComQR(){
   }
 }
 
-function montarTextoRecibo(){
+async function montarTextoRecibo(){
   const nome = document.getElementById("nome").value.trim();
   const cpfRg = document.getElementById("cpfRg").value.trim();
   const whatsapp = document.getElementById("whatsapp").value.trim();
   const dataIda = formatarDataPadrao(document.getElementById("dataIda").value);
   const tipoViagem = document.getElementById("tipoViagem").value;
   const dataVolta = formatarDataPadrao(document.getElementById("dataVolta").value);
-  const valorTotal = calcularValorTotal();
+  function mostrarComprovanteReserva(){
 
   return (
 `FF TRANSPORTE
@@ -1696,14 +1700,14 @@ Hora: ${viagemAtual?.hora || ""}
 Data ida: ${dataIda}
 ${tipoViagem === "ida_volta" && dataVolta ? `Data volta: ${dataVolta}\n` : ""}Poltrona: ${poltronaSelecionada || ""}
 Tipo: ${tipoViagem === "ida_volta" ? "Ida e Volta" : "Somente Ida"}
-Tipo da poltrona: ${tipoPoltronaSelecionada}
+
 Valor: R$ ${Number(valorTotal || 0).toFixed(2)}
 
 Apresente este comprovante no embarque.`
   );
 }
 
-function mostrarComprovanteReserva(){
+async function mostrarComprovanteReserva(){
   const nome = document.getElementById("nome").value.trim();
   const cpfRg = document.getElementById("cpfRg").value.trim();
   const whatsapp = document.getElementById("whatsapp").value.trim();
@@ -1836,12 +1840,26 @@ async function pagarEReservar(){
       }
     }
 
-    const valorBaseOriginal = Number(viagemAtual?.valor || 0);
-    const valorBase = (origemTrechoSelecionada && destinoTrechoSelecionado)
-      ? Number(getPrecoTrechoPublico(origemTrechoSelecionada, destinoTrechoSelecionado) || 0)
-      : valorBaseOriginal;
+    let valorBase = 0;
 
-    const valorTotal = tipoViagem === "ida_volta" ? valorBase * 2 : valorBase;
+if(origemTrechoSelecionada && destinoTrechoSelecionado){
+  valorBase = Number(
+    getPrecoTrechoPublicoPorTipo(
+      origemTrechoSelecionada,
+      destinoTrechoSelecionado,
+      tipoPoltronaSelecionada
+    ) || 0
+  );
+}else{
+  valorBase = Number(
+    await getPrecoViagemPorTipoPublico(
+      viagemSelecionada,
+      tipoPoltronaSelecionada
+    ) || 0
+  );
+}
+
+const valorTotal = tipoViagem === "ida_volta" ? valorBase * 2 : valorBase;
 
     codigoReservaGlobal = gerarCodigoReserva();
     salvarEstadoParcial();
@@ -1947,7 +1965,7 @@ async function pagarEReservar(){
       }
 
       setMsg("✅ Reserva feita! Pagamento no embarque.");
-      mostrarComprovanteReserva();
+      await mostrarComprovanteReserva();
       await carregarPoltronas();
       return;
     }
