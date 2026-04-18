@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -81,7 +82,7 @@ body{
 }
 
 .card{
-  background:#1e293b;
+  background:var(--card);
   padding:22px;
   border-radius:22px;
   width:520px;
@@ -684,16 +685,6 @@ async function resolverAppId(){
 }
 
 async function carregarConfigLoja(){
-  if(configLoja?.tema_site){
-  document.body.classList.remove(
-    "tema-padrao",
-    "tema-natal",
-    "tema-anonovo",
-    "tema-capivara"
-  );
-
-  document.body.classList.add("tema-" + configLoja.tema_site);
-}
   if(!app_id) return null;
 
   const { data, error } = await client
@@ -708,6 +699,15 @@ async function carregarConfigLoja(){
   }
 
   configLoja = data || null;
+
+  document.body.classList.remove(
+    "tema-padrao",
+    "tema-natal",
+    "tema-anonovo",
+    "tema-capivara"
+  );
+
+  document.body.classList.add("tema-" + (configLoja?.tema_site || "padrao"));
 
   if(!configLoja) return null;
 
