@@ -30,14 +30,14 @@ body{
   justify-content:space-between;
   align-items:center;
   padding:14px 18px;
-  background:#020617;
+  background:var(--bg-2);
   font-size:18px;
   font-weight:bold;
 }
 .container{
   display:flex;
   gap:28px;
-  padding:36px 20px;
+  padding:120px 20px 36px; /* 👈 AQUI É O SEGREDO */
   justify-content:center;
   flex-wrap:wrap;
 }
@@ -265,15 +265,11 @@ button:hover{opacity:.95}
     flex-direction:column;
     gap:6px;
     text-align:center;
+    min-height:110px; /* 👈 importante */
   }
+
   .container{
-    padding:18px 12px;
-  }
-  .card h3{
-    font-size:24px;
-  }
-  .item-viagem{
-    font-size:19px;
+    padding:140px 12px 18px; /* 👈 ajusta no celular */
   }
 }
 </style>
