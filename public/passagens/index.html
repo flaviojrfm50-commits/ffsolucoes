@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -233,8 +234,21 @@ button:hover{opacity:.95}
 <body>
 
 <div class="topo">
-  <div id="nomeLoja">FF TRANSPORTE</div>
-  <div>São Raimundo Nonato - PI</div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <img id="logoLoja" src="" alt="Logo" style="width:56px;height:56px;object-fit:cover;border-radius:12px;display:none;background:#fff;padding:4px;">
+    <div>
+      <div id="nomeLoja">FF TRANSPORTE</div>
+      <div id="enderecoLoja" style="font-size:13px;opacity:.8;font-weight:normal;"></div>
+      <div id="whatsLoja" style="font-size:13px;opacity:.8;font-weight:normal;"></div>
+    </div>
+  </div>
+</div>
+
+<div id="bannerBox" class="hidden" style="padding:14px 20px 0 20px;">
+  <div style="max-width:1100px;margin:0 auto;">
+    <img id="bannerLoja" src="" alt="Banner" style="width:100%;max-height:260px;object-fit:cover;border-radius:18px;display:none;">
+    <div id="bannerTexto" style="margin-top:10px;font-size:15px;opacity:.9;"></div>
+  </div>
 </div>
 
 <div class="container">
@@ -644,8 +658,63 @@ async function carregarConfigLoja(){
 
   configLoja = data || null;
 
-  if(configLoja?.nome_site){
-    document.getElementById("nomeLoja").innerText = configLoja.nome_site;
+  if(!configLoja) return null;
+
+  const nomeLoja = document.getElementById("nomeLoja");
+  const enderecoLoja = document.getElementById("enderecoLoja");
+  const whatsLoja = document.getElementById("whatsLoja");
+  const logoLoja = document.getElementById("logoLoja");
+  const bannerBox = document.getElementById("bannerBox");
+  const bannerLoja = document.getElementById("bannerLoja");
+  const bannerTexto = document.getElementById("bannerTexto");
+
+  if(nomeLoja){
+    nomeLoja.innerText = configLoja.nome_site || "FF TRANSPORTE";
+  }
+
+  const endereco = [
+    configLoja.loja_rua || "",
+    configLoja.loja_numero || "",
+    configLoja.loja_cidade || "",
+    configLoja.loja_estado || ""
+  ].filter(Boolean).join(" - ");
+
+  if(enderecoLoja){
+    enderecoLoja.innerText = endereco || "";
+  }
+
+  if(whatsLoja){
+    const fone = configLoja.whatsapp_numero || configLoja.telefone || "";
+    whatsLoja.innerText = fone ? `WhatsApp: ${fone}` : "";
+  }
+
+  if(logoLoja){
+    if(configLoja.logo_url){
+      logoLoja.src = configLoja.logo_url;
+      logoLoja.style.display = "block";
+    }else{
+      logoLoja.style.display = "none";
+    }
+  }
+
+  if(bannerBox && bannerLoja && bannerTexto){
+    const temBanner = !!configLoja.banner_url;
+    const temTexto = !!configLoja.banner_descricao;
+
+    if(temBanner || temTexto){
+      bannerBox.classList.remove("hidden");
+    }else{
+      bannerBox.classList.add("hidden");
+    }
+
+    if(temBanner){
+      bannerLoja.src = configLoja.banner_url;
+      bannerLoja.style.display = "block";
+    }else{
+      bannerLoja.style.display = "none";
+    }
+
+    bannerTexto.innerText = configLoja.banner_descricao || "";
   }
 
   return configLoja;
