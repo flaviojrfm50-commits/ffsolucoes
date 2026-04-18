@@ -458,6 +458,7 @@ let paradasPublicas = [];
 let precosTrechosPublicos = [];
 let origemTrechoSelecionada = null;
 let destinoTrechoSelecionado = null;
+let tipoPoltronaSelecionada = "padrao";
 
 function hojeLocalISO(){
   const d = new Date();
@@ -468,6 +469,69 @@ function hojeLocalISO(){
 
 function agoraLocal(){
   return new Date();
+}
+
+function getTipoPoltronaDoVeiculo(veiculo, numeroPoltrona){
+  const config = Array.isArray(veiculo?.poltronas_config) ? veiculo.poltronas_config : [];
+  const item = config.find(p => Number(p.numero) === Number(numeroPoltrona));
+  return item?.tipo || veiculo?.tipo_poltrona || "padrao";
+}
+
+async function buscarVeiculoDaViagem(viagem_id){
+  const { data: viagem } = await client
+    .from("viagens_passagens")
+    .select("veiculo_id")
+    .eq("id", viagem_id)
+    .maybeSingle();
+
+  if(!viagem?.veiculo_id) return null;
+
+  const { data: veiculo } = await client
+    .from("veiculos_passagens")
+    .select("*")
+    .eq("id", viagem.veiculo_id)
+    .maybeSingle();
+
+  return veiculo || null;
+}
+
+async function getPrecoViagemPorTipoPublico(viagem_id, tipoPoltrona="padrao"){
+  const { data: viagem } = await client
+    .from("viagens_passagens")
+    .select("valor, valor_semi_leito, valor_leito")
+    .eq("id", viagem_id)
+    .maybeSingle();
+
+  if(!viagem) return 0;
+
+  if(tipoPoltrona === "leito"){
+    return Number(viagem.valor_leito || viagem.valor || 0);
+  }
+
+  if(tipoPoltrona === "semi_leito"){
+    return Number(viagem.valor_semi_leito || viagem.valor || 0);
+  }
+
+  return Number(viagem.valor || 0);
+}
+
+function getPrecoTrechoPublicoPorTipo(origem, destino, tipoPoltrona="padrao"){
+  const item = precosTrechosPublicos.find(p =>
+    Number(p.origem_ordem) === Number(origem) &&
+    Number(p.destino_ordem) === Number(destino)
+  );
+
+  if(!item) return 0;
+
+  if(tipoPoltrona === "leito"){
+    return Number(item.valor_leito || item.valor || 0);
+  }
+
+  if(tipoPoltrona === "semi_leito"){
+    return Number(item.valor_semi_leito || item.valor || 0);
+  }
+
+  return Number(item.valor || 0);
 }
 
 function montarDataHoraLocal(dataISO, horaStr){
@@ -643,16 +707,22 @@ function viagemRodaNaData(viagem, dataISO){
   return diasViagem.includes(diaEscolhido);
 }
 
-function calcularValorTotal(){
+async function calcularValorTotal(){
   const tipoViagem = document.getElementById("tipoViagem").value;
 
-  let valorBase = Number(viagemAtual?.valor || 0);
+  let valorBase = 0;
 
   if(origemTrechoSelecionada && destinoTrechoSelecionado){
-    const valorTrecho = getPrecoTrechoPublico(origemTrechoSelecionada, destinoTrechoSelecionado);
-    if(valorTrecho > 0){
-      valorBase = valorTrecho;
-    }
+    valorBase = getPrecoTrechoPublicoPorTipo(
+      origemTrechoSelecionada,
+      destinoTrechoSelecionado,
+      tipoPoltronaSelecionada
+    );
+  }else{
+    valorBase = await getPrecoViagemPorTipoPublico(
+      viagemSelecionada,
+      tipoPoltronaSelecionada
+    );
   }
 
   return tipoViagem === "ida_volta" ? valorBase * 2 : valorBase;
@@ -929,21 +999,24 @@ window.aoTrocarTrechoPublico = async function(){
   }
 
   const texto = getTextoTrechoPublico(origemTrechoSelecionada, destinoTrechoSelecionado);
-  const valorTrecho = getPrecoTrechoPublico(origemTrechoSelecionada, destinoTrechoSelecionado);
+
+  const precoPadrao = getPrecoTrechoPublicoPorTipo(origemTrechoSelecionada, destinoTrechoSelecionado, "padrao");
+  const precoSemi = getPrecoTrechoPublicoPorTipo(origemTrechoSelecionada, destinoTrechoSelecionado, "semi_leito");
+  const precoLeito = getPrecoTrechoPublicoPorTipo(origemTrechoSelecionada, destinoTrechoSelecionado, "leito");
 
   resumo.classList.remove("hidden");
   resumo.innerHTML = `
     <b>Trecho:</b> ${texto}<br>
-    <b>Valor do trecho:</b> ${valorTrecho > 0 ? "R$ " + valorTrecho.toFixed(2) : "não cadastrado"}
+    <b>Padrão:</b> ${precoPadrao > 0 ? "R$ " + precoPadrao.toFixed(2) : "não cadastrado"}<br>
+    <b>Semi-leito:</b> ${precoSemi > 0 ? "R$ " + precoSemi.toFixed(2) : "não cadastrado"}<br>
+    <b>Leito:</b> ${precoLeito > 0 ? "R$ " + precoLeito.toFixed(2) : "não cadastrado"}
   `;
 
-  const tipoViagem = document.getElementById("tipoViagem").value;
-  const valorTotal = tipoViagem === "ida_volta" ? valorTrecho * 2 : valorTrecho;
-
-  document.getElementById("valorViagem").classList.remove("hidden");
-  document.getElementById("valorViagem").innerHTML = `Valor da passagem: <b>R$ ${Number(valorTotal || 0).toFixed(2)}</b>`;
-
   await carregarPoltronas();
+
+  if(poltronaSelecionada){
+    await atualizarValorViagemPublica();
+  }
 };
 async function carregarViagens(){
   const lista = document.getElementById("listaViagens");
@@ -1081,19 +1154,9 @@ async function selecionarViagem(id, manterTela = false){
   document.getElementById("infoViagem").innerHTML =
     `<b>${viagem.rota || ""}</b> - ${viagem.hora || ""}`;
 
-  const valorBox = document.getElementById("valorViagem");
-const valorTotal = calcularValorTotal();
-
-if(paradasPublicas.length){
-  valorBox.classList.add("hidden");
-  valorBox.innerHTML = "";
-}else if(viagem.valor !== null && viagem.valor !== undefined && viagem.valor !== ""){
-  valorBox.classList.remove("hidden");
-  valorBox.innerHTML = `Valor da passagem: <b>R$ ${valorTotal.toFixed(2)}</b>`;
-}else{
-  valorBox.classList.add("hidden");
-  valorBox.innerHTML = "";
-}
+ const valorBox = document.getElementById("valorViagem");
+valorBox.classList.add("hidden");
+valorBox.innerHTML = "";
 
   await carregarPoltronas();
 
@@ -1199,12 +1262,17 @@ async function carregarPoltronas(){
           poltronaSelecionada = atual;
         }
 
-        btn.onclick = () => {
-          document.querySelectorAll(".poltrona").forEach(p => p.classList.remove("selecionado"));
-          btn.classList.add("selecionado");
-          poltronaSelecionada = atual;
-          salvarEstadoParcial();
-        };
+       btn.onclick = async () => {
+  document.querySelectorAll(".poltrona").forEach(p => p.classList.remove("selecionado"));
+  btn.classList.add("selecionado");
+  poltronaSelecionada = atual;
+
+  const veiculo = await buscarVeiculoDaViagem(viagemSelecionada);
+  tipoPoltronaSelecionada = getTipoPoltronaDoVeiculo(veiculo, atual);
+
+  await atualizarValorViagemPublica();
+  salvarEstadoParcial();
+};
       }
 
       row.appendChild(btn);
@@ -1239,6 +1307,40 @@ async function uploadImagem(file, pasta){
     .getPublicUrl(data.path).data.publicUrl;
 }
 
+async function atualizarValorViagemPublica(){
+  const valorBox = document.getElementById("valorViagem");
+
+  if(!viagemSelecionada || !poltronaSelecionada){
+    valorBox.classList.add("hidden");
+    valorBox.innerHTML = "";
+    return;
+  }
+
+  let valorBase = 0;
+
+  if(origemTrechoSelecionada && destinoTrechoSelecionado){
+    valorBase = getPrecoTrechoPublicoPorTipo(
+      origemTrechoSelecionada,
+      destinoTrechoSelecionado,
+      tipoPoltronaSelecionada
+    );
+  }else{
+    valorBase = await getPrecoViagemPorTipoPublico(
+      viagemSelecionada,
+      tipoPoltronaSelecionada
+    );
+  }
+
+  const tipoViagem = document.getElementById("tipoViagem").value;
+  const valorTotal = tipoViagem === "ida_volta" ? valorBase * 2 : valorBase;
+
+  valorBox.classList.remove("hidden");
+  valorBox.innerHTML = `
+    Tipo da poltrona: <b>${tipoPoltronaSelecionada.replace("_", "-")}</b><br>
+    Valor da passagem: <b>R$ ${Number(valorTotal || 0).toFixed(2)}</b>
+  `;
+}
+
 async function criarPedidoPassagem(fotoRgUrl = "", selfieUrl = ""){
   const nome = document.getElementById("nome").value.trim();
   const tipoViagem = document.getElementById("tipoViagem").value;
@@ -1247,10 +1349,23 @@ async function criarPedidoPassagem(fotoRgUrl = "", selfieUrl = ""){
   const formaPagamento = document.getElementById("formaPagamento").value;
   const cpfRg = document.getElementById("cpfRg").value.trim();
   const whatsapp = document.getElementById("whatsapp").value.trim();
-  
 
-  const valorBase = Number(viagemAtual?.valor || 0);
-  const valorTotal = tipoViagem === "ida_volta" ? valorBase * 2 : valorBase;
+  let valorUnitario = 0;
+
+  if(origemTrechoSelecionada && destinoTrechoSelecionado){
+    valorUnitario = getPrecoTrechoPublicoPorTipo(
+      origemTrechoSelecionada,
+      destinoTrechoSelecionado,
+      tipoPoltronaSelecionada
+    );
+  }else{
+    valorUnitario = await getPrecoViagemPorTipoPublico(
+      viagemSelecionada,
+      tipoPoltronaSelecionada
+    );
+  }
+
+  const valorTotal = tipoViagem === "ida_volta" ? valorUnitario * 2 : valorUnitario;
 
   const payloadPedido = {
   app_id,
@@ -1263,6 +1378,7 @@ async function criarPedidoPassagem(fotoRgUrl = "", selfieUrl = ""){
   itens: [{
     tipo: "passagem",
     tipo_viagem: tipoViagem,
+    tipo_poltrona: tipoPoltronaSelecionada,
     viagem_id: viagemSelecionada,
     rota: viagemAtual?.rota || "",
     hora: viagemAtual?.hora || "",
@@ -1273,10 +1389,8 @@ async function criarPedidoPassagem(fotoRgUrl = "", selfieUrl = ""){
     destino: destinoTrechoSelecionado ? (paradasPublicas.find(p => Number(p.ordem) === Number(destinoTrechoSelecionado))?.cidade || null) : null,
     origem_ordem: origemTrechoSelecionada ? Number(origemTrechoSelecionada) : null,
     destino_ordem: destinoTrechoSelecionado ? Number(destinoTrechoSelecionado) : null,
-    valor_unitario: origemTrechoSelecionada && destinoTrechoSelecionado
-      ? Number(getPrecoTrechoPublico(origemTrechoSelecionada, destinoTrechoSelecionado) || 0)
-      : valorBase,
-    valor_total: valorTotal,
+    valor_unitario: Number(valorUnitario || 0),
+valor_total: Number(valorTotal || 0),
     codigo_embarque: codigoReservaGlobal,
     foto_rg: fotoRgUrl,
     selfie: selfieUrl,
@@ -1309,6 +1423,10 @@ async function registrarReservaPendente(fotoRgUrl = "", selfieUrl = ""){
   const reservas = [{
   viagem_id: viagemSelecionada,
   poltrona: poltronaSelecionada,
+  tipo_poltrona: tipoPoltronaSelecionada,
+valor_cobrado: origemTrechoSelecionada && destinoTrechoSelecionado
+  ? Number(getPrecoTrechoPublicoPorTipo(origemTrechoSelecionada, destinoTrechoSelecionado, tipoPoltronaSelecionada) || 0)
+  : Number(await getPrecoViagemPorTipoPublico(viagemSelecionada, tipoPoltronaSelecionada) || 0),
   nome,
   app_id,
   data_viagem: dataIda,
@@ -1578,6 +1696,7 @@ Hora: ${viagemAtual?.hora || ""}
 Data ida: ${dataIda}
 ${tipoViagem === "ida_volta" && dataVolta ? `Data volta: ${dataVolta}\n` : ""}Poltrona: ${poltronaSelecionada || ""}
 Tipo: ${tipoViagem === "ida_volta" ? "Ida e Volta" : "Somente Ida"}
+Tipo da poltrona: ${tipoPoltronaSelecionada}
 Valor: R$ ${Number(valorTotal || 0).toFixed(2)}
 
 Apresente este comprovante no embarque.`
@@ -1590,6 +1709,7 @@ function mostrarComprovanteReserva(){
   const whatsapp = document.getElementById("whatsapp").value.trim();
   const dataIda = formatarDataPadrao(document.getElementById("dataIda").value);
   const tipoViagem = document.getElementById("tipoViagem").value;
+  Tipo da poltrona: ${tipoPoltronaSelecionada}
   const dataVolta = formatarDataPadrao(document.getElementById("dataVolta").value);
   const codigoReserva = codigoReservaGlobal;
   const valorTotal = calcularValorTotal();
