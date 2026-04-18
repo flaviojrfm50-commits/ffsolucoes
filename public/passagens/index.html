@@ -1685,10 +1685,9 @@ async function montarTextoRecibo(){
   const dataIda = formatarDataPadrao(document.getElementById("dataIda").value);
   const tipoViagem = document.getElementById("tipoViagem").value;
   const dataVolta = formatarDataPadrao(document.getElementById("dataVolta").value);
-  function mostrarComprovanteReserva(){
+  const valorTotal = await calcularValorTotal();
 
-  return (
-`FF TRANSPORTE
+  return `FF TRANSPORTE
 COMPROVANTE DE RESERVA
 
 Código: ${codigoReservaGlobal || ""}
@@ -1700,11 +1699,10 @@ Hora: ${viagemAtual?.hora || ""}
 Data ida: ${dataIda}
 ${tipoViagem === "ida_volta" && dataVolta ? `Data volta: ${dataVolta}\n` : ""}Poltrona: ${poltronaSelecionada || ""}
 Tipo: ${tipoViagem === "ida_volta" ? "Ida e Volta" : "Somente Ida"}
-
+Tipo da poltrona: ${tipoPoltronaSelecionada}
 Valor: R$ ${Number(valorTotal || 0).toFixed(2)}
 
-Apresente este comprovante no embarque.`
-  );
+Apresente este comprovante no embarque.`;
 }
 
 async function mostrarComprovanteReserva(){
@@ -1713,10 +1711,9 @@ async function mostrarComprovanteReserva(){
   const whatsapp = document.getElementById("whatsapp").value.trim();
   const dataIda = formatarDataPadrao(document.getElementById("dataIda").value);
   const tipoViagem = document.getElementById("tipoViagem").value;
-  Tipo da poltrona: ${tipoPoltronaSelecionada}
   const dataVolta = formatarDataPadrao(document.getElementById("dataVolta").value);
   const codigoReserva = codigoReservaGlobal;
-  const valorTotal = calcularValorTotal();
+  const valorTotal = await calcularValorTotal();
 
   const dadosReserva = {
     codigo_embarque: codigoReserva,
@@ -1729,6 +1726,7 @@ async function mostrarComprovanteReserva(){
     data_volta: tipoViagem === "ida_volta" ? dataVolta : null,
     poltrona: poltronaSelecionada,
     tipo: tipoViagem,
+    tipo_poltrona: tipoPoltronaSelecionada,
     valor_total: valorTotal
   };
 
@@ -1745,13 +1743,14 @@ async function mostrarComprovanteReserva(){
     ${tipoViagem === "ida_volta" && dataVolta ? `<b>Data volta:</b> ${dataVolta}<br>` : ""}
     <b>Poltrona:</b> ${poltronaSelecionada}<br>
     <b>Tipo:</b> ${tipoViagem === "ida_volta" ? "Ida e Volta" : "Somente Ida"}<br>
+    <b>Tipo da poltrona:</b> ${tipoPoltronaSelecionada}<br>
     <b>Valor:</b> R$ ${Number(valorTotal || 0).toFixed(2)}
   `;
 
   document.getElementById("qrReservaImg").src =
     "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + encodeURIComponent(textoQR);
 
-  ultimoTextoRecibo = montarTextoRecibo();
+  ultimoTextoRecibo = await montarTextoRecibo();
   document.getElementById("textoRecibo").value = ultimoTextoRecibo;
 
   const numero = String(document.getElementById("whatsapp").value || "").replace(/\D/g, "");
